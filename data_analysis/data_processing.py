@@ -624,6 +624,65 @@ class GeneralFileData:
 
 
 @dataclass
+class AfterpulsingFilter:
+    """Doc."""
+
+    t_hist: np.ndarray
+    all_hist_norm: np.ndarray
+    baseline: float
+    I_j: np.ndarray
+    norm_factor: float
+    valid_limits: Limits
+    M: np.ndarray
+    filter: np.ndarray
+    fine_bins: np.ndarray
+
+    def plot(self, parent_ax=None, **plot_kwargs):
+        """Doc."""
+
+        valid_idxs = self.valid_limits.valid_indices(self.t_hist)
+
+        with Plotter(
+            parent_ax=parent_ax,
+            subplots=(1, 2),
+            **plot_kwargs,
+        ) as axes:
+            axes[0].set_title("Filter Ingredients")
+            axes[0].set_yscale("log")
+            axes[0].plot(
+                self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
+            )
+            axes[0].plot(self.t_hist[valid_idxs], self.I_j / self.norm_factor, label="norm. I_j")
+            axes[0].plot(
+                self.t_hist[valid_idxs],
+                self.baseline / self.norm_factor * np.ones(self.t_hist[valid_idxs].shape),
+                label="norm. baseline",
+            )
+            axes[0].plot(
+                self.t_hist[valid_idxs],
+                self.M.T[0],
+                label="M_j1 (ideal fluorescence decay curve)",
+            )
+            axes[0].plot(
+                self.t_hist[valid_idxs],
+                self.M.T[1],
+                label="M_j2 (ideal afterpulsing 'decay' curve)",
+            )
+            axes[0].legend()
+            axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
+
+            axes[1].set_title("Filter")
+            axes[1].plot(self.t_hist, self.filter.T, label=["F_1j (signal)", "F_2j (afterpulsing)"])
+            axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
+
+            axes[1].legend()
+
+            if self.valid_limits.upper != np.inf:
+                axes[0].set_xlim(*self.valid_limits)
+                axes[1].set_xlim(*self.valid_limits)
+
+
+@dataclass
 class TDCPhotonFileData:
     """Holds the total processed data of a single measurement file."""
 
@@ -702,35 +761,31 @@ class TDCPhotonFileData:
             for xx in xcorr_types:
                 if xx == "AA":
                     xcorr_input_dict[xx].append(
-                        self._prepare_correlator_input(
-                            dt_ts1, line_idx, "line", line_num=line_num1, **kwargs
-                        )
+                        self._add_validity(dt_ts1, line_idx, line_num=line_num1, **kwargs)
                     )
                 if xx == "BB":
                     xcorr_input_dict[xx].append(
-                        self._prepare_correlator_input(
-                            dt_ts2, line_idx, "line", line_num=line_num2, **kwargs
-                        )
+                        self._add_validity(dt_ts2, line_idx, line_num=line_num2, **kwargs)
                     )
                 if xx == "AB":
-                    xcorr_input_AB = self._prepare_correlator_input(
+                    xcorr_input_AB = self._add_validity(
                         dt_ts12,
                         line_idx,
-                        "line",
                         line_num=line_num12,
                         **kwargs,
                     )
                     xcorr_input_dict[xx].append(xcorr_input_AB)
                 if xx == "BA":
                     if "AB" in xcorr_types:
-                        xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1, 3], :])
+                        xcorr_input_dict[xx].append(
+                            (xcorr_input_AB[0][[0, 2, 1, 3], :], xcorr_input_AB[1])
+                        )
                     else:
                         dt_ts21 = dt_ts12[[0, 2, 1, 3], :]
                         xcorr_input_dict[xx].append(
-                            self._prepare_correlator_input(
+                            self._add_validity(
                                 dt_ts21,
                                 line_idx,
-                                "line",
                                 line_num=line_num12,
                                 **kwargs,
                             )
@@ -786,116 +841,139 @@ class TDCPhotonFileData:
                 for xx in xcorr_types:
                     if xx == "AA":
                         xcorr_input_dict[xx].append(
-                            self._prepare_correlator_input(
-                                section_dt_ts1, split_idx, "continuous", n_splits=n_splits, **kwargs
+                            self._split_continuous_section(
+                                section_dt_ts1,
+                                split_idx,
+                                n_splits,
+                                **kwargs,
                             )
                         )
                     if xx == "BB":
                         xcorr_input_dict[xx].append(
-                            self._prepare_correlator_input(
+                            self._split_continuous_section(
                                 section_dt_ts2,
                                 split_idx,
-                                "continuous",
-                                n_splits=n_splits,
+                                n_splits,
                                 **kwargs,
                             )
                         )
                     if xx == "AB":
-                        xcorr_input_AB = self._prepare_correlator_input(
+                        xcorr_input_AB = self._split_continuous_section(
                             section_dt_ts12,
                             split_idx,
-                            "continuous",
-                            n_splits=n_splits,
+                            n_splits,
                             **kwargs,
                         )
                         xcorr_input_dict[xx].append(xcorr_input_AB)
                     if xx == "BA":
                         if "AB" in xcorr_types:
-                            xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1], :])
+                            xcorr_input_dict[xx].append(
+                                (xcorr_input_AB[0][[0, 2, 1], :], xcorr_input_AB[1])
+                            )
                         else:
                             section_dt_ts21 = section_dt_ts12[[0, 2, 1], :]
                             xcorr_input_dict[xx].append(
-                                self._prepare_correlator_input(
+                                self._split_continuous_section(
                                     section_dt_ts21,
                                     split_idx,
-                                    "continuous",
-                                    n_splits=n_splits,
+                                    n_splits,
                                     **kwargs,
                                 )
                             )
 
         return xcorr_input_dict
 
-    def _prepare_correlator_input(
+    def _split_continuous_section(
         self,
         dt_ts_in,
         idx,
-        scan_type,
-        line_num=None,
-        n_splits=None,
+        n_splits: int,
         afterpulsing_filter=None,
+        **kwargs,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+
+        splits = np.linspace(0, dt_ts_in.shape[1], n_splits + 1, dtype=np.int32)
+        dt_ts_out = dt_ts_in[:, splits[idx] : splits[idx + 1]]
+
+        if afterpulsing_filter:
+            filter_input = self._get_filter_input_split(afterpulsing_filter, dt_ts_out[0], **kwargs)
+        else:
+            filter_input = None
+
+        return dt_ts_out, filter_input
+
+    def _add_validity(
+        self,
+        dt_ts_in,
+        idx,
+        line_num=None,
+        afterpulsing_filter=None,
+        **kwargs,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Doc."""
+
+        valid = (line_num == idx).astype(np.int8)
+        if idx != 0:
+            valid[line_num == -idx] = -1
+        else:
+            valid[line_num == -ZERO_LINE_START_ADDER] = -1
+        valid[line_num == -idx - LINE_END_ADDER] = -2
+
+        #  remove photons from wrong lines
+        dt_ts_out = dt_ts_in[:, valid != 0]
+        valid = valid[valid != 0]
+
+        if valid.any():
+            # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
+            # check that we start with the line beginning and not its end
+            if valid[0] != -1:
+                # remove photons till the first found beginning
+                j_start = np.where(valid == -1)[0]
+
+                if len(j_start) > 0:
+                    dt_ts_out = dt_ts_out[:, j_start[0] :]
+                    valid = valid[j_start[0] :]
+
+            # check that we stop with the line ending and not its beginning
+            if valid[-1] != -2:
+                # remove photons after the last found ending
+                j_end = np.where(valid == -2)[0]
+
+                if len(j_end) > 0:
+                    *_, j_end_last = j_end
+                    dt_ts_out = dt_ts_out[:, : j_end_last + 1]
+                    valid = valid[: j_end_last + 1]
+
+            dt_ts_out = np.vstack((dt_ts_out, valid))
+
+        else:
+            dt_ts_out = np.vstack(([], []))
+
+        if afterpulsing_filter:
+            filter_input = self._get_filter_input_split(afterpulsing_filter, dt_ts_out[0], **kwargs)
+        else:
+            filter_input = None
+
+        return dt_ts_out, filter_input
+
+    def _get_filter_input_split(
+        self,
+        afterpulsing_filter: AfterpulsingFilter,
+        split_dt: np.ndarray,
         get_afterpulsing=False,
         **kwargs,
     ) -> np.ndarray:
         """Doc."""
 
-        if scan_type == "continuous":
-            splits = np.linspace(0, dt_ts_in.shape[1], n_splits + 1, dtype=np.int32)
-            dt_ts_out = dt_ts_in[:, splits[idx] : splits[idx + 1]]
-
-        elif scan_type == "line":
-            valid = (line_num == idx).astype(np.int8)
-            if idx != 0:
-                valid[line_num == -idx] = -1
-            else:
-                valid[line_num == -ZERO_LINE_START_ADDER] = -1
-            valid[line_num == -idx - LINE_END_ADDER] = -2
-
-            #  remove photons from wrong lines
-            dt_ts_out = dt_ts_in[:, valid != 0]
-            valid = valid[valid != 0]
-
-            if valid.any():
-                # the first photon in line measures the time from line start and the line end (-2) finishes the duration of the line
-                # check that we start with the line beginning and not its end
-                if valid[0] != -1:
-                    # remove photons till the first found beginning
-                    j_start = np.where(valid == -1)[0]
-
-                    if len(j_start) > 0:
-                        dt_ts_out = dt_ts_out[:, j_start[0] :]
-                        valid = valid[j_start[0] :]
-
-                # check that we stop with the line ending and not its beginning
-                if valid[-1] != -2:
-                    # remove photons after the last found ending
-                    j_end = np.where(valid == -2)[0]
-
-                    if len(j_end) > 0:
-                        *_, j_end_last = j_end
-                        dt_ts_out = dt_ts_out[:, : j_end_last + 1]
-                        valid = valid[: j_end_last + 1]
-
-                dt_ts_out = np.vstack((dt_ts_out, valid))
-
-            else:
-                corr_input = np.vstack(([], []))
-
         # prepare filter input if afterpulsing filter is supplied
-        if afterpulsing_filter is not None:
-            filter = afterpulsing_filter.filter[int(get_afterpulsing)]
-            # create a filter for genuine fluorscene (ignoring afterpulsing)
-            split_dt = dt_ts_out[0]
-            bin_num = np.digitize(split_dt, afterpulsing_filter.fine_bins)
-            # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
-            filter = np.hstack((filter, [0]))  # TODO: should the filter be created like this?
-            # add the relevent filter values to the correlator filter input list
-            filter_input = filter[bin_num - 1]
-        else:
-            filter_input = None
-
-        corr_input = np.squeeze(dt_ts_out[1:].astype(np.int32))
-        return (corr_input, filter_input)
+        filter = afterpulsing_filter.filter[int(get_afterpulsing)]
+        # create a filter for genuine fluorscene (ignoring afterpulsing)
+        bin_num = np.digitize(split_dt, afterpulsing_filter.fine_bins)
+        # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
+        filter = np.hstack((filter, [0]))  # TODO: should the filter be created like this?
+        # add the relevent filter values to the correlator filter input list
+        filter_input = filter[bin_num - 1]
+        return filter_input
 
 
 class TDCPhotonMeasurementData(list):
@@ -949,65 +1027,6 @@ class TDCPhotonMeasurementData(list):
         }
 
         return xcorr_input_dict
-
-
-@dataclass
-class AfterpulsingFilter:
-    """Doc."""
-
-    t_hist: np.ndarray
-    all_hist_norm: np.ndarray
-    baseline: float
-    I_j: np.ndarray
-    norm_factor: float
-    valid_limits: Limits
-    M: np.ndarray
-    filter: np.ndarray
-    fine_bins: np.ndarray
-
-    def plot(self, parent_ax=None, **plot_kwargs):
-        """Doc."""
-
-        valid_idxs = self.valid_limits.valid_indices(self.t_hist)
-
-        with Plotter(
-            parent_ax=parent_ax,
-            subplots=(1, 2),
-            **plot_kwargs,
-        ) as axes:
-            axes[0].set_title("Filter Ingredients")
-            axes[0].set_yscale("log")
-            axes[0].plot(
-                self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
-            )
-            axes[0].plot(self.t_hist[valid_idxs], self.I_j / self.norm_factor, label="norm. I_j")
-            axes[0].plot(
-                self.t_hist[valid_idxs],
-                self.baseline / self.norm_factor * np.ones(self.t_hist[valid_idxs].shape),
-                label="norm. baseline",
-            )
-            axes[0].plot(
-                self.t_hist[valid_idxs],
-                self.M.T[0],
-                label="M_j1 (ideal fluorescence decay curve)",
-            )
-            axes[0].plot(
-                self.t_hist[valid_idxs],
-                self.M.T[1],
-                label="M_j2 (ideal afterpulsing 'decay' curve)",
-            )
-            axes[0].legend()
-            axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
-
-            axes[1].set_title("Filter")
-            axes[1].plot(self.t_hist, self.filter.T, label=["F_1j (signal)", "F_2j (afterpulsing)"])
-            axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
-
-            axes[1].legend()
-
-            if self.valid_limits.upper != np.inf:
-                axes[0].set_xlim(*self.valid_limits)
-                axes[1].set_xlim(*self.valid_limits)
 
 
 @dataclass

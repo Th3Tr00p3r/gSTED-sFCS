@@ -180,7 +180,11 @@ def deep_size_estimate(obj, threshold_mb=1e-6, level=np.inf, indent=4, name=None
     """
 
     # get object size
-    size_mb = (obj.nbytes if isinstance(obj, np.ndarray) else estimate_bytes(obj)) / 1e6
+    try:
+        size_mb = (obj.nbytes if isinstance(obj, np.ndarray) else estimate_bytes(obj)) / 1e6
+    except MemoryError:
+        # Object is too big!
+        size_mb = np.inf
 
     if (size_mb > threshold_mb) and (level >= 0):
         if name is None:
