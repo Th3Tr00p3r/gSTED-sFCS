@@ -188,7 +188,7 @@ MAIN_TYPES = [
     "QTabWidget",
     "QCheckBox",
     "QToolBox",
-    "QDial",
+    #    "QDial",
 ]
 
 SETTINGS_TYPES = [

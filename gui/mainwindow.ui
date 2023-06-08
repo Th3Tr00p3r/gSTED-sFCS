@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -1525,22 +1525,12 @@ to Scan</string>
                          </item>
                          <item>
                           <property name="text">
-                           <string>Forward scan - points per pixel</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
                            <string>Forward scan - normalized</string>
                           </property>
                          </item>
                          <item>
                           <property name="text">
                            <string>Backwards scan - actual counts per pixel</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>Backwards scan - points per pixel</string>
                           </property>
                          </item>
                          <item>
@@ -1556,6 +1546,16 @@ to Scan</string>
                          <item>
                           <property name="text">
                            <string>Both scans - averaged</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Forward scan normalization - points per pixel</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Backwards scan normalization - points per pixel</string>
                           </property>
                          </item>
                         </widget>

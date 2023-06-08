@@ -269,7 +269,7 @@ class MeasurementProcedure:
         )
         logging.debug(f"Saved measurement file: '{file_path}'.")
 
-    async def toggle_lasers(self, finish=False) -> None:
+    async def toggle_lasers(self, finish=False) -> None:  # NOQA C901
         """Doc."""
 
         def current_emission_state() -> str:
@@ -293,6 +293,27 @@ class MeasurementProcedure:
                 return "dep"
             else:
                 return "nolaser"
+
+        async def prep_depletion() -> None:
+            """Doc."""
+            # TODO: move this to the device itself - if turned on on power mode, it should prep itself.
+
+            toggle_succeeded = self._app.gui.main.impl.device_toggle(
+                "dep_laser", toggle_mthd="laser_toggle", state_attr="is_emission_on"
+            )
+            if toggle_succeeded:
+                logging.info(
+                    f"{self._app.devices.dep_laser.log_ref} isn't on. Turning on and waiting 5 s before measurement."
+                )
+                if self.type == "SFCSImage" and self.laser_mode == "dep":
+                    button = self._app.gui.main.startImgScanDep
+                elif self.type == "SFCSImage" and self.laser_mode == "sted":
+                    button = self._app.gui.main.startImgScanSted
+                elif self.type == "SFCSSolution" and self.laser_mode in {"dep", "sted"}:
+                    button = self._app.gui.main.stopMeasurements
+                button.setEnabled(False)
+                await asyncio.sleep(5)
+                button.setEnabled(True)
 
         # measurement ends
         if finish:
@@ -322,12 +343,12 @@ class MeasurementProcedure:
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "dep":
-                await self.prep_depletion() if not self.laser_dvcs.dep.is_emission_on else None
+                await prep_depletion() if not self.laser_dvcs.dep.is_emission_on else None
                 # turn depletion shutter ON and excitation OFF
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "sted":
-                await self.prep_depletion() if not self.laser_dvcs.dep.is_emission_on else None
+                await prep_depletion() if not self.laser_dvcs.dep.is_emission_on else None
                 # turn both depletion shutter and excitation ON
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
@@ -341,26 +362,6 @@ class MeasurementProcedure:
                 raise MeasurementError(
                     f"Requested laser mode ({self.laser_mode}) was not attained."
                 )
-
-    async def prep_depletion(self):
-        """Doc."""
-
-        toggle_succeeded = self._app.gui.main.impl.device_toggle(
-            "dep_laser", toggle_mthd="laser_toggle", state_attr="is_emission_on"
-        )
-        if toggle_succeeded:
-            logging.info(
-                f"{self._app.devices.dep_laser.log_ref} isn't on. Turning on and waiting 5 s before measurement."
-            )
-            if self.type == "SFCSImage" and self.laser_mode == "dep":
-                button = self._app.gui.main.startImgScanDep
-            elif self.type == "SFCSImage" and self.laser_mode == "sted":
-                button = self._app.gui.main.startImgScanSted
-            elif self.type == "SFCSSolution" and self.laser_mode in {"dep", "sted"}:
-                button = self._app.gui.main.stopMeasurements
-            button.setEnabled(False)
-            await asyncio.sleep(5)
-            button.setEnabled(True)
 
     def init_scan_tasks(self, ao_sample_mode: str) -> None:
         """Doc."""

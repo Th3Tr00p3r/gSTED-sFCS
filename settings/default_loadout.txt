@@ -28,7 +28,7 @@ imgScanPPL,1000
 imgScanLineFreq,20
 imgScanNumPlanes,1
 depPow,260
-depCurr,1500
+depCurr,2100
 stageSteps,250
 spadGateWidth,98
 spadEffGateWidth,1
@@ -41,13 +41,13 @@ solLinFrac,0.9
 solAngActualSpeed,8800.0
 solActualScanFreq,40.0
 solScanDur,25.0
-imgScanDim1,15.0
-imgScanDim2,15.0
+imgScanDim1,1.0
+imgScanDim2,1.0
 imgScanDim3,0.0
 imgScanLinFrac,0.9
-xAOV,0.0
-yAOV,0.0
-zAOV,5.0
+xAOV,0.03303
+yAOV,0.10135
+zAOV,4.63069
 axisMoveUm,5.0
 psdDelay,0.0
 psdEffDelay,49.61
@@ -68,8 +68,8 @@ importedSolDataTemplates2,
 solMeasPreset,Standard Angular
 solScanType,angular
 solScanDurUnits,seconds
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
+imgScanPreset,GB - XY single bead
+imgScanType,XY
 imgShowMethod,Forward scan - normalized
 avgInterval,5
 posAxis,X
@@ -121,4 +121,4 @@ autoExp2,False
 camTranspose2,True
 grayscaleMode2,True
 measureBeamDiameter2,False
-scaleImgScan,39
+scaleImgScan,299
