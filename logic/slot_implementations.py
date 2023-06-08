@@ -639,10 +639,10 @@ class MainWin:
 
         method_dict = {
             "Forward scan - actual counts per pixel": "forward",
-            "Forward scan - points per pixel": "forward normalization",
+            "Forward scan normalization - points per pixel": "forward normalization",
             "Forward scan - normalized": "forward normalized",
             "Backwards scan - actual counts per pixel": "backward",
-            "Backwards scan - points per pixel": "backward normalization",
+            "Backwards scan normalization - points per pixel": "backward normalization",
             "Backwards scan - normalized": "backward normalized",
             "Both scans - interlaced": "interlaced",
             "Both scans - averaged": "averaged",
