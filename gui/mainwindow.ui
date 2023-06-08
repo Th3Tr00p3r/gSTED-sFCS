@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>1</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -4821,62 +4821,76 @@ All Measurements</string>
                      </item>
                      <item>
                       <layout class="QVBoxLayout" name="verticalLayout_28">
-                       <item alignment="Qt::AlignHCenter">
-                        <widget class="QLabel" name="label_7">
-                         <property name="text">
-                          <string>Fit Failed</string>
-                         </property>
-                        </widget>
-                       </item>
+                       <property name="spacing">
+                        <number>0</number>
+                       </property>
                        <item>
-                        <widget class="QPushButton" name="ledFit">
-                         <property name="enabled">
-                          <bool>true</bool>
+                        <layout class="QVBoxLayout" name="verticalLayout_26">
+                         <property name="spacing">
+                          <number>0</number>
                          </property>
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="minimumSize">
-                          <size>
-                           <width>0</width>
-                           <height>0</height>
-                          </size>
-                         </property>
-                         <property name="maximumSize">
-                          <size>
-                           <width>9999</width>
-                           <height>9999</height>
-                          </size>
-                         </property>
-                         <property name="styleSheet">
-                          <string notr="true"/>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="icon">
-                          <iconset resource="icons/icons.qrc">
-                           <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
-                         </property>
-                         <property name="iconSize">
-                          <size>
-                           <width>32</width>
-                           <height>32</height>
-                          </size>
-                         </property>
-                         <property name="autoDefault">
-                          <bool>false</bool>
-                         </property>
-                         <property name="default">
-                          <bool>false</bool>
-                         </property>
-                         <property name="flat">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
+                         <item>
+                          <widget class="QCheckBox" name="shouldFit">
+                           <property name="text">
+                            <string>Should
+Fit</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="ledFit">
+                           <property name="enabled">
+                            <bool>true</bool>
+                           </property>
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="minimumSize">
+                            <size>
+                             <width>0</width>
+                             <height>0</height>
+                            </size>
+                           </property>
+                           <property name="maximumSize">
+                            <size>
+                             <width>9999</width>
+                             <height>9999</height>
+                            </size>
+                           </property>
+                           <property name="toolTip">
+                            <string>Red if fit failed</string>
+                           </property>
+                           <property name="styleSheet">
+                            <string notr="true"/>
+                           </property>
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="icon">
+                            <iconset resource="icons/icons.qrc">
+                             <normaloff>:/led_off.png</normaloff>:/led_off.png</iconset>
+                           </property>
+                           <property name="iconSize">
+                            <size>
+                             <width>32</width>
+                             <height>32</height>
+                            </size>
+                           </property>
+                           <property name="autoDefault">
+                            <bool>false</bool>
+                           </property>
+                           <property name="default">
+                            <bool>false</bool>
+                           </property>
+                           <property name="flat">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
                        </item>
                        <item>
                         <widget class="QCheckBox" name="accumAcf">

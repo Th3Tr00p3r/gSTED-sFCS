@@ -389,6 +389,7 @@ SOL_MEAS_COLL = QtWidgetCollection(
     g0_wdgt=("g0", "QDoubleSpinBox", "main", True),
     tau_wdgt=("decayTime", "QDoubleSpinBox", "main", True),
     plot_wdgt=("solScanAcf", None, "main", True),
+    should_fit=("shouldFit", "QCheckBox", "main", False),
     fit_led=("ledFit", "QIcon", "main", True),
     should_accumulate_corrfuncs=("accumAcf", "QCheckBox", "main", False),
     meas_queue=("measQueue", "QListWidget", "main", True),
