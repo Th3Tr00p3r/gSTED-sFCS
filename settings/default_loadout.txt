@@ -1,14 +1,10 @@
-imgScanFileTemplate,gb
 newTemplate,YOYOpICOz_1uW_angular_exc
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
 solScanFileTemplate,
+imgScanFileTemplate,gb
 spadMode,free running
-imgScanNumLines,150
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
 solAnalysisRemoveWorstSpinner,0
 scanImgFileNum,1
 expStrctFctrRbstIntrpPnts,3
@@ -27,15 +23,15 @@ maxWidth,42
 solPointsPerLine,102
 solTotPointsPerLine,125
 solNumLines,22
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
 depPow,260
 depCurr,1500
 stageSteps,250
 spadGateWidth,98
 spadEffGateWidth,1
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,0.0
-imgScanLinFrac,0.9
 solAnalysisRemoveOverSpinner,2.0
 expStrctFctrGMin,0.01
 customGateLifetimesLower,0.5
@@ -45,15 +41,16 @@ solLinFrac,0.9
 solAngActualSpeed,8800.0
 solActualScanFreq,40.0
 solScanDur,25.0
+imgScanDim1,15.0
+imgScanDim2,15.0
+imgScanDim3,0.0
+imgScanLinFrac,0.9
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
 axisMoveUm,5.0
 psdDelay,0.0
 psdEffDelay,49.61
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - normalized
 dataMonth,6
 dataYear,2023
 dataDay,4
@@ -71,6 +68,9 @@ importedSolDataTemplates2,
 solMeasPreset,Standard Angular
 solScanType,angular
 solScanDurUnits,seconds
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - normalized
 avgInterval,5
 posAxis,X
 importStacked,1
@@ -99,13 +99,11 @@ exposure1,99
 pixel_clock2,99
 framerate2,99
 exposure2,99
-tabWidget,1
+tabWidget,0
 tabWidget_2,1
 tabWidget_5,0
 tabWidget_4,0
 tabWidget_3,0
-autoCrosshair,True
-alwaysSaveImg,False
 solImportReCorrelate,False
 solImportAutoLoadProcessed,False
 bwMask,False
@@ -113,6 +111,8 @@ normRows,False
 circShouldPrecess,False
 shouldFit,True
 accumAcf,True
+autoCrosshair,True
+alwaysSaveImg,False
 autoExp1,False
 camTranspose1,False
 grayscaleMode1,True
