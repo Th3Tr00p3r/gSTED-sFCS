@@ -233,7 +233,7 @@ class MeasurementProcedure:
     def save_data(self, data_dict: dict, file_name: str) -> None:
         """
         Create a directory of today's date, and there
-        save measurement data as a .pkl file.
+        save the raw data as a .npy file and compress the rest in a pickled .gzip file.
         """
         # TODO: does not handle overnight measurements during which the date changes.
         # To do that, one would need to keep the starting date and ensure overnight measurements
@@ -322,12 +322,12 @@ class MeasurementProcedure:
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "dep":
-                await self.prep_dep() if not self.laser_dvcs.dep.is_emission_on else None
+                await self.prep_depletion() if not self.laser_dvcs.dep.is_emission_on else None
                 # turn depletion shutter ON and excitation OFF
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "sted":
-                await self.prep_dep() if not self.laser_dvcs.dep.is_emission_on else None
+                await self.prep_depletion() if not self.laser_dvcs.dep.is_emission_on else None
                 # turn both depletion shutter and excitation ON
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
@@ -342,7 +342,7 @@ class MeasurementProcedure:
                     f"Requested laser mode ({self.laser_mode}) was not attained."
                 )
 
-    async def prep_dep(self):
+    async def prep_depletion(self):
         """Doc."""
 
         toggle_succeeded = self._app.gui.main.impl.device_toggle(
