@@ -2284,7 +2284,7 @@ class ImageStackData:
         elif method == "forward normalization":
             img = self.norm_stack_forward[:, :, plane_idx]
         elif method == "forward normalized":
-            img = np.zeros_like(self.image_stack_forward[:, :, plane_idx])
+            img = np.zeros_like(self.image_stack_forward[:, :, plane_idx], dtype=np.float64)
             norm = self.norm_stack_forward[:, :, plane_idx]
             valid_mask = norm > 0
             img[valid_mask] = (
@@ -2295,9 +2295,11 @@ class ImageStackData:
         elif method == "backward normalization":
             img = self.norm_stack_backward[:, :, plane_idx]
         elif method == "backward normalized":
-            img = (
-                self.image_stack_backward[:, :, plane_idx]
-                / self.norm_stack_backward[:, :, plane_idx]
+            img = np.zeros_like(self.image_stack_backward[:, :, plane_idx], dtype=np.float64)
+            norm = self.norm_stack_backward[:, :, plane_idx]
+            valid_mask = norm > 0
+            img[valid_mask] = (
+                self.image_stack_backward[:, :, plane_idx][valid_mask] / norm[valid_mask]
             )
         elif method == "interlaced":
             p1_norm = (
