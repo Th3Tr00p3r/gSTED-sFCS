@@ -508,7 +508,7 @@ class RawFileData:
         data[row_idx] = new_row
         data.flush()
 
-    def dump(self):
+    def dump(self, is_verbose=False):
         """Dump the data to disk. Should be called right after initialization (only needed once). Returns whether the data was dumped."""
 
         # cancel dumping if not needed
@@ -517,6 +517,10 @@ class RawFileData:
             and not (self.dump_file_path.exists() and self.should_avoid_dumping)
             or not self.dump_file_path.exists()
         ):
+
+            if is_verbose:
+                print(f"Dumping data to '{self.dump_file_path}' (Memory-Mapping).")
+
             # prepare data ndarray
             if self._line_num is None:
                 data = np.vstack(

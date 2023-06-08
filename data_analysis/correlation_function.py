@@ -2090,7 +2090,7 @@ class SolutionSFCSExperiment:
 
             ax.legend()
 
-    def estimate_spatial_resolution(self, colors=None, **kwargs) -> Iterator[str]:
+    def estimate_spatial_resolution(self, colors=None, sted_only=False, **kwargs) -> Iterator[str]:
         """
         High-level method for performing Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions
         (confocal, sted and any gates) in order to estimate the resolution improvement.
@@ -2111,10 +2111,11 @@ class SolutionSFCSExperiment:
                 # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
                 existing_lines = parent_ax.get_lines()
 
-            colors = colors if colors is not None else cycle(default_colors)
-            remaining_colors = self.confocal.estimate_spatial_resolution(
-                parent_ax=ax, colors=colors, **kwargs
-            )
+            remaining_colors = colors if colors is not None else cycle(default_colors)
+            if not sted_only:
+                remaining_colors = self.confocal.estimate_spatial_resolution(
+                    parent_ax=ax, colors=remaining_colors, **kwargs
+                )
             remaining_colors = self.sted.estimate_spatial_resolution(
                 parent_ax=ax,
                 colors=remaining_colors,
