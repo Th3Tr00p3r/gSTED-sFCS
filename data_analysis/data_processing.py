@@ -641,6 +641,24 @@ class AfterpulsingFilter:
     filter: np.ndarray
     fine_bins: np.ndarray
 
+    def get_split_filter_input(
+        self,
+        split_dt: np.ndarray,
+        get_afterpulsing=False,
+        **kwargs,
+    ) -> np.ndarray:
+        """Doc."""
+
+        # prepare filter input if afterpulsing filter is supplied
+        filter = self.filter[int(get_afterpulsing)]
+        # create a filter for genuine fluorscene (ignoring afterpulsing)
+        bin_num = np.digitize(split_dt, self.fine_bins)
+        # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
+        filter = np.hstack((filter, [0]))  # TODO: should the filter be created like this?
+        # add the relevent filter values to the correlator filter input list
+        filter_input = filter[bin_num - 1]
+        return filter_input
+
     def plot(self, parent_ax=None, **plot_kwargs):
         """Doc."""
 
@@ -892,26 +910,18 @@ class TDCPhotonFileData:
         dt_ts_in,
         idx,
         n_splits: int,
-        afterpulsing_filter=None,
         **kwargs,
     ) -> Tuple[np.ndarray, np.ndarray]:
+        """Doc."""
 
         splits = np.linspace(0, dt_ts_in.shape[1], n_splits + 1, dtype=np.int32)
-        dt_ts_out = dt_ts_in[:, splits[idx] : splits[idx + 1]]
-
-        if afterpulsing_filter:
-            filter_input = self._get_filter_input_split(afterpulsing_filter, dt_ts_out[0], **kwargs)
-        else:
-            filter_input = None
-
-        return dt_ts_out, filter_input
+        return dt_ts_in[:, splits[idx] : splits[idx + 1]]
 
     def _add_validity(
         self,
         dt_ts_in,
         idx,
         line_num=None,
-        afterpulsing_filter=None,
         **kwargs,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Doc."""
@@ -953,31 +963,7 @@ class TDCPhotonFileData:
         else:
             dt_ts_out = np.vstack(([], []))
 
-        if afterpulsing_filter:
-            filter_input = self._get_filter_input_split(afterpulsing_filter, dt_ts_out[0], **kwargs)
-        else:
-            filter_input = None
-
-        return dt_ts_out, filter_input
-
-    def _get_filter_input_split(
-        self,
-        afterpulsing_filter: AfterpulsingFilter,
-        split_dt: np.ndarray,
-        get_afterpulsing=False,
-        **kwargs,
-    ) -> np.ndarray:
-        """Doc."""
-
-        # prepare filter input if afterpulsing filter is supplied
-        filter = afterpulsing_filter.filter[int(get_afterpulsing)]
-        # create a filter for genuine fluorscene (ignoring afterpulsing)
-        bin_num = np.digitize(split_dt, afterpulsing_filter.fine_bins)
-        # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
-        filter = np.hstack((filter, [0]))  # TODO: should the filter be created like this?
-        # add the relevent filter values to the correlator filter input list
-        filter_input = filter[bin_num - 1]
-        return filter_input
+        return dt_ts_out
 
 
 class TDCPhotonMeasurementData(list):

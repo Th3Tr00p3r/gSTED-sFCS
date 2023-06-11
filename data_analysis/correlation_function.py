@@ -1121,19 +1121,11 @@ class SolutionSFCSMeasurement:
             if corr_options.get("is_verbose"):
                 print("Done.")
 
-        # build correlator input - create list of split data (and optionally filters) for correlator. TDC-gating is performed here
+        # build correlator input - create list of split data for correlator. TDC-gating is performed here
         if self.corr_input_list is None:
             if corr_options.get("is_verbose"):
                 print("Building correlator input splits: ", end="")
-
-            self.corr_input_list, self.filter_input_list = zip(
-                *self.data.prepare_xcorr_input(
-                    ["AA"],
-                    afterpulsing_filter=afterpulsing_filter if is_filtered else None,
-                    get_afterpulsing=get_afterpulsing,
-                    **corr_options,
-                )["AA"]
-            )
+            self.corr_input_list = self.data.prepare_xcorr_input(["AA"], **corr_options)["AA"]
             if corr_options.get("is_verbose"):
                 print("Done.")
 
@@ -1142,23 +1134,31 @@ class SolutionSFCSMeasurement:
             if corr_options.get("is_verbose"):
                 print("Using existing correlator input splits.")
 
-        # Gating
+        # Gating and filtering
         if corr_options.get("is_verbose"):
             if gate_ns:
                 print(f"Gating input splits ({gate_ns})... ", end="")
             else:
                 print("Preparing input splits... ", end="")
         final_corr_input_list = []
-        final_filter_input_list = [] if gate_ns else self.filter_input_list
-        for dt_ts_split, filter_split in zip(self.corr_input_list, self.filter_input_list):
+        final_filter_input_list = []
+        for dt_ts_split in self.corr_input_list:
             if gate_ns:
                 valid_idxs = gate_ns.valid_indices(dt_ts_split[0])
                 final_corr_input_list.append(
                     np.squeeze(dt_ts_split[1:][:, valid_idxs].astype(np.int32))
                 )
-                final_filter_input_list.append(filter_split[valid_idxs])
             else:
                 final_corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
+                valid_idxs = slice(None)
+
+            # filter input
+            if afterpulsing_filter:
+                split_filter = afterpulsing_filter.get_split_filter_input(
+                    dt_ts_split[0][valid_idxs], get_afterpulsing
+                )
+                final_filter_input_list.append(split_filter)
+
         if corr_options.get("is_verbose"):
             print("Done.")
 
@@ -1518,7 +1518,7 @@ class SolutionSFCSMeasurement:
         meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
             # don't save correlator inputs (re-built when loaded)
-            corr_input_list, filter_input_list = self.corr_input_list, self.filter_input_list
+            corr_input_list = self.corr_input_list
             self.corr_input_list = None
             self.filter_input_list = None
             # save the measurement object
@@ -1528,7 +1528,7 @@ class SolutionSFCSMeasurement:
                 self, meas_file_path, compression_method="blosc", obj_name="processed measurement"
             )
             # restore correlator inputs
-            self.corr_input_list, self.filter_input_list = corr_input_list, filter_input_list
+            self.corr_input_list = corr_input_list
             if kwargs.get("is_verbose"):
                 print("Done.")
 
