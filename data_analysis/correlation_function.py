@@ -117,6 +117,9 @@ class LifeTimeParams:
     sigma_sted: Union[float, Tuple[float, float]]
     laser_pulse_delay_ns: float
 
+    def __repr__(self):
+        return f"LifeTimeParams(lifetime_ns={self.lifetime_ns:.2f}, sigma_sted={self.sigma_sted:.2f}, laser_pulse_delay_ns={self.laser_pulse_delay_ns:.2f})"
+
 
 class CorrFunc:
     """Doc."""
