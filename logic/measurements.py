@@ -53,6 +53,8 @@ class MeasurementProcedure:
 
         self._app = app
         self.type = type
+
+        # keep the depletion state for setting up the measurement before running
         self.laser_mode = laser_mode
         if laser_mode in {"dep", "sted"}:
             self.dep_type = self.laser_dvcs.dep.mode
@@ -64,6 +66,9 @@ class MeasurementProcedure:
             self.dep_power_mw = self.dep_value
         else:
             self.dep_power_mw = None
+        # keep the detector/delayer state for setting up the measurement before running
+        self.spad_settings = self.spad_dvc.settings
+
         self.file_template = file_template
         self.save_path = save_path
         self.sub_dir_name = sub_dir_name
@@ -362,6 +367,14 @@ class MeasurementProcedure:
                 raise MeasurementError(
                     f"Requested laser mode ({self.laser_mode}) was not attained."
                 )
+
+    def ready_detector(self) -> None:
+        """
+        Set the detector and pulse delayer to their selected values
+        before starting the measurement.
+        """
+
+        # TODO: fix me!
 
     def init_scan_tasks(self, ao_sample_mode: str) -> None:
         """Doc."""

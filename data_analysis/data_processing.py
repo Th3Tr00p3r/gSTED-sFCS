@@ -628,6 +628,75 @@ class GeneralFileData:
 
 
 @dataclass
+class AfterpulsingFilter:
+    """Doc."""
+
+    t_hist: np.ndarray
+    all_hist_norm: np.ndarray
+    baseline: float
+    I_j: np.ndarray
+    norm_factor: float
+    valid_limits: Limits
+    M: np.ndarray
+    filter: np.ndarray
+    fine_bins: np.ndarray
+
+    def plot(self, parent_ax=None, **plot_kwargs):
+        """Doc."""
+
+        valid_idxs = self.valid_limits.valid_indices(self.t_hist)
+
+        with Plotter(
+            parent_ax=parent_ax,
+            subplots=(1, 2),
+            **plot_kwargs,
+        ) as axes:
+            axes[0].set_title("Filter Ingredients")
+            axes[0].set_yscale("log")
+            axes[0].plot(
+                self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
+            )
+            axes[0].plot(self.t_hist[valid_idxs], self.I_j / self.norm_factor, label="norm. I_j")
+            axes[0].plot(
+                self.t_hist[valid_idxs],
+                self.baseline / self.norm_factor * np.ones(self.t_hist[valid_idxs].shape),
+                label="norm. baseline",
+            )
+            axes[0].plot(
+                self.t_hist[valid_idxs],
+                self.M.T[0],
+                label="M_j1 (ideal fluorescence decay curve)",
+            )
+            axes[0].plot(
+                self.t_hist[valid_idxs],
+                self.M.T[1],
+                label="M_j2 (ideal afterpulsing 'decay' curve)",
+            )
+            axes[0].legend()
+            axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
+
+            axes[1].set_title("Filter")
+            try:  # TODO: fix this at the filter-building level!
+                axes[1].plot(
+                    self.t_hist, self.filter.T, label=["F_1j (signal)", "F_2j (afterpulsing)"]
+                )
+                axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
+            except ValueError as exc:
+                print(exc)
+                print("^ ignoring the last filter element...")
+                axes[1].plot(
+                    self.t_hist, self.filter.T[:-1], label=["F_1j (signal)", "F_2j (afterpulsing)"]
+                )
+                axes[1].plot(self.t_hist, self.filter.sum(axis=0)[:-1], label="F.sum(axis=0)")
+
+            axes[1].legend()
+
+            if self.valid_limits.upper != np.inf:
+                axes[0].set_xlim(*self.valid_limits)
+                axes[1].set_xlim(*self.valid_limits)
+
+
+@dataclass
 class TDCPhotonFileData:
     """Holds the total processed data of a single measurement file."""
 
@@ -953,65 +1022,6 @@ class TDCPhotonMeasurementData(list):
         }
 
         return xcorr_input_dict
-
-
-@dataclass
-class AfterpulsingFilter:
-    """Doc."""
-
-    t_hist: np.ndarray
-    all_hist_norm: np.ndarray
-    baseline: float
-    I_j: np.ndarray
-    norm_factor: float
-    valid_limits: Limits
-    M: np.ndarray
-    filter: np.ndarray
-    fine_bins: np.ndarray
-
-    def plot(self, parent_ax=None, **plot_kwargs):
-        """Doc."""
-
-        valid_idxs = self.valid_limits.valid_indices(self.t_hist)
-
-        with Plotter(
-            parent_ax=parent_ax,
-            subplots=(1, 2),
-            **plot_kwargs,
-        ) as axes:
-            axes[0].set_title("Filter Ingredients")
-            axes[0].set_yscale("log")
-            axes[0].plot(
-                self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
-            )
-            axes[0].plot(self.t_hist[valid_idxs], self.I_j / self.norm_factor, label="norm. I_j")
-            axes[0].plot(
-                self.t_hist[valid_idxs],
-                self.baseline / self.norm_factor * np.ones(self.t_hist[valid_idxs].shape),
-                label="norm. baseline",
-            )
-            axes[0].plot(
-                self.t_hist[valid_idxs],
-                self.M.T[0],
-                label="M_j1 (ideal fluorescence decay curve)",
-            )
-            axes[0].plot(
-                self.t_hist[valid_idxs],
-                self.M.T[1],
-                label="M_j2 (ideal afterpulsing 'decay' curve)",
-            )
-            axes[0].legend()
-            axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
-
-            axes[1].set_title("Filter")
-            axes[1].plot(self.t_hist, self.filter.T, label=["F_1j (signal)", "F_2j (afterpulsing)"])
-            axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
-
-            axes[1].legend()
-
-            if self.valid_limits.upper != np.inf:
-                axes[0].set_xlim(*self.valid_limits)
-                axes[1].set_xlim(*self.valid_limits)
 
 
 @dataclass
