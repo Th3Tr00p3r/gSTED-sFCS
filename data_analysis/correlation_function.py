@@ -721,7 +721,7 @@ class SolutionSFCSMeasurement:
         self.is_loaded = False
         self.was_processed_data_loaded = False
         self.data = TDCPhotonMeasurementData()
-        self.corr_input_list = None
+        self.corr_input_list: List[np.ndarray] = None
 
     def read_fpga_data(
         self,
@@ -919,9 +919,10 @@ class SolutionSFCSMeasurement:
 
         # serial processing (default)
         else:
+            proc_options["is_verbose"] = True
             for idx, file_path in enumerate(file_paths):
                 # Processing data
-                p = self.process_data_file(idx, file_path, is_verbose=True, **proc_options)
+                p = self.process_data_file(idx, file_path, **proc_options)
                 print("Done.\n")
                 # Appending data to self
                 if p is not None:
@@ -1521,6 +1522,7 @@ class SolutionSFCSMeasurement:
             corr_input_list = self.corr_input_list
             self.corr_input_list = None
             self.filter_input_list = None
+
             # save the measurement object
             if kwargs.get("is_verbose"):
                 print("Saving SolutionSFCSMeasurement object... ", end="")
@@ -1529,6 +1531,7 @@ class SolutionSFCSMeasurement:
             )
             # restore correlator inputs
             self.corr_input_list = corr_input_list
+
             if kwargs.get("is_verbose"):
                 print("Done.")
 
@@ -1669,9 +1672,13 @@ class SolutionSFCSExperiment:
 
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
+            is_verbose = kwargs.pop(
+                "is_verbose", False
+            )  # avoid duplicate in following call # TODO: fix this
             cf = measurement.correlate_and_average(
                 is_verbose=True, afterpulsing_method=afterpulsing_method, **kwargs
             )
+            kwargs["is_verbose"] = is_verbose  # avoid duplicate in above call # TODO: fix this
 
             if should_save:
                 print(f"Saving {measurement.type} measurement to disk...", end=" ")
@@ -2065,7 +2072,7 @@ class SolutionSFCSExperiment:
                 existing_lines = parent_ax.get_lines()
                 kwargs.pop("parent_ax")
 
-            for meas_type in {"sted"} if sted_only else {"confocal", "sted"}:
+            for meas_type in {"sted"} if sted_only else ("confocal", "sted"):
                 getattr(self, meas_type).plot_correlation_functions(
                     parent_ax=ax,
                     x_field=x_field,
