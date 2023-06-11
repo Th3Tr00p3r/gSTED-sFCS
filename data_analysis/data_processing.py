@@ -764,18 +764,20 @@ class TDCPhotonFileData:
             valid_idxs1 = gate1_idxs | nan_idxs
             dt1 = dt[valid_idxs1]
             prt1 = self.raw.pulse_runtime[valid_idxs1]
-            dt_prt1 = np.vstack((dt1, prt1))
+            ts1 = np.hstack(([0], np.diff(prt1)))
+            dt_ts1 = np.vstack((dt1, ts1))
             line_num1 = self.raw.line_num[valid_idxs1]
         if "B" in "".join(xcorr_types):
             gate2_idxs = gate2_ns.valid_indices(dt)
             valid_idxs2 = gate2_idxs | nan_idxs
             dt2 = dt[valid_idxs2]
             prt2 = self.raw.pulse_runtime[valid_idxs2]
-            dt_prt2 = np.vstack((dt2, prt2))
+            ts2 = np.hstack(([0], np.diff(prt2)))
+            dt_ts2 = np.vstack((dt2, ts2))
             line_num2 = self.raw.line_num[valid_idxs2]
         if "AB" in xcorr_types or "BA" in xcorr_types:
             # NOTE: # gate2 is first in line to match how software correlator C-code is written
-            dt_prt12 = np.vstack(
+            dt_ts12 = np.vstack(
                 (
                     dt,
                     self.raw.pulse_runtime,
@@ -783,6 +785,7 @@ class TDCPhotonFileData:
                     valid_idxs1,
                 )
             )[:, valid_idxs1 | valid_idxs2]
+            dt_ts12[0] = np.hstack(([0], np.diff(dt_ts12[0])))
             line_num12 = self.raw.line_num[valid_idxs1 | valid_idxs2]
 
         xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
@@ -790,15 +793,15 @@ class TDCPhotonFileData:
             for xx in xcorr_types:
                 if xx == "AA":
                     xcorr_input_dict[xx].append(
-                        self._add_validity(dt_prt1, line_idx, line_num1, **kwargs)
+                        self._add_validity(dt_ts1, line_idx, line_num1, **kwargs)
                     )
                 if xx == "BB":
                     xcorr_input_dict[xx].append(
-                        self._add_validity(dt_prt2, line_idx, line_num2, **kwargs)
+                        self._add_validity(dt_ts2, line_idx, line_num2, **kwargs)
                     )
                 if xx == "AB":
                     xcorr_input_AB = self._add_validity(
-                        dt_prt12,
+                        dt_ts12,
                         line_idx,
                         line_num12,
                         **kwargs,
@@ -808,16 +811,17 @@ class TDCPhotonFileData:
                     if "AB" in xcorr_types:
                         xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1, 3], :])
                     else:
-                        dt_prt21 = dt_prt12[[0, 2, 1, 3], :]
+                        dt_ts21 = dt_ts12[[0, 2, 1, 3], :]
                         xcorr_input_dict[xx].append(
                             self._add_validity(
-                                dt_prt21,
+                                dt_ts21,
                                 line_idx,
                                 line_num12,
                                 **kwargs,
                             )
                         )
 
+        print(". ", end="")  # TESTESTEST
         return xcorr_input_dict
 
     def _get_continuous_xcorr_input_dict(
@@ -906,11 +910,12 @@ class TDCPhotonFileData:
                                 )
                             )
 
+        print(". ", end="")  # TESTESTEST
         return xcorr_input_dict
 
     def _split_continuous_section(
         self,
-        dt_prt_in,  # TESTESTEST - attempting to stick to pulse runtime until gating
+        dt_prt_in,
         idx,
         n_splits: int,
         **kwargs,
@@ -922,7 +927,7 @@ class TDCPhotonFileData:
 
     def _add_validity(
         self,
-        dt_prt_in,
+        dt_ts_in,
         idx,
         line_num,
         **kwargs,
@@ -935,10 +940,6 @@ class TDCPhotonFileData:
         else:
             valid[line_num == -ZERO_LINE_START_ADDER] = -1
         valid[line_num == -idx - LINE_END_ADDER] = -2
-
-        # move to timestamps
-        ts_in = np.hstack(([0], np.diff(dt_prt_in[1])))
-        dt_ts_in = np.vstack((dt_prt_in[0], ts_in))
 
         #  remove photons from wrong lines
         dt_ts_out = dt_ts_in[:, valid != 0]
@@ -1579,9 +1580,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         Processes a single plane image sFCS data ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
         '"""
-
-        #        # TESTESTEST - attempt to chop-off leftovers (photons caught between scans
-        #        byte_data = full_data["byte_data"]
 
         try:
             p = self._convert_fpga_data_to_photons(
