@@ -694,8 +694,18 @@ class AfterpulsingFilter:
             axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
 
             axes[1].set_title("Filter")
-            axes[1].plot(self.t_hist, self.filter.T, label=["F_1j (signal)", "F_2j (afterpulsing)"])
-            axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
+            try:  # TODO: fix this at the filter-building level!
+                axes[1].plot(
+                    self.t_hist, self.filter.T, label=["F_1j (signal)", "F_2j (afterpulsing)"]
+                )
+                axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
+            except ValueError as exc:
+                print(exc)
+                print("^ ignoring the last filter element...")
+                axes[1].plot(
+                    self.t_hist, self.filter.T[:-1], label=["F_1j (signal)", "F_2j (afterpulsing)"]
+                )
+                axes[1].plot(self.t_hist, self.filter.sum(axis=0)[:-1], label="F.sum(axis=0)")
 
             axes[1].legend()
 
@@ -783,32 +793,30 @@ class TDCPhotonFileData:
             for xx in xcorr_types:
                 if xx == "AA":
                     xcorr_input_dict[xx].append(
-                        self._add_validity(dt_ts1, line_idx, line_num=line_num1, **kwargs)
+                        self._add_validity(dt_ts1, line_idx, line_num1, **kwargs)
                     )
                 if xx == "BB":
                     xcorr_input_dict[xx].append(
-                        self._add_validity(dt_ts2, line_idx, line_num=line_num2, **kwargs)
+                        self._add_validity(dt_ts2, line_idx, line_num2, **kwargs)
                     )
                 if xx == "AB":
                     xcorr_input_AB = self._add_validity(
                         dt_ts12,
                         line_idx,
-                        line_num=line_num12,
+                        line_num12,
                         **kwargs,
                     )
                     xcorr_input_dict[xx].append(xcorr_input_AB)
                 if xx == "BA":
                     if "AB" in xcorr_types:
-                        xcorr_input_dict[xx].append(
-                            (xcorr_input_AB[0][[0, 2, 1, 3], :], xcorr_input_AB[1])
-                        )
+                        xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1, 3], :])
                     else:
                         dt_ts21 = dt_ts12[[0, 2, 1, 3], :]
                         xcorr_input_dict[xx].append(
                             self._add_validity(
                                 dt_ts21,
                                 line_idx,
-                                line_num=line_num12,
+                                line_num12,
                                 **kwargs,
                             )
                         )
@@ -864,10 +872,7 @@ class TDCPhotonFileData:
                     if xx == "AA":
                         xcorr_input_dict[xx].append(
                             self._split_continuous_section(
-                                section_dt_ts1,
-                                split_idx,
-                                n_splits,
-                                **kwargs,
+                                section_dt_ts1, split_idx, n_splits, **kwargs
                             )
                         )
                     if xx == "BB":
@@ -889,9 +894,7 @@ class TDCPhotonFileData:
                         xcorr_input_dict[xx].append(xcorr_input_AB)
                     if xx == "BA":
                         if "AB" in xcorr_types:
-                            xcorr_input_dict[xx].append(
-                                (xcorr_input_AB[0][[0, 2, 1], :], xcorr_input_AB[1])
-                            )
+                            xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1], :])
                         else:
                             section_dt_ts21 = section_dt_ts12[[0, 2, 1], :]
                             xcorr_input_dict[xx].append(
@@ -911,7 +914,7 @@ class TDCPhotonFileData:
         idx,
         n_splits: int,
         **kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> np.ndarray:
         """Doc."""
 
         splits = np.linspace(0, dt_ts_in.shape[1], n_splits + 1, dtype=np.int32)
@@ -921,9 +924,9 @@ class TDCPhotonFileData:
         self,
         dt_ts_in,
         idx,
-        line_num=None,
+        line_num,
         **kwargs,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> np.ndarray:
         """Doc."""
 
         valid = (line_num == idx).astype(np.int8)
