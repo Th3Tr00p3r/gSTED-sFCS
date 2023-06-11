@@ -439,7 +439,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         await self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
         self.close_instrument()
 
-    async def set_lower_gate(self):
+    async def set_lower_gate(self, lower_gate_ns=None):
         """
         Set the delay according to the chosen lower gate in ns.
         This is achieved by a combination of setting the pulse width as a mechanism of coarse delay,
@@ -449,7 +449,8 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
         """
 
-        lower_gate_ns = self.set_delay_wdgt.get()
+        if lower_gate_ns is None:
+            lower_gate_ns = self.set_delay_wdgt.get()
 
         try:
             # add the synchronized delay time

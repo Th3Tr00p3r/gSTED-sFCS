@@ -918,9 +918,10 @@ class SolutionSFCSMeasurement:
 
         # serial processing (default)
         else:
+            proc_options["is_verbose"] = True
             for idx, file_path in enumerate(file_paths):
                 # Processing data
-                p = self.process_data_file(idx, file_path, is_verbose=True, **proc_options)
+                p = self.process_data_file(idx, file_path, **proc_options)
                 print("Done.\n")
                 # Appending data to self
                 if p is not None:
@@ -1640,9 +1641,13 @@ class SolutionSFCSExperiment:
 
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
+            is_verbose = kwargs.pop(
+                "is_verbose", False
+            )  # avoid duplicate in following call # TODO: fix this
             cf = measurement.correlate_and_average(
                 is_verbose=True, afterpulsing_method=afterpulsing_method, **kwargs
             )
+            kwargs["is_verbose"] = is_verbose  # avoid duplicate in above call # TODO: fix this
 
             if should_save:
                 print(f"Saving {measurement.type} measurement to disk...", end=" ")
