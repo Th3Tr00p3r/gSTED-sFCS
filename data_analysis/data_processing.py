@@ -763,21 +763,19 @@ class TDCPhotonFileData:
             gate1_idxs = gate1_ns.valid_indices(dt)
             valid_idxs1 = gate1_idxs | nan_idxs
             dt1 = dt[valid_idxs1]
-            pulse_runtime1 = self.raw.pulse_runtime[valid_idxs1]
-            ts1 = np.hstack(([0], np.diff(pulse_runtime1)))
-            dt_ts1 = np.vstack((dt1, ts1))
+            prt1 = self.raw.pulse_runtime[valid_idxs1]
+            dt_prt1 = np.vstack((dt1, prt1))
             line_num1 = self.raw.line_num[valid_idxs1]
         if "B" in "".join(xcorr_types):
             gate2_idxs = gate2_ns.valid_indices(dt)
             valid_idxs2 = gate2_idxs | nan_idxs
             dt2 = dt[valid_idxs2]
-            pulse_runtime2 = self.raw.pulse_runtime[valid_idxs2]
-            ts2 = np.hstack(([0], np.diff(pulse_runtime2)))
-            dt_ts2 = np.vstack((dt2, ts2))
+            prt2 = self.raw.pulse_runtime[valid_idxs2]
+            dt_prt2 = np.vstack((dt2, prt2))
             line_num2 = self.raw.line_num[valid_idxs2]
         if "AB" in xcorr_types or "BA" in xcorr_types:
             # NOTE: # gate2 is first in line to match how software correlator C-code is written
-            dt_ts12 = np.vstack(
+            dt_prt12 = np.vstack(
                 (
                     dt,
                     self.raw.pulse_runtime,
@@ -785,7 +783,6 @@ class TDCPhotonFileData:
                     valid_idxs1,
                 )
             )[:, valid_idxs1 | valid_idxs2]
-            dt_ts12[0] = np.hstack(([0], np.diff(dt_ts12[0])))
             line_num12 = self.raw.line_num[valid_idxs1 | valid_idxs2]
 
         xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
@@ -793,15 +790,15 @@ class TDCPhotonFileData:
             for xx in xcorr_types:
                 if xx == "AA":
                     xcorr_input_dict[xx].append(
-                        self._add_validity(dt_ts1, line_idx, line_num1, **kwargs)
+                        self._add_validity(dt_prt1, line_idx, line_num1, **kwargs)
                     )
                 if xx == "BB":
                     xcorr_input_dict[xx].append(
-                        self._add_validity(dt_ts2, line_idx, line_num2, **kwargs)
+                        self._add_validity(dt_prt2, line_idx, line_num2, **kwargs)
                     )
                 if xx == "AB":
                     xcorr_input_AB = self._add_validity(
-                        dt_ts12,
+                        dt_prt12,
                         line_idx,
                         line_num12,
                         **kwargs,
@@ -811,10 +808,10 @@ class TDCPhotonFileData:
                     if "AB" in xcorr_types:
                         xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1, 3], :])
                     else:
-                        dt_ts21 = dt_ts12[[0, 2, 1, 3], :]
+                        dt_prt21 = dt_prt12[[0, 2, 1, 3], :]
                         xcorr_input_dict[xx].append(
                             self._add_validity(
-                                dt_ts21,
+                                dt_prt21,
                                 line_idx,
                                 line_num12,
                                 **kwargs,
@@ -836,7 +833,8 @@ class TDCPhotonFileData:
 
         dt = self.raw.delay_time
 
-        # TODO: split duration (in bytes! not time) should be decided upon according to how well the correlator performs with said split size. Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
+        # TODO: split duration (in bytes! not time) should be decided upon according to how well the correlator performs with said split size.
+        # Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
         split_duration = self.general.duration_s / n_splits_requested
         for se_idx, (se_start, se_end) in enumerate(self.general.all_section_edges):
             # split into sections of approx time of run_duration
@@ -851,19 +849,18 @@ class TDCPhotonFileData:
             if "A" in "".join(xcorr_types):
                 gate1_idxs = gate1_ns.valid_indices(section_delay_time)
                 section_prt1 = section_pulse_runtime[gate1_idxs]
-                section_ts1 = np.hstack(([0], np.diff(section_prt1)))
                 section_dt1 = section_delay_time[gate1_idxs]
-                section_dt_ts1 = np.vstack((section_dt1, section_ts1))
+                section_dt_prt1 = np.vstack((section_dt1, section_prt1))
+
             if "B" in "".join(xcorr_types):
                 gate2_idxs = gate2_ns.valid_indices(section_delay_time)
                 section_prt2 = section_pulse_runtime[gate2_idxs]
-                section_ts2 = np.hstack(([0], np.diff(section_prt2)))
                 section_dt2 = section_delay_time[gate2_idxs]
-                section_dt_ts2 = np.vstack((section_dt2, section_ts2))
+                section_dt_prt2 = np.vstack((section_dt2, section_prt2))
             if "AB" in xcorr_types or "BA" in xcorr_types:
-                section_ts12 = np.hstack(([0], np.diff(section_pulse_runtime)))
-                section_dt_ts12 = np.vstack(
-                    (section_delay_time, section_ts12, gate2_idxs, gate1_idxs)
+                section_prt12 = section_pulse_runtime
+                section_dt_prt12 = np.vstack(
+                    (section_delay_time, section_prt12, gate2_idxs, gate1_idxs)
                 )[:, gate1_idxs | gate2_idxs]
 
             xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
@@ -872,13 +869,16 @@ class TDCPhotonFileData:
                     if xx == "AA":
                         xcorr_input_dict[xx].append(
                             self._split_continuous_section(
-                                section_dt_ts1, split_idx, n_splits, **kwargs
+                                section_dt_prt1,
+                                split_idx,
+                                n_splits,
+                                **kwargs,
                             )
                         )
                     if xx == "BB":
                         xcorr_input_dict[xx].append(
                             self._split_continuous_section(
-                                section_dt_ts2,
+                                section_dt_prt2,
                                 split_idx,
                                 n_splits,
                                 **kwargs,
@@ -886,7 +886,7 @@ class TDCPhotonFileData:
                         )
                     if xx == "AB":
                         xcorr_input_AB = self._split_continuous_section(
-                            section_dt_ts12,
+                            section_dt_prt12,
                             split_idx,
                             n_splits,
                             **kwargs,
@@ -896,10 +896,10 @@ class TDCPhotonFileData:
                         if "AB" in xcorr_types:
                             xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1], :])
                         else:
-                            section_dt_ts21 = section_dt_ts12[[0, 2, 1], :]
+                            section_dt_prt21 = section_dt_prt12[[0, 2, 1], :]
                             xcorr_input_dict[xx].append(
                                 self._split_continuous_section(
-                                    section_dt_ts21,
+                                    section_dt_prt21,
                                     split_idx,
                                     n_splits,
                                     **kwargs,
@@ -910,19 +910,19 @@ class TDCPhotonFileData:
 
     def _split_continuous_section(
         self,
-        dt_ts_in,
+        dt_prt_in,  # TESTESTEST - attempting to stick to pulse runtime until gating
         idx,
         n_splits: int,
         **kwargs,
     ) -> np.ndarray:
         """Doc."""
 
-        splits = np.linspace(0, dt_ts_in.shape[1], n_splits + 1, dtype=np.int32)
-        return dt_ts_in[:, splits[idx] : splits[idx + 1]]
+        splits = np.linspace(0, dt_prt_in.shape[1], n_splits + 1, dtype=np.int32)
+        return dt_prt_in[:, splits[idx] : splits[idx + 1]]
 
     def _add_validity(
         self,
-        dt_ts_in,
+        dt_prt_in,
         idx,
         line_num,
         **kwargs,
@@ -935,6 +935,10 @@ class TDCPhotonFileData:
         else:
             valid[line_num == -ZERO_LINE_START_ADDER] = -1
         valid[line_num == -idx - LINE_END_ADDER] = -2
+
+        # move to timestamps
+        ts_in = np.hstack(([0], np.diff(dt_prt_in[1])))
+        dt_ts_in = np.vstack((dt_prt_in[0], ts_in))
 
         #  remove photons from wrong lines
         dt_ts_out = dt_ts_in[:, valid != 0]
@@ -961,12 +965,14 @@ class TDCPhotonFileData:
                     dt_ts_out = dt_ts_out[:, : j_end_last + 1]
                     valid = valid[: j_end_last + 1]
 
-            dt_ts_out = np.vstack((dt_ts_out, valid))
+            # back to prt
+            prt = np.hstack(np.squeeze(dt_ts_out[1:])).cumsum()
+            dt_prt_out = np.vstack((dt_ts_out[0], prt, valid))
 
         else:
-            dt_ts_out = np.vstack(([], []))
+            dt_prt_out = np.vstack(([], []))
 
-        return dt_ts_out
+        return dt_prt_out
 
 
 class TDCPhotonMeasurementData(list):
