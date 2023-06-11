@@ -821,7 +821,7 @@ class TDCPhotonFileData:
                             )
                         )
 
-        print(". ", end="")  # TESTESTEST
+        print(".", end="")  # TESTESTEST
         return xcorr_input_dict
 
     def _get_continuous_xcorr_input_dict(
@@ -910,7 +910,7 @@ class TDCPhotonFileData:
                                 )
                             )
 
-        print(". ", end="")  # TESTESTEST
+        print(".", end="")  # TESTESTEST
         return xcorr_input_dict
 
     def _split_continuous_section(
@@ -967,7 +967,7 @@ class TDCPhotonFileData:
                     valid = valid[: j_end_last + 1]
 
             # back to prt
-            prt = np.hstack(np.squeeze(dt_ts_out[1:])).cumsum()
+            prt = dt_ts_out[1:].cumsum()
             dt_prt_out = np.vstack((dt_ts_out[0], prt, valid))
 
         else:
