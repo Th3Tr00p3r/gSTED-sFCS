@@ -1131,7 +1131,7 @@ class SolutionSFCSMeasurement:
                 print("Building correlator input splits: ", end="")
             self.corr_input_list = self.data.prepare_xcorr_input(["AA"], **corr_options)["AA"]
             if corr_options.get("is_verbose"):
-                print("Done.")
+                print(" Done.")
 
         # Using previously built input/filter
         else:
