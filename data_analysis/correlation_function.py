@@ -1122,7 +1122,7 @@ class SolutionSFCSMeasurement:
             if corr_options.get("is_verbose"):
                 print("Done.")
 
-        # build correlator input - create list of split data for correlator. TDC-gating is performed here
+        # build correlator input - create list of split data for correlator.
         if self.corr_input_list is None:
             if corr_options.get("is_verbose"):
                 print("Building correlator input splits: ", end="")
@@ -1135,7 +1135,7 @@ class SolutionSFCSMeasurement:
             if corr_options.get("is_verbose"):
                 print("Using existing correlator input splits.")
 
-        # Gating and filtering
+        # Gating, diffing (prt to ts) and filtering
         if corr_options.get("is_verbose"):
             if gate_ns:
                 print(f"Gating input splits ({gate_ns})... ", end="")
@@ -1143,20 +1143,22 @@ class SolutionSFCSMeasurement:
                 print("Preparing input splits... ", end="")
         final_corr_input_list = []
         final_filter_input_list = []
-        for dt_ts_split in self.corr_input_list:
+        for dt_prt_split in self.corr_input_list:
             if gate_ns:
-                valid_idxs = gate_ns.valid_indices(dt_ts_split[0])
-                final_corr_input_list.append(
-                    np.squeeze(dt_ts_split[1:][:, valid_idxs].astype(np.int32))
-                )
+                valid_idxs = gate_ns.valid_indices(dt_prt_split[0])
+                ts = np.hstack(([0], np.diff(dt_prt_split[1][valid_idxs])))
+                final_split = np.vstack((ts, dt_prt_split[2:][:, valid_idxs]))
+                final_corr_input_list.append(np.squeeze(final_split.astype(np.int32)))
             else:
-                final_corr_input_list.append(np.squeeze(dt_ts_split[1:].astype(np.int32)))
+                ts = np.hstack(([0], np.diff(dt_prt_split[1])))
+                final_split = np.vstack((ts, dt_prt_split[2:]))
+                final_corr_input_list.append(np.squeeze(final_split.astype(np.int32)))
                 valid_idxs = slice(None)
 
             # filter input
             if afterpulsing_filter:
                 split_filter = afterpulsing_filter.get_split_filter_input(
-                    dt_ts_split[0][valid_idxs], get_afterpulsing
+                    dt_prt_split[0][valid_idxs], get_afterpulsing
                 )
                 final_filter_input_list.append(split_filter)
 
