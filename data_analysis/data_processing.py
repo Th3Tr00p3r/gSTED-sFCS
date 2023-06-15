@@ -16,7 +16,7 @@ import skimage
 
 from data_analysis.workers import N_CPU_CORES, get_xcorr_input_dict
 from utilities.display import Plotter
-from utilities.file_utilities import load_object, save_object  # , DUMP_PATH
+from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import FitParams, curve_fit_lims
 from utilities.helper import (
     Gate,
@@ -1083,11 +1083,15 @@ class TDCCalibration:
             )
             axes[0, 0].legend()
 
-            axes[0, 1].plot(t_calib, "-o", label="TDC Calibration")
+            axes[0, 1].plot(self.h_tdc_calib, "-o", label="Calibration Photon Histogram")
             axes[0, 1].legend()
 
             axes[1, 0].semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
             axes[1, 0].legend()
+
+            axes[1, 1].plot(t_calib, "-o", label="TDC Calibration")
+            axes[1, 1].set_ylabel("Time (ns)")
+            axes[1, 1].legend()
 
     def fit_lifetime_hist(
         self,

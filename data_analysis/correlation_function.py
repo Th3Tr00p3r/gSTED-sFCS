@@ -967,9 +967,10 @@ class SolutionSFCSMeasurement:
         ):
             print("This should not happen (missing detector gate) - move this to legacy handeling!")
             self.detector_settings["gate_ns"] = Gate(
-                98 - self.detector_settings["gate_width_ns"],
-                self.detector_settings["gate_width_ns"],
-                is_hard=True,
+                hard_gate=(
+                    98 - self.detector_settings["gate_width_ns"],
+                    self.detector_settings["gate_width_ns"],
+                )
             )
         elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
             self.detector_settings["gate_ns"] = Gate()
@@ -1758,31 +1759,38 @@ class SolutionSFCSExperiment:
 
         # calibrate excitation measurement first, and sync STED to it if STED exists
         if self.confocal.is_loaded:
-            self.confocal.calibrate_tdc(**kwargs)
+            # only calibrate TDC for confocal if hasn't before (should exist if afterpulsing-filtered)
+            if not hasattr(self.confocal, "tdc_calib"):  # TODO: TEST ME!
+                self.confocal.calibrate_tdc(**kwargs)
             if self.sted.is_loaded:  # if both measurements quack as if loaded
                 self.sted.calibrate_tdc(sync_coarse_time_to=self.confocal.tdc_calib, **kwargs)
-
         # calibrate STED only
         else:
             self.sted.calibrate_tdc(**kwargs)
 
+        # optional plotting
         if should_plot:
-            super_title = f"'{self.name.capitalize()}' Experiment\nTDC Calibration"
-            # Both measurements loaded
-            if hasattr(self.confocal, "scan_type") and hasattr(
-                self.sted, "scan_type"
-            ):  # if both measurements quack as if loaded
-                with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
-                    self.confocal.tdc_calib.plot(parent_ax=axes[:, :2])
-                    self.sted.tdc_calib.plot(parent_ax=axes[:, 2:])
+            self.plot_tdc_calib(**kwargs)
 
-            # Confocal only
-            elif self.confocal.is_loaded:  # STED measurement not loaded
-                self.confocal.tdc_calib.plot(super_title=super_title, **kwargs)
+    def plot_tdc_calib(self, **kwargs):
+        """Plot TDCCalibrations of the confocal and/or STED measurements."""
 
-            # STED only
-            else:
-                self.sted.tdc_calib.plot(super_title=super_title, **kwargs)
+        super_title = f"'{self.name.capitalize()}' Experiment\nTDC Calibration"
+        # Both measurements loaded
+        if hasattr(self.confocal, "scan_type") and hasattr(
+            self.sted, "scan_type"
+        ):  # if both measurements quack as if loaded
+            with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
+                self.confocal.tdc_calib.plot(parent_ax=axes[:, :2])
+                self.sted.tdc_calib.plot(parent_ax=axes[:, 2:])
+
+        # Confocal only
+        elif self.confocal.is_loaded:  # STED measurement not loaded
+            self.confocal.tdc_calib.plot(super_title=super_title, **kwargs)
+
+        # STED only
+        else:
+            self.sted.tdc_calib.plot(super_title=super_title, **kwargs)
 
     def get_lifetime_parameters(
         self,
@@ -2322,9 +2330,10 @@ class ImageSFCSMeasurement:
         ):
             print("This should not happen (missing detector gate) - move this to legacy handeling!")
             self.detector_settings["gate_ns"] = Gate(
-                98 - self.detector_settings["gate_width_ns"],
-                self.detector_settings["gate_width_ns"],
-                is_hard=True,
+                hard_gate=(
+                    98 - self.detector_settings["gate_width_ns"],
+                    self.detector_settings["gate_width_ns"],
+                )
             )
         elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
             self.detector_settings["gate_ns"] = Gate()
