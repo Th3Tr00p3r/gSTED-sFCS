@@ -99,7 +99,7 @@ class MemMapping:
         self.min = mmap_sub_arr.min()
 
     def delete(self):
-        """Delete the on-dsk array"""
+        """Delete the on-disk array"""
 
         self._dump_file_path.unlink()
 
@@ -295,11 +295,11 @@ class Limits:
 class Gate(Limits):
     """Convenience class for defining time-gates in ns using the Limits class"""
 
-    def __init__(self, *args, is_hard: bool = False, hard_gate=None, units: str = "ns", **kwargs):
+    def __init__(self, *args, hard_gate=None, units: str = "ns", **kwargs):
         if not args:
-            args = (0, np.inf)
+            args = (0, np.inf) if not hard_gate else hard_gate
         super().__init__(*args, **kwargs)  # initialize self as Limits
-        self.hard_gate = self if is_hard else hard_gate
+        self.hard_gate = Gate(hard_gate) if hard_gate else None
         self.units = units
 
         if self.lower < 0:
@@ -309,7 +309,7 @@ class Gate(Limits):
             self.lower = 0  # TESTESTEST
         #            raise ValueError(f"Gating limits {self} must be between 0 and positive infinity.")
 
-        if is_hard and self.upper == np.inf:
+        if hard_gate and self.upper == np.inf:
             raise ValueError("Hardware gating must have a finite upper limit.")
 
         if self.lower > self.upper:

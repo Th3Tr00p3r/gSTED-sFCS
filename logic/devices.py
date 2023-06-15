@@ -303,7 +303,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
         # setting the gate width
         await self.set_gate_width(gate_width_ns)
-        self.gate_ns = Gate(self.lower_gate_ns, gate_width_ns, is_hard=True)
+        self.gate_ns = Gate(hard_gate=(self.lower_gate_ns, gate_width_ns))
 
     async def toggle_mode(self, mode: str) -> None:
         """Doc."""

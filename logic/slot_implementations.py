@@ -2089,6 +2089,10 @@ class MainWin:
                 wdgt_coll["g0_ratio"].set(conf_g0 / sted_g0)
             logging.info(f"Experiment '{experiment_name}' loaded successfully.")
 
+            # display existing TDC calibrations in appropriate tab
+            kwargs["gui_display"] = wdgt_coll["gui_display_tdc_cal"].obj
+            experiment.plot_tdc_calib(**kwargs)
+
             # estimate resolution
             kwargs["gui_display"] = wdgt_coll["gui_display_resolution"].obj
             experiment.estimate_spatial_resolution(**kwargs)
