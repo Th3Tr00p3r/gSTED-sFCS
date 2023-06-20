@@ -226,7 +226,7 @@ def save_object(
     should_track_progress=False,
 ) -> bool:
     """
-    Save a pickle-serialized and optionally gzip/blosc-compressed object to disk, if estimated size is within the limits.
+    Save a pickle-serialized and optionally gzip/blosc-compressed object to disk.
     Returns 'True' if saved, 'False' otherwise.
     """
     # TODO: file suffix (.pkl, .blosc, .gzip) should be determined here! (with_suffix...) - this would simplify the load_object function, too, since it would know which file to expect. (but it's nice that it finds out on its own)

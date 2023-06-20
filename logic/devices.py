@@ -5,8 +5,9 @@ import logging
 import sys
 import time
 from collections import deque
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
+from pathlib import Path
 from string import ascii_letters, digits
 from typing import Callable, List, Tuple, Union, cast
 
@@ -22,10 +23,12 @@ from logic.scan_patterns import ScanPatternAO
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
+from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import FitError, fit_2d_gaussian_to_image, linear_fit
 from utilities.helper import (
     Gate,
     Limits,
+    Vector,
     deep_getattr,
     div_ceil,
     generate_numbers_from_string,
@@ -149,6 +152,20 @@ class SimpleDODevice(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
             self.turn_on_time = time.perf_counter() if is_being_switched_on else None
+
+    @contextmanager
+    def use(self, should_toggle=True):
+        """Turn ON, do stuff, turn OFF"""
+
+        if should_toggle:
+            self.toggle(True)
+
+        try:
+            yield
+
+        finally:
+            if should_toggle:
+                self.toggle(False)
 
 
 class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -392,7 +409,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     # TODO: can these be set dynamically for all device widgets? is it even a good idea?
     @property
     def sync_delay_ns(self):
-        # TODO: how can this be quickly manually calibrated eah day of measurements? Can't rely on a fixed value! (could change)
         return self._sync_delay_ns.get()
 
     @sync_delay_ns.setter
@@ -1342,9 +1358,16 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         param_widgets=QtWidgetCollection(
             led_widget=("ledStage", "QIcon", "main", True),
             switch_widget=("stageOn", "QIcon", "main", True),
+            _x_pos=("stageX", "QSpinBox", "main", True),
+            _y_pos=("stageY", "QSpinBox", "main", True),
             address=("arduinoAddr", "QLineEdit", "settings", False),
         ),
     )
+
+    _x_pos: QtWidgetAccess
+    _y_pos: QtWidgetAccess
+    LIMITS = Limits(-5000, 5000)
+    LAST_POS_FILEPATH = Path("last_stage_position.pkl")
 
     def __init__(self, app):
         super().__init__(self.attrs, app)
@@ -1352,6 +1375,24 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         with suppress(DeviceError):
             self.toggle(True)
             self.toggle(False)
+
+        self.is_moving = False
+        try:
+            self.last_pos = Vector(*load_object(self.LAST_POS_FILEPATH))
+        except FileNotFoundError:
+            print(
+                f"{self.log_ref}: Last position file {self.LAST_POS_FILEPATH} not found! Setting current location as origin."
+            )
+            self.set_origin()
+
+    @property
+    def last_pos(self):
+        return Vector(self._x_pos.get(), self._y_pos.get())
+
+    @last_pos.setter
+    def last_pos(self, vec: Vector):
+        self._x_pos.set(vec.x)
+        self._y_pos.set(vec.y)
 
     def toggle(self, is_being_switched_on: bool):
         """Doc."""
@@ -1363,19 +1404,56 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         else:
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
+            # write an initial command so that the next one would work (bug in Arduino code, I guess)
+            if self.is_on:
+                self.write("mx 1")  # fake move
+                time.sleep(0.1)  # needed for command to digest correctly
+                self.write("ryx ")  # release
 
-    async def move(self, dir, steps):
-        """Doc."""
+    async def move(self, vec: Vector, relative=True) -> None:
+        """
+        Move the stage to a new position, given by an input vector.
+        If relative=False, the position vector will be treated as if moved to to from the origin (0, 0)
+        """
 
-        cmd_dict = {
-            "UP": f"my {steps}",
-            "DOWN": f"my {-steps}",
-            "LEFT": f"mx {steps}",
-            "RIGHT": f"mx {-steps}",
-        }
-        self.write(cmd_dict[dir])
-        await asyncio.sleep(500 * 1e-3)
-        self.write("ryx ")  # release
+        if not self.is_moving:
+            if not relative:  # absolute movement
+                vec = vec - self.last_pos
+            if all(self.LIMITS.valid_indices(self.last_pos + vec)):
+                # X first
+                if vec.x:
+                    self.is_moving = True
+                    self.write(f"mx {vec.x}")
+                    await asyncio.sleep(max(0.2, 0.5 * abs(vec.x / 500)))  # wait while moving
+
+                # then Y
+                if vec.y:
+                    self.is_moving = True
+                    self.write(f"my {vec.y}")
+                    await asyncio.sleep(max(0.2, 0.5 + abs(vec.y / 1000)))  # wait while moving
+
+                self.write("ryx ")  # release
+                self.is_moving = False
+                self.last_pos += vec  # keep last position
+
+                # keep last position in file
+                save_object(self.last_pos, self.LAST_POS_FILEPATH)
+
+            # out of limits
+            else:
+                logging.info(
+                    f"{self.log_ref}: new position {self.last_pos + vec} is off-limits {self.LIMITS}!"
+                )
+
+        # already in motion
+        else:
+            logging.info(f"{self.log_ref} is already in motion!")
+
+    def set_origin(self) -> None:
+        """Set current position as the new origin"""
+
+        self.last_pos = Vector(0, 0)
+        save_object(self.last_pos, self.LAST_POS_FILEPATH)
 
 
 class BaseCamera:

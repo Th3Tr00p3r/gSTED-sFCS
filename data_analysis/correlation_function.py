@@ -288,6 +288,12 @@ class CorrFunc:
         )
         self.lag = max(output.lag_list, key=len)
 
+        # calculate split durations
+        self.split_durations_s = [
+            (split[0 if split.ndim != 1 else slice(None)] / self.laser_freq_hz).sum()
+            for split in time_stamp_split_list
+        ]
+
         if kwargs.get("is_verbose"):
             print(". Processing correlator output...", end=" ")
 
@@ -806,27 +812,7 @@ class SolutionSFCSMeasurement:
 
         # plotting of scan image and ROI
         if proc_options.get("should_plot"):
-            print("Displaying scan images...", end=" ")
-            if self.scan_type == "angular":
-                with Plotter(
-                    subplots=(1, self.n_files), fontsize=8, should_force_aspect=True
-                ) as axes:
-                    if not hasattr(
-                        axes, "size"
-                    ):  # if axes is not an ndarray (only happens if reading just one file)
-                        axes = np.array([axes])
-                    for file_idx, (ax, image, roi) in enumerate(
-                        zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
-                    ):
-                        ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
-                        ax.set_xlabel("Pixel Index")
-                        ax.set_ylabel("Line Index")
-                        ax.imshow(image, interpolation="none")
-                        ax.plot(roi["col"], roi["row"], color="white")
-            elif self.scan_type == "circle":
-                # TODO: FILL ME IN (plotting in jupyter notebook, same as above angular scan stuff)
-                pass
-            print("Done.\n")
+            self.display_scan_images()
 
     def _process_all_data(
         self,
@@ -974,6 +960,12 @@ class SolutionSFCSMeasurement:
             )
         elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
             self.detector_settings["gate_ns"] = Gate()
+        elif self.detector_settings[
+            "gate_ns"
+        ]:  # hard gate has TDC gate? remove it and leave only hard gate
+            self.detector_settings["gate_ns"] = Gate(
+                hard_gate=self.detector_settings["gate_ns"].hard_gate
+            )
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -1099,7 +1091,7 @@ class SolutionSFCSMeasurement:
         # Unite TDC gate and detector gate
         # TODO: detector gate represents the actual effective gate (since pulse travel time is already synchronized before measuring), This means that
         # I should add the fit-deduced pulse travel time (affected by TDC +/- 2.5 ns) to the lower gate to compare with TDC gate???
-        gate_ns = Gate(tdc_gate_ns) & Gate(hard_gate=self.detector_settings["gate_ns"])
+        gate_ns = Gate(tdc_gate_ns, hard_gate=self.detector_settings["gate_ns"])
 
         #  add gate to cf_name
         if gate_ns:
@@ -1328,6 +1320,31 @@ class SolutionSFCSMeasurement:
 
         return CF_dict
 
+    def display_scan_images(self) -> None:
+        """Doc."""
+
+        if self.scan_type == "angular":
+            with Plotter(subplots=(1, self.n_files), fontsize=8, should_force_aspect=True) as axes:
+                if not hasattr(
+                    axes, "size"
+                ):  # if axes is not an ndarray (only happens if reading just one file)
+                    axes = np.array([axes])
+                for file_idx, (ax, image, roi) in enumerate(
+                    zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
+                ):
+                    ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
+                    ax.set_xlabel("Pixel Index")
+                    ax.set_ylabel("Line Index")
+                    ax.imshow(image, interpolation="none")
+                    ax.plot(roi["col"], roi["row"], color="white")
+
+        elif self.scan_type == "circle":
+            with Plotter(fontsize=8, should_force_aspect=True) as ax:
+                ax.imshow(self.scan_image, interpolation="none")
+
+        else:
+            raise ValueError(f"Can't display scan images for '{self.scan_type}' scans.")
+
     def plot_correlation_functions(
         self,
         x_field="lag",
@@ -1516,6 +1533,8 @@ class SolutionSFCSMeasurement:
         The template may then be loaded much more quickly.
         """
 
+        was_saved = False
+
         # save the measurement
         dir_path = (
             cast(Path, self.file_path_template).parent
@@ -1541,6 +1560,8 @@ class SolutionSFCSMeasurement:
             if kwargs.get("is_verbose"):
                 print("Done.")
 
+            was_saved = True
+
         # save the raw data separately
         if should_save_data and not self.was_processed_data_loaded:
             data_dir_path = dir_path / "data"
@@ -1552,10 +1573,9 @@ class SolutionSFCSMeasurement:
                 ):
                     p.raw.save_compressed(data_dir_path)
 
-            return True
+            was_saved = True
 
-        else:
-            return False
+        return was_saved
 
 
 class SolutionSFCSExperiment:
@@ -2335,8 +2355,8 @@ class ImageSFCSMeasurement:
                     self.detector_settings["gate_width_ns"],
                 )
             )
-        elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
-            self.detector_settings["gate_ns"] = Gate()
+        elif should_ignore_hard_gate:
+            self.detector_settings["gate_ns"] = None
 
         # sFCS
         self.scan_type = self.scan_settings["pattern"]
