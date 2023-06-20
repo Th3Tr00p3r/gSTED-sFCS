@@ -138,26 +138,28 @@ class MeasurementProcedure:
         turn OFF TDC and read leftover data.
         """
 
-        self._app.gui.main.impl.device_toggle("TDC", leave_on=True)
+        # turn ON exc (if relevant) and TDC before reading FPGA (will toggle off both in the end)
+        with self.laser_dvcs.exc.use(self.laser_mode in {"exc", "sted"}), self.tdc_dvc.use():
 
-        # Solution - record data until time is up or ordered to stop
-        if timed:
-            while self.is_running:
-                await self.data_dvc.read_TDC()
-                self.time_passed_s = time.perf_counter() - self.start_time
-                if self.time_passed_s >= self.duration_s:
-                    break
-                if size_limited and ((self.data_dvc.tot_bytes_read / 1e6) >= self.max_file_size_mb):
-                    break
+            # Solution - record data until time is up or ordered to stop
+            if timed:
+                while self.is_running:
+                    await self.data_dvc.read_TDC()
+                    self.time_passed_s = time.perf_counter() - self.start_time
+                    if self.time_passed_s >= self.duration_s:
+                        break
+                    if size_limited and (
+                        (self.data_dvc.tot_bytes_read / 1e6) >= self.max_file_size_mb
+                    ):
+                        break
 
-        # Image - record data until image scan task is done
-        else:
-            while self.is_running and not self.scanners_dvc.are_tasks_done("ao"):
-                await self.data_dvc.read_TDC()
-                self.time_passed_s = time.perf_counter() - self.start_time
+            # Image - record data until image scan task is done
+            else:
+                while self.is_running and not self.scanners_dvc.are_tasks_done("ao"):
+                    await self.data_dvc.read_TDC()
+                    self.time_passed_s = time.perf_counter() - self.start_time
 
-        await self.data_dvc.read_TDC()  # read leftovers
-        self._app.gui.main.impl.device_toggle("TDC", leave_off=True)
+            await self.data_dvc.read_TDC()  # read leftovers
 
     def _prep_meas_dict(self) -> dict:
         """Doc."""

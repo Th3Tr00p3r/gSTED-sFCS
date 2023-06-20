@@ -26,6 +26,46 @@ EPS = sys.float_info.epsilon
 Number = TypeVar("Number", int, float)
 
 
+@dataclass
+class Vector:
+    """Doc."""
+
+    _x: float
+    _y: float
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
+
+    def __repr__(self):
+        return f"Vector({self.x}, {self.y})"
+
+    def __iter__(self):
+        yield from (self.x, self.y)
+
+    def __getitem__(self, idx):
+        return tuple(self)[idx]
+
+    def __len__(self):
+        return 2
+
+    def __add__(self, other):
+        return Vector(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        return Vector(self.x - other.x, self.y - other.y)
+
+    def __eq__(self, other):
+        try:
+            return tuple(self) == other
+        except TypeError:
+            raise TypeError("Can only compare Limits to other instances or tuples")
+
+
 class MemMapping:
     """
     A convenience class working with Numpy memory-mapping.
@@ -260,7 +300,17 @@ class Limits:
             else:
                 return np.nonzero((arr >= self.lower) & (arr <= self.upper))[0]
         else:
-            raise TypeError("Argument 'arr' must be a Numpy ndarray!")
+            try:
+                arr = tuple(arr)
+            except TypeError:
+                raise TypeError(f"Argument 'arr' (type {type(arr)}) must be iterable!")
+            else:
+                if not as_bool:
+                    raise NotImplementedError(
+                        f"Can only return boolean values for 'arr' input of type {type(arr)}."
+                    )
+                else:
+                    return [self.lower <= elem <= self.upper for elem in arr]
 
     def as_dict(self):
         if self.dict_labels is not None:
@@ -293,11 +343,19 @@ class Limits:
 
 
 class Gate(Limits):
-    """Convenience class for defining time-gates in ns using the Limits class"""
+    """
+    Convenience class for defining time-gates in ns using the Limits class.
+    Note that 'hard gates' are not the same as TDC gates; lower/upper values
+    of a hard gate represent actual times while TDC values must be added the pulse
+    delay time to match the hard gate.
+    """
+
+    # TODO: perhaps I should change this class such that tdc gates and hard gates are attributes (inheriting Limits)?
+    # This would have to involve proper handling of older measurements!
 
     def __init__(self, *args, hard_gate=None, units: str = "ns", **kwargs):
         if not args:
-            args = (0, np.inf) if not hard_gate else hard_gate
+            args = (0, np.inf)
         super().__init__(*args, **kwargs)  # initialize self as Limits
         self.hard_gate = Gate(hard_gate) if hard_gate else None
         self.units = units
@@ -309,7 +367,7 @@ class Gate(Limits):
             self.lower = 0  # TESTESTEST
         #            raise ValueError(f"Gating limits {self} must be between 0 and positive infinity.")
 
-        if hard_gate and self.upper == np.inf:
+        if self.hard_gate is not None and self.hard_gate.upper == np.inf:
             raise ValueError("Hardware gating must have a finite upper limit.")
 
         if self.lower > self.upper:

@@ -263,11 +263,34 @@ class MainWin:
                     f"{self._app.devices.scanners.log_ref}({axis}) was displaced {str(um_disp)} um"
                 )
 
-    def move_stage(self, dir: str, steps: int):
+    def move_stage(self, dir: str = None, steps: int = None):
         """Doc."""
 
-        self._app.loop.create_task(self._app.devices.stage.move(dir=dir, steps=steps))
-        logging.info(f"{self._app.devices.stage.log_ref} moved {str(steps)} steps {str(dir)}")
+        if dir and steps:
+            move_vec = helper.Vector(
+                steps * int(dir == "LEFT") - steps * int(dir == "RIGHT"),
+                steps * int(dir == "UP") - steps * int(dir == "DOWN"),
+            )
+            self._app.loop.create_task(self._app.devices.stage.move(move_vec))
+        else:
+            self._app.loop.create_task(
+                self._app.devices.stage.move(helper.Vector(0, 0), relative=False)
+            )
+
+    def set_stage_origin(self):
+        """Doc."""
+
+        stage_dvc = self._app.devices.stage
+
+        if stage_dvc.last_pos != (0, 0):
+            pressed = dialog.QuestionDialog(
+                txt=f"Are you sure you wish to set {stage_dvc.last_pos} as the new origin?",
+                title=f"Calibrate {stage_dvc.log_ref.capitalize()} Origin",
+            ).display()
+            if pressed is False:
+                return
+            else:
+                stage_dvc.set_origin()
 
     def open_spad_interface(self) -> None:
         """Doc."""
@@ -1684,6 +1707,7 @@ class MainWin:
 
         # TODO: make this dynamic (so I don't have to add/remove rows for each new option)
         loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
+        loading_options["median_factor"] = import_wdgts["median_factor"]
         loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"
         loading_options["should_alleviate_bright_pixels"] = import_wdgts[
             "should_alleviate_bright_pixels"

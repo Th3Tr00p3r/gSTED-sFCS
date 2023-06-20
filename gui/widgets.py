@@ -269,6 +269,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", False),
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
     fix_shift=("fixShift", "QCheckBox", "options", False),
+    median_factor=("medFac", "QDoubleSpinBox", "options", False),
     should_auto_roi=("autoRoi", "QCheckBox", "options", False),
     should_alleviate_bright_pixels=("alleviateBrightPixels", "QCheckBox", "options", False),
     should_subtract_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),

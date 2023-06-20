@@ -62,7 +62,7 @@ class AngularScanDataMixin:
         ao_sampling_freq_hz,
         samples_per_line,
         n_lines,
-        should_fix_shift=False,
+        should_fix_shift=True,
         pix_shift=0,
         **kwargs,
     ):
@@ -99,6 +99,7 @@ class AngularScanDataMixin:
                 samples_per_line,
                 n_lines,
                 pix_shift=pix_shift,
+                should_fix_shift=False,
             )
 
         else:
@@ -106,7 +107,7 @@ class AngularScanDataMixin:
             img[1::2, :] = np.flip(img[1::2, :], 1)
             return img, sample_runtime, pixel_num, line_num, pix_shift
 
-    def _get_data_shift(self, cnt: np.ndarray, **kwargs) -> int:
+    def _get_data_shift(self, cnt: np.ndarray, median_factor=1.5, **kwargs) -> int:
         """Doc."""
 
         def get_best_pix_shift(img: np.ndarray, min_shift, max_shift, step) -> int:

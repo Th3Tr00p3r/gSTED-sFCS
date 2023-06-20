@@ -161,6 +161,8 @@ class MainWin(QtWidgets.QMainWindow):
         self.ledCam2.clicked.connect(lambda: led_clicked(self))
 
         # Stage
+        self.stageSetOrigin.released.connect(lambda: self.impl.set_stage_origin())
+        self.stageOrigin.released.connect(lambda: self.impl.move_stage())
         self.stageUp.released.connect(
             lambda: self.impl.move_stage(dir="UP", steps=self.stageSteps.value())
         )
