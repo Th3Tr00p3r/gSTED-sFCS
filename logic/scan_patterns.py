@@ -1,12 +1,58 @@
 """ scan patterns module. """
 
 import logging
+from collections.abc import Iterable
+from itertools import cycle, product
 from math import cos, pi, sin
 from typing import Any, Dict, Tuple
 
 import numpy as np
 
-from utilities.helper import Limits, unify_length
+from utilities.helper import Limits, Vector, unify_length
+
+
+def vector_snake_pattern(
+    scan_dimensions_um: Tuple[float, float],
+    sample_dimemsions_um: Tuple[float, float],
+) -> Iterable:
+    """Doc."""
+
+    scan_width_um, scan_height_um = scan_dimensions_um
+    sample_width_um, sample_height_um = sample_dimemsions_um
+
+    n_scan_areas_x = int(sample_width_um / scan_width_um)
+    n_scan_areas_y = int(sample_height_um / scan_height_um)
+
+    x_centers = np.linspace(
+        -sample_width_um / 2 + scan_width_um / 2,
+        sample_width_um / 2 - scan_width_um / 2,
+        n_scan_areas_x,
+    )
+    y_centers = np.linspace(
+        sample_height_um / 2 - scan_height_um / 2,
+        -sample_height_um / 2 + scan_height_um / 2,
+        n_scan_areas_y,
+    )
+
+    scan_centers_um = [
+        Vector(scan_center[0], scan_center[1], "um")
+        for scan_center in product(x_centers, y_centers)
+    ]
+
+    # now sort in snake-like pattern
+    snake_scan_centers_um = []
+    for idx, segment_num in enumerate(range(0, len(scan_centers_um), n_scan_areas_y)):
+        # if index is even
+        if not idx % 2:
+            snake_scan_centers_um += scan_centers_um[segment_num : segment_num + n_scan_areas_y]
+        # if index is odd
+        else:
+            snake_scan_centers_um += reversed(
+                scan_centers_um[segment_num : segment_num + n_scan_areas_y]
+            )
+
+    # return an infinite cyclical generator (snake goes back to head when reaches tail, indefinitely)
+    return cycle(snake_scan_centers_um)
 
 
 class ScanPatternAO:

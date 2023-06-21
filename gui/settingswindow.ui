@@ -95,7 +95,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -498,7 +498,7 @@ Details</string>
                </font>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>4</number>
               </property>
               <widget class="QWidget" name="lasers">
                <attribute name="title">
@@ -2814,6 +2814,55 @@ Caibrationl</string>
                 <string>Stepper Stage</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_3">
+                <item row="1" column="0">
+                 <layout class="QVBoxLayout" name="verticalLayout_72">
+                  <property name="spacing">
+                   <number>6</number>
+                  </property>
+                  <item>
+                   <widget class="QLabel" name="label_44">
+                    <property name="maximumSize">
+                     <size>
+                      <width>16777215</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>Steps per Micron</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QDoubleSpinBox" name="stepperStageStepsPerUm">
+                    <property name="buttonSymbols">
+                     <enum>QAbstractSpinBox::NoButtons</enum>
+                    </property>
+                    <property name="minimum">
+                     <double>0.100000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>99999999.000000000000000</double>
+                    </property>
+                    <property name="value">
+                     <double>1.600000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1">
+                 <spacer name="horizontalSpacer_8">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>500</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
                 <item row="0" column="0">
                  <layout class="QVBoxLayout" name="verticalLayout_69">
                   <item>
@@ -2843,20 +2892,7 @@ Caibrationl</string>
                   </item>
                  </layout>
                 </item>
-                <item row="0" column="1">
-                 <spacer name="horizontalSpacer_8">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>319</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item row="1" column="0">
+                <item row="3" column="0">
                  <spacer name="verticalSpacer_6">
                   <property name="orientation">
                    <enum>Qt::Vertical</enum>
@@ -2868,6 +2904,42 @@ Caibrationl</string>
                    </size>
                   </property>
                  </spacer>
+                </item>
+                <item row="2" column="0">
+                 <layout class="QVBoxLayout" name="verticalLayout_73">
+                  <property name="spacing">
+                   <number>6</number>
+                  </property>
+                  <item>
+                   <widget class="QLabel" name="label_51">
+                    <property name="maximumSize">
+                     <size>
+                      <width>16777215</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>Steps perSample Droplet</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QSpinBox" name="stepperStageStepsPerSampleDrop">
+                    <property name="buttonSymbols">
+                     <enum>QAbstractSpinBox::NoButtons</enum>
+                    </property>
+                    <property name="minimum">
+                     <number>1</number>
+                    </property>
+                    <property name="maximum">
+                     <number>9999999</number>
+                    </property>
+                    <property name="value">
+                     <number>2100</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
                </layout>
               </widget>
