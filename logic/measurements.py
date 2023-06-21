@@ -891,7 +891,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         # Move to stage origin (optional)
         if self.stage_pattern:
-            await self.stage_dvc.move(helper.Vector(0, 0, "steps"))
+            await self.stage_dvc.move(helper.Vector(0, 0, "steps"), relative=False)
 
 
 class MeasurementError(Exception):
