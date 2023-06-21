@@ -1361,6 +1361,13 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             _x_pos=("stageX", "QSpinBox", "main", True),
             _y_pos=("stageY", "QSpinBox", "main", True),
             address=("arduinoAddr", "QLineEdit", "settings", False),
+            _steps_per_um=("stepperStageStepsPerUm", "QDoubleSpinBox", "settings", True),
+            _steps_per_sample_droplet=(
+                "stepperStageStepsPerSampleDrop",
+                "QSpinBox",
+                "settings",
+                True,
+            ),
         ),
     )
 
@@ -1378,7 +1385,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
         self.is_moving = False
         try:
-            self.last_pos = Vector(*load_object(self.LAST_POS_FILEPATH))
+            self.last_pos = Vector(*load_object(self.LAST_POS_FILEPATH), "steps")
         except FileNotFoundError:
             print(
                 f"{self.log_ref}: Last position file {self.LAST_POS_FILEPATH} not found! Setting current location as origin."
@@ -1387,12 +1394,20 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     @property
     def last_pos(self):
-        return Vector(self._x_pos.get(), self._y_pos.get())
+        return Vector(self._x_pos.get(), self._y_pos.get(), "steps")
 
     @last_pos.setter
     def last_pos(self, vec: Vector):
         self._x_pos.set(vec.x)
         self._y_pos.set(vec.y)
+
+    @property
+    def steps_per_um(self):
+        return self._steps_per_um.get()
+
+    @property
+    def steps_per_sample_droplet(self):
+        return self._steps_per_sample_droplet.get()
 
     def toggle(self, is_being_switched_on: bool):
         """Doc."""
@@ -1415,6 +1430,15 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         Move the stage to a new position, given by an input vector.
         If relative=False, the position vector will be treated as if moved to to from the origin (0, 0)
         """
+
+        # convert um to steps if needed
+        if vec.units != "steps":
+            if vec.units == "um":
+                vec *= self.steps_per_um
+                vec = round(vec)
+                vec.units = "steps"
+            else:
+                raise ValueError(f"Can only convert from microns to steps! ({vec.units})")
 
         if not self.is_moving:
             if not relative:  # absolute movement
@@ -1452,7 +1476,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     def set_origin(self) -> None:
         """Set current position as the new origin"""
 
-        self.last_pos = Vector(0, 0)
+        self.last_pos = Vector(0, 0, "steps")
         save_object(self.last_pos, self.LAST_POS_FILEPATH)
 
 

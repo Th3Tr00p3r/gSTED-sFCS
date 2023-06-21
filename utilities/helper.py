@@ -32,6 +32,7 @@ class Vector:
 
     _x: float
     _y: float
+    units: str
 
     @property
     def x(self):
@@ -42,7 +43,7 @@ class Vector:
         return self._y
 
     def __repr__(self):
-        return f"Vector({self.x}, {self.y})"
+        return f"Vector(x={self.x:.2f}, y={self.y:.2f}, units={self.units})"
 
     def __iter__(self):
         yield from (self.x, self.y)
@@ -54,16 +55,36 @@ class Vector:
         return 2
 
     def __add__(self, other):
-        return Vector(self.x + other.x, self.y + other.y)
+        if self.units == other.units:
+            return Vector(self.x + other.x, self.y + other.y, self.units)
+        else:
+            raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
 
     def __sub__(self, other):
-        return Vector(self.x - other.x, self.y - other.y)
+        if self.units == other.units:
+            return Vector(self.x - other.x, self.y - other.y, self.units)
+        else:
+            raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
+
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            return Vector(self.x * other, self.y * other, self.units)
+        else:
+            raise NotImplementedError(f"Can only multiply {type(self)} with scalars, for now")
+
+    __rmul__ = __mul__
 
     def __eq__(self, other):
-        try:
-            return tuple(self) == other
-        except TypeError:
-            raise TypeError("Can only compare Limits to other instances or tuples")
+        if isinstance(other, tuple) or self.units == other.units:
+            try:
+                return tuple(self) == other
+            except TypeError:
+                raise TypeError("Can only compare Limits to other instances or tuples")
+        else:
+            raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
+
+    def __round__(self, ndigits=None):
+        return Vector(round(self.x, ndigits=ndigits), round(self.y, ndigits=ndigits), self.units)
 
 
 class MemMapping:
@@ -456,6 +477,22 @@ class InterpExtrap1D:
             ax.axvline(x=self.x_lims.lower, color=color, lw=1, ls="--")
             ax.axvline(x=self.x_lims.upper, color=color, lw=1, ls="--")
             ax.legend()
+
+
+def get_encompassing_rectangle_dims(
+    dims: Tuple[float, float], angle_deg: float
+) -> Tuple[float, float]:
+    """
+    Given dimensions of a rectangle (width, height) and an angle of rotation (clockwise from negative X-axis),
+    return the encompassing cartesian rectangle's dimensions.
+    """
+
+    w, h = dims
+    angle_rad = math.radians(angle_deg)
+
+    h_enc = h * math.sin(angle_rad - math.pi / 2) + w * math.sin(math.pi - angle_rad)
+    w_enc = h * math.cos(angle_rad - math.pi / 2) + w * math.cos(math.pi - angle_rad)
+    return (w_enc, h_enc)
 
 
 def nan_helper(y):

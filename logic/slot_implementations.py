@@ -270,11 +270,12 @@ class MainWin:
             move_vec = helper.Vector(
                 steps * int(dir == "LEFT") - steps * int(dir == "RIGHT"),
                 steps * int(dir == "UP") - steps * int(dir == "DOWN"),
+                "steps",
             )
             self._app.loop.create_task(self._app.devices.stage.move(move_vec))
         else:
             self._app.loop.create_task(
-                self._app.devices.stage.move(helper.Vector(0, 0), relative=False)
+                self._app.devices.stage.move(helper.Vector(0, 0, "steps"), relative=False)
             )
 
     def set_stage_origin(self):
@@ -370,9 +371,15 @@ class MainWin:
                 scan_params = {}
 
             scan_params["pattern"] = pattern
-            # get parameters from GUI
+            # get general scan parameters individually from GUI (can create a new widget collection for them and use .gui_to_dict)
             kwargs = wdgts.SOL_MEAS_COLL.gui_to_dict(self._app.gui)
             scan_params["floating_z_amplitude_um"] = kwargs["floating_z_amplitude_um"]
+            scan_params["stage_pattern"] = kwargs["stage_pattern"]
+            scan_params["stage_dwelltime_s"] = (
+                kwargs["stage_dwelltime_min"] * 60
+                if scan_params["stage_pattern"] != "None"
+                else None
+            )
 
             # add to FIFO queue
             self._app.meas_queue.append(

@@ -15,7 +15,7 @@ import nidaqmx.constants as ni_consts
 import numpy as np
 
 from data_analysis.correlation_function import SolutionSFCSMeasurement
-from logic.scan_patterns import ScanPatternAO
+from logic.scan_patterns import ScanPatternAO, vector_snake_pattern
 from utilities import errors, file_utilities, fit_tools, helper
 
 
@@ -50,6 +50,7 @@ class MeasurementProcedure:
             dep=app.devices.dep_laser,
             dep_shutter=app.devices.dep_shutter,
         )
+        self.stage_dvc = app.devices.stage
 
         self._app = app
         self.type = type
@@ -143,14 +144,22 @@ class MeasurementProcedure:
 
             # Solution - record data until time is up or ordered to stop
             if timed:
+                dwell_start_s = time.perf_counter()
                 while self.is_running:
                     await self.data_dvc.read_TDC()
                     self.time_passed_s = time.perf_counter() - self.start_time
+                    # check if total time has passed
                     if self.time_passed_s >= self.duration_s:
                         break
+                    # check if file size was reached
                     if size_limited and (
                         (self.data_dvc.tot_bytes_read / 1e6) >= self.max_file_size_mb
                     ):
+                        break
+                    # check if stage_dwelltime_s was reached
+                    if (
+                        stage_dwelltime_s := self.scan_params["stage_dwelltime_s"]
+                    ) is not None and time.perf_counter() - dwell_start_s >= stage_dwelltime_s:
                         break
 
             # Image - record data until image scan task is done
@@ -609,6 +618,18 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             self.scan_params["plane_orientation"] = "XYZ"
         else:
             self.scan_params["plane_orientation"] = "XY"
+
+        # stage pattern
+        if self.scan_params["stage_pattern"] == "Snake":
+            enc_dims = helper.get_encompassing_rectangle_dims(
+                (self.scan_params["max_line_len_um"], self.scan_params["scan_width_um"]),
+                self.scan_params["angle_deg"],
+            )
+            sample_size = self.stage_dvc.steps_per_sample_droplet / self.stage_dvc.steps_per_um
+            self.stage_pattern = vector_snake_pattern(enc_dims, (sample_size, sample_size))
+        else:
+            self.stage_pattern = None
+
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
         self.scanning = not (self.scan_params["pattern"] == "static")
@@ -775,6 +796,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             return
 
         else:
+            # Move to first stage position (optional)
+            if self.stage_pattern:
+                await self.stage_dvc.move(next(self.stage_pattern), relative=False)
             self.is_running = True
             self.start_time = time.perf_counter()
             self.time_passed_s = 0
@@ -811,19 +835,21 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     # AttributeError: no widget
                     self.file_num_wdgt.set(file_num)
 
+                # FPGA Readout
                 logging.debug("FPGA reading starts.")
-
-                # reading
                 if self.repeat:
                     await self.record_data(self.start_time, timed=True)
                 else:
                     await self.record_data(self.start_time, timed=True, size_limited=True)
-
                 logging.debug("FPGA reading finished.")
 
                 # collect final ai/CI
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
+
+                # Move stage (optional)
+                if self.stage_pattern:
+                    await self.stage_dvc.move(next(self.stage_pattern), relative=False)
 
                 # show/add the ACF of the latest file in GUI (if not manually stopped)
                 if self.should_disp_acf and self.is_running:
@@ -862,6 +888,10 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 # if not saving a file, keep the last measurement in memory
                 self._app.last_meas_data = self._prep_meas_dict()
             await self.stop()
+
+        # Move to stage origin (optional)
+        if self.stage_pattern:
+            await self.stage_dvc.move(helper.Vector(0, 0, "steps"))
 
 
 class MeasurementError(Exception):
