@@ -283,15 +283,18 @@ class MainWin:
 
         stage_dvc = self._app.devices.stage
 
-        if stage_dvc.last_pos != (0, 0):
+        if stage_dvc.curr_pos != (0, 0):
             pressed = dialog.QuestionDialog(
-                txt=f"Are you sure you wish to set {stage_dvc.last_pos} as the new origin?",
+                txt=f"Are you sure you wish to set {stage_dvc.curr_pos} as the new origin?",
                 title=f"Calibrate {stage_dvc.log_ref.capitalize()} Origin",
             ).display()
             if pressed is False:
                 return
             else:
                 stage_dvc.set_origin()
+
+    def stage_move_to_last_pos(self):
+        self._app.loop.create_task(self._app.devices.stage.move_to_last_pos())
 
     def open_spad_interface(self) -> None:
         """Doc."""
@@ -809,14 +812,20 @@ class MainWin:
             "Standard Static": {
                 "scan_type": "static",
                 "repeat": True,
+                "should_fit": True,
+                "should_accumulate_corrfuncs": False,
             },
             "Standard Angular": {
                 "scan_type": "angular",
                 "regular": True,
+                "should_fit": False,
+                "should_accumulate_corrfuncs": True,
             },
             "Standard Circular": {
                 "scan_type": "circle",
                 "regular": True,
+                "should_fit": False,
+                "should_accumulate_corrfuncs": True,
             },
         }
 

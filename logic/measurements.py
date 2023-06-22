@@ -796,9 +796,12 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             return
 
         else:
-            # Move to first stage position (optional)
+            # Initialize the stage and move to first stage position (optional)
             if self.stage_pattern:
+                if not self.stage_dvc.is_on:
+                    self.stage_dvc.toggle(True)
                 await self.stage_dvc.move(next(self.stage_pattern), relative=False)
+
             self.is_running = True
             self.start_time = time.perf_counter()
             self.time_passed_s = 0
@@ -892,6 +895,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         # Move to stage origin (optional)
         if self.stage_pattern:
             await self.stage_dvc.move(helper.Vector(0, 0, "steps"), relative=False)
+            self.stage_dvc.toggle(False)
 
 
 class MeasurementError(Exception):

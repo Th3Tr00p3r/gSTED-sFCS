@@ -54,6 +54,9 @@ class Vector:
     def __len__(self):
         return 2
 
+    def __neg__(self):
+        return Vector(-self.x, -self.y, self.units)
+
     def __add__(self, other):
         if self.units == other.units:
             return Vector(self.x + other.x, self.y + other.y, self.units)
