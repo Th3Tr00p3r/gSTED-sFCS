@@ -1385,19 +1385,20 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
         self.is_moving = False
         try:
-            self.last_pos = Vector(*load_object(self.LAST_POS_FILEPATH), "steps")
+            self.curr_pos = Vector(*load_object(self.LAST_POS_FILEPATH), "steps")
         except FileNotFoundError:
             print(
                 f"{self.log_ref}: Last position file {self.LAST_POS_FILEPATH} not found! Setting current location as origin."
             )
             self.set_origin()
+        self.last_pos = None
 
     @property
-    def last_pos(self):
+    def curr_pos(self):
         return Vector(self._x_pos.get(), self._y_pos.get(), "steps")
 
-    @last_pos.setter
-    def last_pos(self, vec: Vector):
+    @curr_pos.setter
+    def curr_pos(self, vec: Vector):
         self._x_pos.set(vec.x)
         self._y_pos.set(vec.y)
 
@@ -1441,9 +1442,9 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
                 raise ValueError(f"Can only convert from microns to steps! ({vec.units})")
 
         if not self.is_moving:
-            if not relative:  # absolute movement
-                vec = vec - self.last_pos
-            if all(self.LIMITS.valid_indices(self.last_pos + vec)):
+            if not relative:  # convert absolute to relative
+                vec = vec - self.curr_pos
+            if all(self.LIMITS.valid_indices(self.curr_pos + vec)):
                 # X first
                 if vec.x:
                     self.is_moving = True
@@ -1458,15 +1459,16 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
                 self.write("ryx ")  # release
                 self.is_moving = False
-                self.last_pos += vec  # keep last position
+                self.last_pos = self.curr_pos  # keep last position
+                self.curr_pos += vec  # keep current position
 
                 # keep last position in file
-                save_object(self.last_pos, self.LAST_POS_FILEPATH)
+                save_object(self.curr_pos, self.LAST_POS_FILEPATH)
 
             # out of limits
             else:
                 logging.info(
-                    f"{self.log_ref}: new position {self.last_pos + vec} is off-limits {self.LIMITS}!"
+                    f"{self.log_ref}: new position {self.curr_pos + vec} is off-limits {self.LIMITS}!"
                 )
 
         # already in motion
@@ -1476,8 +1478,19 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     def set_origin(self) -> None:
         """Set current position as the new origin"""
 
-        self.last_pos = Vector(0, 0, "steps")
-        save_object(self.last_pos, self.LAST_POS_FILEPATH)
+        self.last_pos = -self.curr_pos  # keep last position
+        self.curr_pos = Vector(0, 0, "steps")
+        save_object(self.curr_pos, self.LAST_POS_FILEPATH)
+
+    async def move_to_last_pos(self) -> None:
+        """
+        Move to the last position before the current one.
+        Can be used e.g. to move back-and-forth between
+        two positions, undo a bad move, or go somewhere to check
+        then return.
+        """
+
+        await self.move(self.last_pos, relative=False)
 
 
 class BaseCamera:

@@ -175,6 +175,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.stageRight.released.connect(
             lambda: self.impl.move_stage(dir="RIGHT", steps=self.stageSteps.value())
         )
+        self.stageLast.released.connect(lambda: self.impl.stage_move_to_last_pos())
 
         # Delayer
         self.calSyncDelay.released.connect(self.impl.calibrate_pulse_sync_delay)

@@ -1,4 +1,4 @@
-newTemplate,testestest_angular_exc
+newTemplate,sol_angular_exc
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
@@ -45,7 +45,7 @@ solScanStageDwell,0.1
 solLinFrac,0.9
 solAngActualSpeed,8800.0
 solActualScanFreq,40.0
-solScanDur,2.0
+solScanDur,1.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0
@@ -54,8 +54,8 @@ psdDelay,0.0
 psdEffDelay,49.61
 dataMonth,6
 dataYear,2023
-dataDay,14
-dataTemplate1,testestest_angular_exc_125225_*.pkl
+dataDay,22
+dataTemplate1,sol_angular_exc_112419_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -113,7 +113,7 @@ normRows,False
 autoCrosshair,True
 alwaysSaveImg,False
 circShouldPrecess,False
-shouldFit,True
+shouldFit,False
 accumAcf,True
 autoExp1,False
 camTranspose1,False
