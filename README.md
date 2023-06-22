@@ -42,13 +42,13 @@ Python-based control GUI and analysis software for our optical measurement syste
 
 - Eric IDE (optional, but was invalueable during development) - very useful for Python GUI projects.
 
-- [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**).
+- [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for the GUI (**installed with Eric IDE**).
 
 - [qasync](https://github.com/CabbageDevelopment/qasync) - to make PyQt5 work with Python's `asyncio` library.
 
 - NumPy.
 
-- matplotlib - used for plotting (currently only the camera, later the graphs).
+- matplotlib - used for plotting.
 
 - [pyVISA](https://pypi.org/project/PyVISA/) - communication with VISA-supported devices.
 
@@ -57,7 +57,6 @@ Python-based control GUI and analysis software for our optical measurement syste
 - [DCx Camera interfaces](https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam), [Instrumental-lib](https://pypi.org/project/Instrumental-lib/), [nicelib](https://pypi.org/project/NiceLib/),  - communication with DC480 cameras.
 
 - [ftd2xx](https://github.com/snmishra/ftd2xx) - communication with UM232, which is a usb port to the FPGA (TDC data).
-
 
 ## Installing Eric IDE on Windows:
 
