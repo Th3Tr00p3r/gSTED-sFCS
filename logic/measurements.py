@@ -15,7 +15,7 @@ import nidaqmx.constants as ni_consts
 import numpy as np
 
 from data_analysis.correlation_function import SolutionSFCSMeasurement
-from logic.scan_patterns import ScanPatternAO
+from logic.scan_patterns import ScanPatternAO, vector_snake_pattern
 from utilities import errors, file_utilities, fit_tools, helper
 
 
@@ -50,10 +50,26 @@ class MeasurementProcedure:
             dep=app.devices.dep_laser,
             dep_shutter=app.devices.dep_shutter,
         )
+        self.stage_dvc = app.devices.stage
 
         self._app = app
         self.type = type
+
+        # keep the depletion state for setting up the measurement before running
         self.laser_mode = laser_mode
+        if laser_mode in {"dep", "sted"}:
+            self.dep_type = self.laser_dvcs.dep.mode
+            if self.dep_type == "current":
+                self.dep_value = app.gui.main.depCurr.value()
+            else:  # power mode
+                self.dep_value = app.gui.main.depPow.value()
+            # keep laser power
+            self.dep_power_mw = self.dep_value
+        else:
+            self.dep_power_mw = None
+        # keep the detector/delayer state for setting up the measurement before running
+        self.spad_settings = self.spad_dvc.settings
+
         self.file_template = file_template
         self.save_path = save_path
         self.sub_dir_name = sub_dir_name
@@ -123,33 +139,43 @@ class MeasurementProcedure:
         turn OFF TDC and read leftover data.
         """
 
-        self._app.gui.main.impl.device_toggle("TDC", leave_on=True)
+        # turn ON exc (if relevant) and TDC before reading FPGA (will toggle off both in the end)
+        with self.laser_dvcs.exc.use(self.laser_mode in {"exc", "sted"}), self.tdc_dvc.use():
 
-        # Solution - record data until time is up or ordered to stop
-        if timed:
-            while self.is_running:
-                await self.data_dvc.read_TDC()
-                self.time_passed_s = time.perf_counter() - self.start_time
-                if self.time_passed_s >= self.duration_s:
-                    break
-                if size_limited and ((self.data_dvc.tot_bytes_read / 1e6) >= self.max_file_size_mb):
-                    break
+            # Solution - record data until time is up or ordered to stop
+            if timed:
+                dwell_start_s = time.perf_counter()
+                while self.is_running:
+                    await self.data_dvc.read_TDC()
+                    self.time_passed_s = time.perf_counter() - self.start_time
+                    # check if total time has passed
+                    if self.time_passed_s >= self.duration_s:
+                        break
+                    # check if file size was reached
+                    if size_limited and (
+                        (self.data_dvc.tot_bytes_read / 1e6) >= self.max_file_size_mb
+                    ):
+                        break
+                    # check if stage_dwelltime_s was reached
+                    if (
+                        stage_dwelltime_s := self.scan_params["stage_dwelltime_s"]
+                    ) is not None and time.perf_counter() - dwell_start_s >= stage_dwelltime_s:
+                        break
 
-        # Image - record data until image scan task is done
-        else:
-            while self.is_running and not self.scanners_dvc.are_tasks_done("ao"):
-                await self.data_dvc.read_TDC()
-                self.time_passed_s = time.perf_counter() - self.start_time
+            # Image - record data until image scan task is done
+            else:
+                while self.is_running and not self.scanners_dvc.are_tasks_done("ao"):
+                    await self.data_dvc.read_TDC()
+                    self.time_passed_s = time.perf_counter() - self.start_time
 
-        await self.data_dvc.read_TDC()  # read leftovers
-        self._app.gui.main.impl.device_toggle("TDC", leave_off=True)
+            await self.data_dvc.read_TDC()  # read leftovers
 
     def _prep_meas_dict(self) -> dict:
         """Doc."""
 
         full_data = {
             "laser_mode": self.laser_mode,
-            "dep_power_mw": pow_mw if (pow_mw := self.laser_dvcs.dep.get_prop("pow")) > 0 else None,
+            "dep_power_mw": self.dep_power_mw,
             "duration_s": self.duration_s if hasattr(self, "duration_s") else None,
             # TODO: prepare a function to cut img data into planes, similar to how the counts are cut
             "byte_data": np.asarray(self.data_dvc.data, dtype=np.uint8),
@@ -223,7 +249,7 @@ class MeasurementProcedure:
     def save_data(self, data_dict: dict, file_name: str) -> None:
         """
         Create a directory of today's date, and there
-        save measurement data as a .pkl file.
+        save the raw data as a .npy file and compress the rest in a pickled .gzip file.
         """
         # TODO: does not handle overnight measurements during which the date changes.
         # To do that, one would need to keep the starting date and ensure overnight measurements
@@ -259,7 +285,7 @@ class MeasurementProcedure:
         )
         logging.debug(f"Saved measurement file: '{file_path}'.")
 
-    async def toggle_lasers(self, finish=False) -> None:
+    async def toggle_lasers(self, finish=False) -> None:  # NOQA C901
         """Doc."""
 
         def current_emission_state() -> str:
@@ -284,6 +310,28 @@ class MeasurementProcedure:
             else:
                 return "nolaser"
 
+        async def prep_depletion() -> None:
+            """Doc."""
+            # TODO: move this to the device itself - if turned on on power mode, it should prep itself.
+
+            toggle_succeeded = self._app.gui.main.impl.device_toggle(
+                "dep_laser", toggle_mthd="laser_toggle", state_attr="is_emission_on"
+            )
+            if toggle_succeeded:
+                logging.info(
+                    f"{self._app.devices.dep_laser.log_ref} isn't on. Turning on and waiting 5 s before measurement."
+                )
+                if self.type == "SFCSImage" and self.laser_mode == "dep":
+                    button = self._app.gui.main.startImgScanDep
+                elif self.type == "SFCSImage" and self.laser_mode == "sted":
+                    button = self._app.gui.main.startImgScanSted
+                elif self.type == "SFCSSolution" and self.laser_mode in {"dep", "sted"}:
+                    button = self._app.gui.main.stopMeasurements
+                button.setEnabled(False)
+                await asyncio.sleep(5)
+                button.setEnabled(True)
+
+        # measurement ends
         if finish:
             # reset automatic shutdown for depletion laser
             if self.laser_mode in {"dep", "sted"}:
@@ -297,19 +345,26 @@ class MeasurementProcedure:
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
 
+        # measurement begins
         else:
-            # measurement begins
+            # set dep laser power if necessary
+            if self.laser_mode in {"dep", "sted"}:
+                if self.dep_type == "current":
+                    self.laser_dvcs.dep.set_current(self.dep_value)
+                else:  # power mode
+                    self.laser_dvcs.dep.set_power(self.dep_value)
+            # turn on emissions
             if self.laser_mode == "exc":
                 # turn excitation ON and depletion shutter OFF
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_off=True)
             elif self.laser_mode == "dep":
-                await self.prep_dep() if not self.laser_dvcs.dep.is_emission_on else None
+                await prep_depletion() if not self.laser_dvcs.dep.is_emission_on else None
                 # turn depletion shutter ON and excitation OFF
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_off=True)
             elif self.laser_mode == "sted":
-                await self.prep_dep() if not self.laser_dvcs.dep.is_emission_on else None
+                await prep_depletion() if not self.laser_dvcs.dep.is_emission_on else None
                 # turn both depletion shutter and excitation ON
                 self._app.gui.main.impl.device_toggle("exc_laser", leave_on=True)
                 self._app.gui.main.impl.device_toggle("dep_shutter", leave_on=True)
@@ -324,25 +379,13 @@ class MeasurementProcedure:
                     f"Requested laser mode ({self.laser_mode}) was not attained."
                 )
 
-    async def prep_dep(self):
-        """Doc."""
+    def ready_detector(self) -> None:
+        """
+        Set the detector and pulse delayer to their selected values
+        before starting the measurement.
+        """
 
-        toggle_succeeded = self._app.gui.main.impl.device_toggle(
-            "dep_laser", toggle_mthd="laser_toggle", state_attr="is_emission_on"
-        )
-        if toggle_succeeded:
-            logging.info(
-                f"{self._app.devices.dep_laser.log_ref} isn't on. Turning on and waiting 5 s before measurement."
-            )
-            if self.type == "SFCSImage" and self.laser_mode == "dep":
-                button = self._app.gui.main.startImgScanDep
-            elif self.type == "SFCSImage" and self.laser_mode == "sted":
-                button = self._app.gui.main.startImgScanSted
-            elif self.type == "SFCSSolution" and self.laser_mode in {"dep", "sted"}:
-                button = self._app.gui.main.stopMeasurements
-            button.setEnabled(False)
-            await asyncio.sleep(5)
-            button.setEnabled(True)
+        # TODO: fix me!
 
     def init_scan_tasks(self, ao_sample_mode: str) -> None:
         """Doc."""
@@ -361,13 +404,13 @@ class MeasurementProcedure:
                 "source": self.pxl_clk_dvc.out_term,
                 "sample_mode": ao_sample_mode,
                 "samps_per_chan": self.n_ao_samps,
-                "rate": 100000,
+                "rate": 100000,  # TODO: should be defined by some meaningful constant
             },
             samp_clk_cnfg_z={
                 "source": self.pxl_clk_dvc.out_ext_term,
                 "sample_mode": ao_sample_mode,
                 "samps_per_chan": self.n_ao_samps,
-                "rate": 100000,
+                "rate": 100000,  # TODO: should be defined by some meaningful constant
             },
             start=False,
         )
@@ -426,7 +469,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         )
 
     def build_filename(self) -> str:
-        return f"{self.file_template}_{self.laser_mode}_{self.scan_params['plane_orientation']}_{dt.now().strftime('%H%M%S')}"
+        return f"{self.file_template}_{self.laser_mode}_{self.scan_params['plane_orientation']}{(f'_{self.dep_power_mw}mW' if self.dep_power_mw is not None else '')}_{dt.now().strftime('%H%M%S')}"
 
     def setup_scan(self):
         """Doc."""
@@ -455,7 +498,7 @@ class ImageMeasurementProcedure(MeasurementProcedure):
             self.pxl_clk_dvc.freq_MHz * 1e6,
         )
         self.pxl_clk_dvc.low_ticks = clk_div - 2
-        self.ppl = fix_ppl(
+        self.scan_params["ppl"] = fix_ppl(
             self.scanners_dvc.MIN_OUTPUT_RATE_Hz,
             self.scan_params["line_freq_hz"],
             self.scan_params["ppl"],
@@ -469,22 +512,9 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
-        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params["dt"] - 1.5e-7))
-        self.est_total_duration_s = self.n_ao_samps * self.scan_params["dt"]
+        self.ai_conv_rate = 6 * (1 / (self.scan_params["dt"] - 1.5e-7))
+        self.est_total_duration_s = self.n_ao_samps * self.scan_params["dt"] / 2
         self.plane_choice.obj.setMaximum(len(self.scan_params["set_pnts_planes"]) - 1)
-
-    #    def change_plane(self, plane_idx):
-    #        """Doc."""
-    #
-    #        for axis in "XYZ":
-    #            if axis not in self.scan_params["plane_orientation"]:
-    #                plane_axis = axis
-    #                break
-    #
-    #        self.scanners_dvc.start_write_task(
-    #            ao_data=[[self.scan_params["set_pnts_planes"][plane_idx]]],
-    #            type=plane_axis,
-    #        )
 
     async def run(self):
         """Doc."""
@@ -581,12 +611,25 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.plot_wdgt = kwargs.get("plot_wdgt")
         self.fit_led = kwargs.get("fit_led")
         self.should_accumulate_corrfuncs = kwargs.get("should_accumulate_corrfuncs")
+        self.should_fit_acf = kwargs.get("should_fit")
         self.processing_options = kwargs.get("processing_options")
 
         if self.scan_params.get("floating_z_amplitude_um", 0) != 0:
             self.scan_params["plane_orientation"] = "XYZ"
         else:
             self.scan_params["plane_orientation"] = "XY"
+
+        # stage pattern
+        if self.scan_params["stage_pattern"] == "Snake":
+            enc_dims = helper.get_encompassing_rectangle_dims(
+                (self.scan_params["max_line_len_um"], self.scan_params["scan_width_um"]),
+                self.scan_params["angle_deg"],
+            )
+            sample_size = self.stage_dvc.steps_per_sample_droplet / self.stage_dvc.steps_per_um
+            self.stage_pattern = vector_snake_pattern(enc_dims, (sample_size, sample_size))
+        else:
+            self.stage_pattern = None
+
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
         self.scanning = not (self.scan_params["pattern"] == "static")
@@ -601,7 +644,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         else:
             if not self.file_template:
                 self.file_template = "sol"
-            return f"{self.file_template}_{self.scan_type}_{self.laser_mode}_{self.start_time_str}_{file_no}"
+            return f"{self.file_template}_{self.scan_type}_{self.laser_mode}{(f'_{self.dep_power_mw}mW' if self.dep_power_mw is not None else '')}_{self.start_time_str}_{file_no}"
 
     def set_current_and_end_times(self) -> None:
         """Doc."""
@@ -692,29 +735,36 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             print(f"THIS SHOULD NOT HAPPEN, HANDLE THE EXCEPTION PROPERLY! [{exc}]")
             errors.err_hndlr(exc, sys._getframe(), locals())
         else:
-            try:
-                fp = self.cf.fit_correlation_function()
-            except fit_tools.FitError as exc:
-                # fit failed
-                errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
-                self.fit_led.set(self.icon_dict["led_red"])
+            if self.should_fit_acf:
+                try:
+                    fp = self.cf.fit_correlation_function()
+                except fit_tools.FitError as exc:
+                    # fit failed
+                    errors.err_hndlr(exc, sys._getframe(), locals(), lvl="debug")
+                    self.fit_led.set(self.icon_dict["led_red"])
+                    g0, tau = self.cf.g0, 0.1
+                    self.g0_wdgt.set(g0)
+                    self.tau_wdgt.set(0)
+                    self.plot_wdgt.obj.plot_acfs((self.cf.lag, "lag"), self.cf.avg_cf_cr, g0)
+                else:
+                    # fit succeeded
+                    self.fit_led.set(self.icon_dict["led_off"])
+                    g0, tau = fp.beta["G0"], fp.beta["tau"]
+                    fit_func = fp.fit_func
+                    self.g0_wdgt.set(g0)
+                    self.tau_wdgt.set(tau * 1e3)
+                    self.plot_wdgt.obj.plot_acfs((self.cf.lag, "lag"), self.cf.avg_cf_cr, g0)
+                    y_fit = fit_func(self.cf.lag, *fp.beta.values())
+                    self.plot_wdgt.obj.plot(self.cf.lag, y_fit, "-.r")
+                    logging.info(
+                        f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f} K, tau: {tau*1e3:.1f} us."
+                    )
+            # don't fit
+            else:
                 g0, tau = self.cf.g0, 0.1
                 self.g0_wdgt.set(g0)
                 self.tau_wdgt.set(0)
                 self.plot_wdgt.obj.plot_acfs((self.cf.lag, "lag"), self.cf.avg_cf_cr, g0)
-            else:
-                # fit succeeded
-                self.fit_led.set(self.icon_dict["led_off"])
-                g0, tau = fp.beta["G0"], fp.beta["tau"]
-                fit_func = fp.fit_func
-                self.g0_wdgt.set(g0)
-                self.tau_wdgt.set(tau * 1e3)
-                self.plot_wdgt.obj.plot_acfs((self.cf.lag, "lag"), self.cf.avg_cf_cr, g0)
-                y_fit = fit_func(self.cf.lag, *fp.beta.values())
-                self.plot_wdgt.obj.plot(self.cf.lag, y_fit, "-.r")
-                logging.info(
-                    f"Aligning ({self.laser_mode}): g0: {g0/1e3:.1f} K, tau: {tau*1e3:.1f} us."
-                )
 
     async def run(self, should_save=True):  # NOQA C901
         """Doc."""
@@ -735,8 +785,8 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.setup_scan()
                 self._app.gui.main.impl.device_toggle("pixel_clock", leave_on=True)
                 # make the circular ai buffer clip as long as the ao buffer
-                self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
-                self.counter_dvc.init_ci_buffer()
+                self.scanners_dvc.init_ai_buffer(size=self.ao_buffer.shape[1])
+                self.counter_dvc.init_ci_buffer(size=self.ao_buffer.shape[1])
             else:
                 self.scanners_dvc.init_ai_buffer()
 
@@ -746,6 +796,12 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             return
 
         else:
+            # Initialize the stage and move to first stage position (optional)
+            if self.stage_pattern:
+                if not self.stage_dvc.is_on:
+                    self.stage_dvc.toggle(True)
+                await self.stage_dvc.move(next(self.stage_pattern), relative=False)
+
             self.is_running = True
             self.start_time = time.perf_counter()
             self.time_passed_s = 0
@@ -760,7 +816,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.data_dvc.purge_buffers()
 
                 if self.scanning:
-                    self.counter_dvc.init_ci_buffer()
+                    self.counter_dvc.init_ci_buffer(size=self.ao_buffer.shape[1])
                     # re-start scan for each file
 
                     # if scanning measurement, ensure proper Y-galvo calibration during measurement and re-setup the scan if was recalibrated
@@ -772,7 +828,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                         logging.info("Re-calibrating Y-galvo.")
                         self.setup_scan()
 
-                    self.scanners_dvc.init_ai_buffer(type="circular", size=self.ao_buffer.shape[1])
+                    self.scanners_dvc.init_ai_buffer(size=self.ao_buffer.shape[1])
                     self.init_scan_tasks("CONTINUOUS")
                     self.scanners_dvc.start_tasks("ao")
                 else:
@@ -782,19 +838,21 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     # AttributeError: no widget
                     self.file_num_wdgt.set(file_num)
 
+                # FPGA Readout
                 logging.debug("FPGA reading starts.")
-
-                # reading
                 if self.repeat:
                     await self.record_data(self.start_time, timed=True)
                 else:
                     await self.record_data(self.start_time, timed=True, size_limited=True)
-
                 logging.debug("FPGA reading finished.")
 
                 # collect final ai/CI
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
+
+                # Move stage (optional)
+                if self.stage_pattern:
+                    await self.stage_dvc.move(next(self.stage_pattern), relative=False)
 
                 # show/add the ACF of the latest file in GUI (if not manually stopped)
                 if self.should_disp_acf and self.is_running:
@@ -817,9 +875,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     if should_save:
                         self.save_data(self._prep_meas_dict(), self.build_filename(file_num))
                         if self.scanning:
-                            self.scanners_dvc.init_ai_buffer(
-                                type="circular", size=self.ao_buffer.shape[1]
-                            )
+                            self.scanners_dvc.init_ai_buffer(size=self.ao_buffer.shape[1])
 
                 file_num += 1
 
@@ -835,6 +891,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 # if not saving a file, keep the last measurement in memory
                 self._app.last_meas_data = self._prep_meas_dict()
             await self.stop()
+
+        # Move to stage origin (optional)
+        if self.stage_pattern:
+            await self.stage_dvc.move(helper.Vector(0, 0, "steps"), relative=False)
+            self.stage_dvc.toggle(False)
 
 
 class MeasurementError(Exception):

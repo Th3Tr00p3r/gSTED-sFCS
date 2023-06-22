@@ -5,8 +5,9 @@ import logging
 import sys
 import time
 from collections import deque
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
+from pathlib import Path
 from string import ascii_letters, digits
 from typing import Callable, List, Tuple, Union, cast
 
@@ -22,10 +23,12 @@ from logic.scan_patterns import ScanPatternAO
 from logic.timeout import TIMEOUT_INTERVAL
 from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
+from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import FitError, fit_2d_gaussian_to_image, linear_fit
 from utilities.helper import (
     Gate,
     Limits,
+    Vector,
     deep_getattr,
     div_ceil,
     generate_numbers_from_string,
@@ -149,6 +152,20 @@ class SimpleDODevice(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
             self.turn_on_time = time.perf_counter() if is_being_switched_on else None
+
+    @contextmanager
+    def use(self, should_toggle=True):
+        """Turn ON, do stuff, turn OFF"""
+
+        if should_toggle:
+            self.toggle(True)
+
+        try:
+            yield
+
+        finally:
+            if should_toggle:
+                self.toggle(False)
 
 
 class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
@@ -303,7 +320,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
         # setting the gate width
         await self.set_gate_width(gate_width_ns)
-        self.gate_ns = Gate(self.lower_gate_ns, gate_width_ns, is_hard=True)
+        self.gate_ns = Gate(hard_gate=(self.lower_gate_ns, gate_width_ns))
 
     async def toggle_mode(self, mode: str) -> None:
         """Doc."""
@@ -392,7 +409,6 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     # TODO: can these be set dynamically for all device widgets? is it even a good idea?
     @property
     def sync_delay_ns(self):
-        # TODO: how can this be quickly manually calibrated eah day of measurements? Can't rely on a fixed value! (could change)
         return self._sync_delay_ns.get()
 
     @sync_delay_ns.setter
@@ -439,7 +455,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         await self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
         self.close_instrument()
 
-    async def set_lower_gate(self):
+    async def set_lower_gate(self, lower_gate_ns=None):
         """
         Set the delay according to the chosen lower gate in ns.
         This is achieved by a combination of setting the pulse width as a mechanism of coarse delay,
@@ -449,7 +465,8 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
         """
 
-        lower_gate_ns = self.set_delay_wdgt.get()
+        if lower_gate_ns is None:
+            lower_gate_ns = self.set_delay_wdgt.get()
 
         try:
             # add the synchronized delay time
@@ -1092,7 +1109,7 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         elif type == "inf":
             self.ci_buffer = []
         else:
-            raise ValueError("type parameter must be either 'standard' or 'inf'.")
+            raise ValueError("type parameter must be either 'circular' or 'inf'.")
 
 
 class PixelClock(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
@@ -1207,8 +1224,8 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     update_interval_s = 0.5
     MIN_SHG_TEMP_C = 45  # Celsius # was 53 for old laser # TODO: move to settings
-    power_limits_mW = Limits(99, 1000)
-    current_limits_mA = Limits(1500, 2500)
+    power_limits_mW = Limits(100, 1000)
+    current_limits_mA = Limits(0, 6000)
 
     def __init__(self, app):
 
@@ -1224,10 +1241,12 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         self.turn_on_time = None
         self.time_of_operation_hr = None
 
-        with suppress(DeviceError):
+        try:
             self.toggle(True, should_change_icons=False)
             if self.is_on:
                 self.set_current(1500)
+        except DeviceError:
+            self.mode = None
 
     def toggle(self, is_being_switched_on, **kwargs):
         """Doc."""
@@ -1289,6 +1308,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             # change the mode to power
             cmnd = "powerenable 1"
             self.write(cmnd)
+            self.mode = "power"
             # then set the power
             cmnd = f"setpower 0 {value_mW}"
             self.write(cmnd)
@@ -1303,6 +1323,7 @@ class DepletionLaser(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             # change the mode to current
             cmnd = "powerenable 0"
             self.write(cmnd)
+            self.mode = "current"
             # then set the current
             cmnd = f"setLDcur 1 {value_mA}"
             self.write(cmnd)
@@ -1337,9 +1358,23 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         param_widgets=QtWidgetCollection(
             led_widget=("ledStage", "QIcon", "main", True),
             switch_widget=("stageOn", "QIcon", "main", True),
+            _x_pos=("stageX", "QSpinBox", "main", True),
+            _y_pos=("stageY", "QSpinBox", "main", True),
             address=("arduinoAddr", "QLineEdit", "settings", False),
+            _steps_per_um=("stepperStageStepsPerUm", "QDoubleSpinBox", "settings", True),
+            _steps_per_sample_droplet=(
+                "stepperStageStepsPerSampleDrop",
+                "QSpinBox",
+                "settings",
+                True,
+            ),
         ),
     )
+
+    _x_pos: QtWidgetAccess
+    _y_pos: QtWidgetAccess
+    LIMITS = Limits(-5000, 5000)
+    LAST_POS_FILEPATH = Path("last_stage_position.pkl")
 
     def __init__(self, app):
         super().__init__(self.attrs, app)
@@ -1347,6 +1382,33 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         with suppress(DeviceError):
             self.toggle(True)
             self.toggle(False)
+
+        self.is_moving = False
+        try:
+            self.curr_pos = Vector(*load_object(self.LAST_POS_FILEPATH), "steps")
+        except FileNotFoundError:
+            print(
+                f"{self.log_ref}: Last position file {self.LAST_POS_FILEPATH} not found! Setting current location as origin."
+            )
+            self.set_origin()
+        self.last_pos = None
+
+    @property
+    def curr_pos(self):
+        return Vector(self._x_pos.get(), self._y_pos.get(), "steps")
+
+    @curr_pos.setter
+    def curr_pos(self, vec: Vector):
+        self._x_pos.set(vec.x)
+        self._y_pos.set(vec.y)
+
+    @property
+    def steps_per_um(self):
+        return self._steps_per_um.get()
+
+    @property
+    def steps_per_sample_droplet(self):
+        return self._steps_per_sample_droplet.get()
 
     def toggle(self, is_being_switched_on: bool):
         """Doc."""
@@ -1358,19 +1420,77 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         else:
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
+            # write an initial command so that the next one would work (bug in Arduino code, I guess)
+            if self.is_on:
+                self.write("mx 1")  # fake move
+                time.sleep(0.1)  # needed for command to digest correctly
+                self.write("ryx ")  # release
 
-    async def move(self, dir, steps):
-        """Doc."""
+    async def move(self, vec: Vector, relative=True) -> None:
+        """
+        Move the stage to a new position, given by an input vector.
+        If relative=False, the position vector will be treated as if moved to to from the origin (0, 0)
+        """
 
-        cmd_dict = {
-            "UP": f"my {steps}",
-            "DOWN": f"my {-steps}",
-            "LEFT": f"mx {steps}",
-            "RIGHT": f"mx {-steps}",
-        }
-        self.write(cmd_dict[dir])
-        await asyncio.sleep(500 * 1e-3)
-        self.write("ryx ")  # release
+        # convert um to steps if needed
+        if vec.units != "steps":
+            if vec.units == "um":
+                vec *= self.steps_per_um
+                vec = round(vec)
+                vec.units = "steps"
+            else:
+                raise ValueError(f"Can only convert from microns to steps! ({vec.units})")
+
+        if not self.is_moving:
+            if not relative:  # convert absolute to relative
+                vec = vec - self.curr_pos
+            if all(self.LIMITS.valid_indices(self.curr_pos + vec)):
+                # X first
+                if vec.x:
+                    self.is_moving = True
+                    self.write(f"mx {vec.x}")
+                    await asyncio.sleep(max(0.2, 0.5 * abs(vec.x / 500)))  # wait while moving
+
+                # then Y
+                if vec.y:
+                    self.is_moving = True
+                    self.write(f"my {vec.y}")
+                    await asyncio.sleep(max(0.2, 0.5 + abs(vec.y / 1000)))  # wait while moving
+
+                self.write("ryx ")  # release
+                self.is_moving = False
+                self.last_pos = self.curr_pos  # keep last position
+                self.curr_pos += vec  # keep current position
+
+                # keep last position in file
+                save_object(self.curr_pos, self.LAST_POS_FILEPATH)
+
+            # out of limits
+            else:
+                logging.info(
+                    f"{self.log_ref}: new position {self.curr_pos + vec} is off-limits {self.LIMITS}!"
+                )
+
+        # already in motion
+        else:
+            logging.info(f"{self.log_ref} is already in motion!")
+
+    def set_origin(self) -> None:
+        """Set current position as the new origin"""
+
+        self.last_pos = -self.curr_pos  # keep last position
+        self.curr_pos = Vector(0, 0, "steps")
+        save_object(self.curr_pos, self.LAST_POS_FILEPATH)
+
+    async def move_to_last_pos(self) -> None:
+        """
+        Move to the last position before the current one.
+        Can be used e.g. to move back-and-forth between
+        two positions, undo a bad move, or go somewhere to check
+        then return.
+        """
+
+        await self.move(self.last_pos, relative=False)
 
 
 class BaseCamera:
@@ -1553,8 +1673,8 @@ class BaseCamera:
         # plotting the FWHM on top of the image
         ellipse = Ellipse(
             xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
-            width=sigma_y * FWHM_FACTOR * RESCALE_FACTOR,
-            height=sigma_x * FWHM_FACTOR * RESCALE_FACTOR,
+            width=sigma_y * one_over_e2_factor * RESCALE_FACTOR,
+            height=sigma_x * one_over_e2_factor * RESCALE_FACTOR,
             angle=phi,
         )
         ellipse.set_facecolor((0, 0, 0, 0))

@@ -1,3 +1,4 @@
+medFac,1.5
 afterpulsingRemovalMethod,filter
 useDefaultSysInfo,False
 subtractBgCorr,True

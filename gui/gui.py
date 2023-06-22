@@ -132,6 +132,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.assignExpStedMeas.released.connect(lambda: self.impl.assign_measurement("sted"))
         self.loadExperiment.released.connect(self.impl.load_experiment)
         self.calibrateTdc.released.connect(self.impl.calibrate_tdc)
+        self.getLifetimeParams.released.connect(self.impl.get_lifetime_params)
         self.AddCustomGate.released.connect(self.impl.assign_gate)
         self.removeAssignedGate.released.connect(self.impl.remove_assigned_gate)
         self.addGates.released.connect(self.impl.gate)
@@ -160,6 +161,8 @@ class MainWin(QtWidgets.QMainWindow):
         self.ledCam2.clicked.connect(lambda: led_clicked(self))
 
         # Stage
+        self.stageSetOrigin.released.connect(lambda: self.impl.set_stage_origin())
+        self.stageOrigin.released.connect(lambda: self.impl.move_stage())
         self.stageUp.released.connect(
             lambda: self.impl.move_stage(dir="UP", steps=self.stageSteps.value())
         )
@@ -172,6 +175,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.stageRight.released.connect(
             lambda: self.impl.move_stage(dir="RIGHT", steps=self.stageSteps.value())
         )
+        self.stageLast.released.connect(lambda: self.impl.stage_move_to_last_pos())
 
         # Delayer
         self.calSyncDelay.released.connect(self.impl.calibrate_pulse_sync_delay)

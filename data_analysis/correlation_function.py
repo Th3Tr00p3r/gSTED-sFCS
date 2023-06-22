@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, Iterator, List, Sequence, Tuple, Union, cast
 
 import numpy as np
+from matplotlib.patches import Ellipse
 from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
 
@@ -31,7 +32,12 @@ from utilities.file_utilities import (
     prepare_file_paths,
     save_object,
 )
-from utilities.fit_tools import FitParams, curve_fit_lims, multi_exponent_fit
+from utilities.fit_tools import (
+    FitParams,
+    curve_fit_lims,
+    fit_2d_gaussian_to_image,
+    multi_exponent_fit,
+)
 from utilities.helper import (
     EPS,
     Gate,
@@ -110,6 +116,9 @@ class LifeTimeParams:
     lifetime_ns: float
     sigma_sted: Union[float, Tuple[float, float]]
     laser_pulse_delay_ns: float
+
+    def __repr__(self):
+        return f"LifeTimeParams(lifetime_ns={self.lifetime_ns:.2f}, sigma_sted={self.sigma_sted:.2f}, laser_pulse_delay_ns={self.laser_pulse_delay_ns:.2f})"
 
 
 class CorrFunc:
@@ -278,6 +287,12 @@ class CorrFunc:
             **kwargs,
         )
         self.lag = max(output.lag_list, key=len)
+
+        # calculate split durations
+        self.split_durations_s = [
+            (split[0 if split.ndim != 1 else slice(None)] / self.laser_freq_hz).sum()
+            for split in time_stamp_split_list
+        ]
 
         if kwargs.get("is_verbose"):
             print(". Processing correlator output...", end=" ")
@@ -715,6 +730,7 @@ class SolutionSFCSMeasurement:
         self.is_loaded = False
         self.was_processed_data_loaded = False
         self.data = TDCPhotonMeasurementData()
+        self.corr_input_list: List[np.ndarray] = None
 
     def read_fpga_data(
         self,
@@ -796,27 +812,7 @@ class SolutionSFCSMeasurement:
 
         # plotting of scan image and ROI
         if proc_options.get("should_plot"):
-            print("Displaying scan images...", end=" ")
-            if self.scan_type == "angular":
-                with Plotter(
-                    subplots=(1, self.n_files), fontsize=8, should_force_aspect=True
-                ) as axes:
-                    if not hasattr(
-                        axes, "size"
-                    ):  # if axes is not an ndarray (only happens if reading just one file)
-                        axes = np.array([axes])
-                    for file_idx, (ax, image, roi) in enumerate(
-                        zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
-                    ):
-                        ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
-                        ax.set_xlabel("Pixel Index")
-                        ax.set_ylabel("Line Index")
-                        ax.imshow(image, interpolation="none")
-                        ax.plot(roi["col"], roi["row"], color="white")
-            elif self.scan_type == "circle":
-                # TODO: FILL ME IN (plotting in jupyter notebook, same as above angular scan stuff)
-                pass
-            print("Done.\n")
+            self.display_scan_images()
 
     def _process_all_data(
         self,
@@ -912,9 +908,10 @@ class SolutionSFCSMeasurement:
 
         # serial processing (default)
         else:
+            proc_options["is_verbose"] = True
             for idx, file_path in enumerate(file_paths):
                 # Processing data
-                p = self.process_data_file(idx, file_path, is_verbose=True, **proc_options)
+                p = self.process_data_file(idx, file_path, **proc_options)
                 print("Done.\n")
                 # Appending data to self
                 if p is not None:
@@ -956,12 +953,19 @@ class SolutionSFCSMeasurement:
         ):
             print("This should not happen (missing detector gate) - move this to legacy handeling!")
             self.detector_settings["gate_ns"] = Gate(
-                98 - self.detector_settings["gate_width_ns"],
-                self.detector_settings["gate_width_ns"],
-                is_hard=True,
+                hard_gate=(
+                    98 - self.detector_settings["gate_width_ns"],
+                    self.detector_settings["gate_width_ns"],
+                )
             )
         elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
             self.detector_settings["gate_ns"] = Gate()
+        elif self.detector_settings[
+            "gate_ns"
+        ]:  # hard gate has TDC gate? remove it and leave only hard gate
+            self.detector_settings["gate_ns"] = Gate(
+                hard_gate=self.detector_settings["gate_ns"].hard_gate
+            )
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -1085,7 +1089,9 @@ class SolutionSFCSMeasurement:
         )
 
         # Unite TDC gate and detector gate
-        gate_ns = Gate(tdc_gate_ns) & Gate(hard_gate=self.detector_settings["gate_ns"])
+        # TODO: detector gate represents the actual effective gate (since pulse travel time is already synchronized before measuring), This means that
+        # I should add the fit-deduced pulse travel time (affected by TDC +/- 2.5 ns) to the lower gate to compare with TDC gate???
+        gate_ns = Gate(tdc_gate_ns, hard_gate=self.detector_settings["gate_ns"])
 
         #  add gate to cf_name
         if gate_ns:
@@ -1112,19 +1118,46 @@ class SolutionSFCSMeasurement:
             if corr_options.get("is_verbose"):
                 print("Done.")
 
-        # build correlator input - create list of split data (and optionally filters) for correlator. TDC-gating is performed here
+        # build correlator input - create list of split data for correlator.
+        if self.corr_input_list is None:
+            if corr_options.get("is_verbose"):
+                print("Building correlator input splits: ", end="")
+            self.corr_input_list = self.data.prepare_xcorr_input(["AA"], **corr_options)["AA"]
+            if corr_options.get("is_verbose"):
+                print(" Done.")
+
+        # Using previously built input/filter
+        else:
+            if corr_options.get("is_verbose"):
+                print("Using existing correlator input splits.")
+
+        # Gating, diffing (prt to ts) and filtering
         if corr_options.get("is_verbose"):
-            print("Building correlator input splits: ", end="")
-        # -
-        corr_input_list, filter_input_list = zip(
-            *self.data.prepare_xcorr_input(
-                ["AA"],
-                gate1_ns=gate_ns,
-                afterpulsing_filter=afterpulsing_filter if is_filtered else None,
-                get_afterpulsing=get_afterpulsing,
-                **corr_options,
-            )["AA"]
-        )
+            if gate_ns:
+                print(f"Gating input splits ({gate_ns})... ", end="")
+            else:
+                print("Preparing input splits... ", end="")
+        final_corr_input_list = []
+        final_filter_input_list = []
+        for dt_prt_split in self.corr_input_list:
+            if gate_ns:
+                valid_idxs = gate_ns.valid_indices(dt_prt_split[0])
+                ts = np.hstack(([0], np.diff(dt_prt_split[1][valid_idxs])))
+                final_split = np.vstack((ts, dt_prt_split[2:][:, valid_idxs]))
+                final_corr_input_list.append(np.squeeze(final_split.astype(np.int32)))
+            else:
+                ts = np.hstack(([0], np.diff(dt_prt_split[1])))
+                final_split = np.vstack((ts, dt_prt_split[2:]))
+                final_corr_input_list.append(np.squeeze(final_split.astype(np.int32)))
+                valid_idxs = slice(None)
+
+            # filter input
+            if afterpulsing_filter:
+                split_filter = afterpulsing_filter.get_split_filter_input(
+                    dt_prt_split[0][valid_idxs], get_afterpulsing
+                )
+                final_filter_input_list.append(split_filter)
+
         if corr_options.get("is_verbose"):
             print("Done.")
 
@@ -1152,14 +1185,14 @@ class SolutionSFCSMeasurement:
             duration_min=self.duration_min,
         )
         CF.correlate_measurement(
-            corr_input_list,
+            final_corr_input_list,
             external_afterpulse_params
             if external_afterpulse_params is not None
             else self.afterpulse_params,
             getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
             external_afterpulsing=external_afterpulsing,
             gate_ns=gate_ns,
-            list_of_filter_arrays=filter_input_list if is_filtered else None,
+            corr_filter_list=final_filter_input_list if is_filtered else None,
             should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
             **corr_options,
         )
@@ -1286,6 +1319,31 @@ class SolutionSFCSMeasurement:
             print("- Done.")
 
         return CF_dict
+
+    def display_scan_images(self) -> None:
+        """Doc."""
+
+        if self.scan_type == "angular":
+            with Plotter(subplots=(1, self.n_files), fontsize=8, should_force_aspect=True) as axes:
+                if not hasattr(
+                    axes, "size"
+                ):  # if axes is not an ndarray (only happens if reading just one file)
+                    axes = np.array([axes])
+                for file_idx, (ax, image, roi) in enumerate(
+                    zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
+                ):
+                    ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
+                    ax.set_xlabel("Pixel Index")
+                    ax.set_ylabel("Line Index")
+                    ax.imshow(image, interpolation="none")
+                    ax.plot(roi["col"], roi["row"], color="white")
+
+        elif self.scan_type == "circle":
+            with Plotter(fontsize=8, should_force_aspect=True) as ax:
+                ax.imshow(self.scan_image, interpolation="none")
+
+        else:
+            raise ValueError(f"Can't display scan images for '{self.scan_type}' scans.")
 
     def plot_correlation_functions(
         self,
@@ -1475,6 +1533,8 @@ class SolutionSFCSMeasurement:
         The template may then be loaded much more quickly.
         """
 
+        was_saved = False
+
         # save the measurement
         dir_path = (
             cast(Path, self.file_path_template).parent
@@ -1483,14 +1543,24 @@ class SolutionSFCSMeasurement:
         )
         meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
+            # don't save correlator inputs (re-built when loaded)
+            corr_input_list = self.corr_input_list
+            self.corr_input_list = None
+            self.filter_input_list = None
+
             # save the measurement object
             if kwargs.get("is_verbose"):
                 print("Saving SolutionSFCSMeasurement object... ", end="")
             save_object(
                 self, meas_file_path, compression_method="blosc", obj_name="processed measurement"
             )
+            # restore correlator inputs
+            self.corr_input_list = corr_input_list
+
             if kwargs.get("is_verbose"):
                 print("Done.")
+
+            was_saved = True
 
         # save the raw data separately
         if should_save_data and not self.was_processed_data_loaded:
@@ -1503,10 +1573,9 @@ class SolutionSFCSMeasurement:
                 ):
                     p.raw.save_compressed(data_dir_path)
 
-            return True
+            was_saved = True
 
-        else:
-            return False
+        return was_saved
 
 
 class SolutionSFCSExperiment:
@@ -1629,9 +1698,13 @@ class SolutionSFCSExperiment:
 
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
+            is_verbose = kwargs.pop(
+                "is_verbose", False
+            )  # avoid duplicate in following call # TODO: fix this
             cf = measurement.correlate_and_average(
                 is_verbose=True, afterpulsing_method=afterpulsing_method, **kwargs
             )
+            kwargs["is_verbose"] = is_verbose  # avoid duplicate in above call # TODO: fix this
 
             if should_save:
                 print(f"Saving {measurement.type} measurement to disk...", end=" ")
@@ -1706,31 +1779,38 @@ class SolutionSFCSExperiment:
 
         # calibrate excitation measurement first, and sync STED to it if STED exists
         if self.confocal.is_loaded:
-            self.confocal.calibrate_tdc(**kwargs)
+            # only calibrate TDC for confocal if hasn't before (should exist if afterpulsing-filtered)
+            if not hasattr(self.confocal, "tdc_calib"):  # TODO: TEST ME!
+                self.confocal.calibrate_tdc(**kwargs)
             if self.sted.is_loaded:  # if both measurements quack as if loaded
                 self.sted.calibrate_tdc(sync_coarse_time_to=self.confocal.tdc_calib, **kwargs)
-
         # calibrate STED only
         else:
             self.sted.calibrate_tdc(**kwargs)
 
+        # optional plotting
         if should_plot:
-            super_title = f"'{self.name.capitalize()}' Experiment\nTDC Calibration"
-            # Both measurements loaded
-            if hasattr(self.confocal, "scan_type") and hasattr(
-                self.sted, "scan_type"
-            ):  # if both measurements quack as if loaded
-                with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
-                    self.confocal.tdc_calib.plot(parent_ax=axes[:, :2])
-                    self.sted.tdc_calib.plot(parent_ax=axes[:, 2:])
+            self.plot_tdc_calib(**kwargs)
 
-            # Confocal only
-            elif self.confocal.is_loaded:  # STED measurement not loaded
-                self.confocal.tdc_calib.plot(super_title=super_title, **kwargs)
+    def plot_tdc_calib(self, **kwargs):
+        """Plot TDCCalibrations of the confocal and/or STED measurements."""
 
-            # STED only
-            else:
-                self.sted.tdc_calib.plot(super_title=super_title, **kwargs)
+        super_title = f"'{self.name.capitalize()}' Experiment\nTDC Calibration"
+        # Both measurements loaded
+        if hasattr(self.confocal, "scan_type") and hasattr(
+            self.sted, "scan_type"
+        ):  # if both measurements quack as if loaded
+            with Plotter(subplots=(2, 4), super_title=super_title, **kwargs) as axes:
+                self.confocal.tdc_calib.plot(parent_ax=axes[:, :2])
+                self.sted.tdc_calib.plot(parent_ax=axes[:, 2:])
+
+        # Confocal only
+        elif self.confocal.is_loaded:  # STED measurement not loaded
+            self.confocal.tdc_calib.plot(super_title=super_title, **kwargs)
+
+        # STED only
+        else:
+            self.sted.tdc_calib.plot(super_title=super_title, **kwargs)
 
     def get_lifetime_parameters(
         self,
@@ -1908,6 +1988,44 @@ class SolutionSFCSExperiment:
         if should_plot:
             self.plot_standard(**kwargs)
 
+    def remove_gates(
+        self,
+        gate_list: Sequence[Tuple[float, float] | Gate] = None,
+        meas_type="sted",
+        should_plot=False,
+        **kwargs,
+    ):
+        """
+        A convecience method for removing multiple gates.
+        """
+
+        meas = getattr(self, meas_type)
+        cf_names = list(meas.cf.keys())
+        # remove all gates
+        if gate_list is None:
+            print(
+                f"Removing ALL '{meas_type}' gates {gate_list} for experiment '{self.name}'... ",
+                end="",
+            )
+            for cf_name in cf_names:
+                if "gated" in cf_name:
+                    meas.cf.pop(cf_name)
+        else:
+            print(
+                f"Removing multiple '{meas_type}' gates {gate_list} for experiment '{self.name}'... ",
+                end="",
+            )
+            for tdc_gate_ns in gate_list:
+                for cf_name in cf_names:
+                    if str(tdc_gate_ns) in cf_name:
+                        meas.cf.pop(cf_name)
+                        print(f"Removed {tdc_gate_ns}... ", end="")
+
+        print("Done.")
+
+        if should_plot:
+            self.plot_standard(**kwargs)
+
     def plot_standard(self, should_add_exp_name=True, **kwargs):
         """Doc."""
 
@@ -1934,11 +2052,12 @@ class SolutionSFCSExperiment:
         x_scale=None,
         y_scale=None,
         should_add_exp_name=True,
+        sted_only=False,
         **kwargs,
     ):
         """Doc."""
 
-        if self.confocal.is_loaded:
+        if self.confocal.is_loaded and not sted_only:
             ref_meas = self.confocal
         else:
             ref_meas = self.sted
@@ -1986,7 +2105,7 @@ class SolutionSFCSExperiment:
                 existing_lines = parent_ax.get_lines()
                 kwargs.pop("parent_ax")
 
-            for meas_type in ("confocal", "sted"):
+            for meas_type in {"sted"} if sted_only else ("confocal", "sted"):
                 getattr(self, meas_type).plot_correlation_functions(
                     parent_ax=ax,
                     x_field=x_field,
@@ -2011,7 +2130,7 @@ class SolutionSFCSExperiment:
 
             ax.legend()
 
-    def estimate_spatial_resolution(self, colors=None, **kwargs) -> Iterator[str]:
+    def estimate_spatial_resolution(self, colors=None, sted_only=False, **kwargs) -> Iterator[str]:
         """
         High-level method for performing Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions
         (confocal, sted and any gates) in order to estimate the resolution improvement.
@@ -2032,10 +2151,11 @@ class SolutionSFCSExperiment:
                 # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
                 existing_lines = parent_ax.get_lines()
 
-            colors = colors if colors is not None else cycle(default_colors)
-            remaining_colors = self.confocal.estimate_spatial_resolution(
-                parent_ax=ax, colors=colors, **kwargs
-            )
+            remaining_colors = colors if colors is not None else cycle(default_colors)
+            if not sted_only:
+                remaining_colors = self.confocal.estimate_spatial_resolution(
+                    parent_ax=ax, colors=remaining_colors, **kwargs
+                )
             remaining_colors = self.sted.estimate_spatial_resolution(
                 parent_ax=ax,
                 colors=remaining_colors,
@@ -2177,6 +2297,8 @@ class ImageSFCSMeasurement:
             end=" ",
         )
         # Processing data
+        if "len_factor" not in proc_options:
+            proc_options["len_factor"] = 0.001
         p = self.data_processor.process_data(0, self._file_dict["full_data"], **proc_options)
         print("Done.\n")
         # Appending data to self
@@ -2228,12 +2350,13 @@ class ImageSFCSMeasurement:
         ):
             print("This should not happen (missing detector gate) - move this to legacy handeling!")
             self.detector_settings["gate_ns"] = Gate(
-                98 - self.detector_settings["gate_width_ns"],
-                self.detector_settings["gate_width_ns"],
-                is_hard=True,
+                hard_gate=(
+                    98 - self.detector_settings["gate_width_ns"],
+                    self.detector_settings["gate_width_ns"],
+                )
             )
-        elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
-            self.detector_settings["gate_ns"] = Gate()
+        elif should_ignore_hard_gate:
+            self.detector_settings["gate_ns"] = None
 
         # sFCS
         self.scan_type = self.scan_settings["pattern"]
@@ -2387,14 +2510,14 @@ class ImageSFCSMeasurement:
             else:
                 counts_stack = self.tdc_image_data
 
-            # use the median as the minimum
-            if is_multiscan:  # sum over planes first
-                min_n_photons = round(
-                    np.median(counts_stack.image_stack_forward.sum(axis=2)) * median_factor
-                )
-            else:  # assume equal contribution for each plane (median of entire stack)
-                min_n_photons = round(np.median(counts_stack.image_stack_forward) * median_factor)
-            print(f"Using min_n_photons={min_n_photons}.")
+            # use the median of the photon-containing pixels as the minimum
+            valid_counts = counts_stack.image_stack_forward[counts_stack.image_stack_forward > 0]
+            # assume equal contribution for each plane (median of entire stack)
+            if (min_n_photons := round(np.median(valid_counts) * median_factor)) < 5:
+                min_n_photons = 5
+                print(f"Warning: min_n_photons < {min_n_photons}. Using 5...")
+            else:
+                print(f"Using min_n_photons={min_n_photons}.")
 
         # definitions
         n_lines = self.scan_settings["n_lines"]
@@ -2429,6 +2552,7 @@ class ImageSFCSMeasurement:
 
         # build the (optionally gated) images
         print("Building image stack (line-by-line)... ", end="")
+        bins = np.arange(-0.5, ppl)
         # planes are unique (slices)
         if not is_multiscan:
             # get plane_num
@@ -2437,11 +2561,9 @@ class ImageSFCSMeasurement:
             plane_num = plane_num[in_gate_idxs]  # gating
             gated_lt_stack = np.zeros((n_lines, ppl, n_planes), dtype=np.float64)
             for plane_idx in range(n_planes):
-                bins = np.arange(-0.5, ppl)
                 for line_idx in range(n_lines):
                     plane_line_idxs = (line_num == line_idx) & (plane_num == plane_idx)
-                    hist_l, bin_edges_l = np.histogram(pixel_num[plane_line_idxs], bins=bins)
-                    bin_idxs_l = np.digitize(pixel_num[plane_line_idxs], bin_edges_l)
+                    bin_idxs_l = np.digitize(pixel_num[plane_line_idxs], bins)
                     for pxl_idx in range(ppl):
                         # check that there are enough photons in pixel
                         if np.nonzero(bin_idxs_l == pxl_idx)[0].size >= min_n_photons:
@@ -2454,11 +2576,9 @@ class ImageSFCSMeasurement:
         # multiscan - plans are "identical" sequential scans - group photons by planes
         else:
             gated_lt_stack = np.zeros((n_lines, ppl, 1), dtype=np.float64)
-            bins = np.arange(-0.5, ppl)
             for line_idx in range(n_lines):
                 line_idxs = line_num == line_idx
-                hist_l, bin_edges_l = np.histogram(pixel_num[line_idxs], bins=bins)
-                bin_idxs_l = np.digitize(pixel_num[line_idxs], bin_edges_l)
+                bin_idxs_l = np.digitize(pixel_num[line_idxs], bins)
                 for pxl_idx in range(ppl):
                     # check that there are enough photons in pixel
                     if np.nonzero(bin_idxs_l == pxl_idx)[0].size >= min_n_photons:
@@ -2561,12 +2681,75 @@ class ImageSFCSMeasurement:
         line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
         return eff_idxs, pxls_per_line, line_ticks_v
 
-    def estimate_spatial_resolution(self):
-        """Doc."""
+    def estimate_spatial_resolution(self, should_plot=True, **kwargs) -> FitParams:
+        """Fit a 2D Gaussian to image in order to estimate the resolution (e.g. for fluorescent beads)"""
 
-        raise NotImplementedError(
-            "Finish working on 'generate_tdc_image_stack_data()' method, then use Gaussian fitting (as for alignment) for estimating the spatial resolution."
+        img = self.tdc_image_data.construct_plane_image("forward normalized", **kwargs)
+        fp = fit_2d_gaussian_to_image(img)
+        x0, y0, sigma_x, sigma_y, phi = (
+            fp.beta["x0"],
+            fp.beta["y0"],
+            fp.beta["sigma_x"],
+            fp.beta["sigma_y"],
+            fp.beta["phi"],
         )
+        _, _, sigma_x_err, sigma_y_err, _ = (
+            fp.beta_error["x0"],
+            fp.beta_error["y0"],
+            fp.beta_error["sigma_x"],
+            fp.beta_error["sigma_y"],
+            fp.beta_error["phi"],
+        )
+
+        max_sigma_y, max_sigma_x = img.shape
+        if (
+            x0 < 0
+            or y0 < 0
+            or abs(1 - sigma_x / sigma_y) > 2
+            or sigma_x > max_sigma_x
+            or sigma_y > max_sigma_y
+        ):
+            print(f"Gaussian fit is irrational!\n({fp.beta})")
+
+        # calculating the FWHM
+        pxl_size_um = self.scan_settings["dim1_um"] / self.tdc_image_data.effective_binned_size
+        FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))  # 1/e^2 width is FWHM * 1.699
+        one_over_e2_factor = 1.699 * FWHM_FACTOR
+        diameter_x_nm = sigma_x * one_over_e2_factor * pxl_size_um * 1e3
+        diameter_x_nm_err = sigma_x_err * one_over_e2_factor * pxl_size_um * 1e3
+        diameter_y_nm = sigma_y * one_over_e2_factor * pxl_size_um * 1e3
+        diameter_y_nm_err = sigma_y_err * one_over_e2_factor * pxl_size_um * 1e3
+
+        # print
+        dim1_char, dim2_char = self.scan_settings["plane_orientation"]
+        print(
+            f"1/e^2 diameter determined to be:\n{dim1_char}: {diameter_x_nm:.0f} +/- {diameter_x_nm_err:.0f} nm\n{dim2_char}: {diameter_y_nm:.0f} +/- {diameter_y_nm_err:.0f} nm"
+        )
+
+        if should_plot:
+            ellipse = Ellipse(
+                xy=(x0, y0),
+                width=sigma_x * one_over_e2_factor,
+                height=sigma_y * one_over_e2_factor,
+                angle=phi,
+            )
+            ellipse.set_facecolor((0, 0, 0, 0))
+            ellipse.set_edgecolor("red")
+            annotation = f"$1/e^2$: \n{dim1_char}: {diameter_x_nm:.0f} +/- {diameter_x_nm_err:.0f} nm\n{dim2_char}: {diameter_y_nm:.0f} +/- {diameter_y_nm_err:.0f} nm\n$\\chi^2$={fp.chi_sq_norm:.2f}"
+            with Plotter(**kwargs) as ax:
+                ax.imshow(img)
+                ax.add_artist(ellipse)
+                ax.annotate(
+                    annotation,
+                    ellipse._center,
+                    color="w",
+                    weight="bold",
+                    fontsize=11,
+                    ha="center",
+                    va="center",
+                )
+
+        return fp
 
 
 def calculate_calibrated_afterpulse(

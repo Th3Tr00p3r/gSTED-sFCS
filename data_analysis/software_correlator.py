@@ -57,7 +57,11 @@ class SoftwareCorrelator:
             LIB_NAME = "SoftCorrelatorDynamicLib_win32.so"
         self.LIB_PATH = self.LIB_DIR_PATH / LIB_NAME
 
-        soft_corr_dynamic_lib = CDLL(str(self.LIB_PATH), winmode=0)
+        try:
+            soft_corr_dynamic_lib = CDLL(str(self.LIB_PATH), winmode=0)
+        except OSError:
+            # TODO: fix DLL error on laptop (CAN'T CORRELATE AFTER THIS!)
+            return
         get_corr_params = soft_corr_dynamic_lib.getCorrelatorParams
         get_corr_params.restype = None
         get_corr_params.argtypes = [ndpointer(c_int), ndpointer(c_int)]
@@ -103,7 +107,7 @@ class SoftwareCorrelator:
         self,
         list_of_photon_arrays: List[np.ndarray],
         *args,
-        list_of_filter_arrays=None,
+        corr_filter_list=None,
         **kwargs,
     ) -> SoftwareCorrelatorListOutput:
         """Doc."""
@@ -122,8 +126,8 @@ class SoftwareCorrelator:
         correlator_output_list = []
         for idx, ts_split in enumerate(list_of_photon_arrays):
             if ts_split.size != 0:
-                if list_of_filter_arrays is not None:
-                    kwargs["filter_array"] = list_of_filter_arrays[idx]
+                if corr_filter_list is not None:
+                    kwargs["filter_array"] = corr_filter_list[idx]
                 corr_output = self.correlate(ts_split, *args, **kwargs)
                 correlator_output_list.append(corr_output)
                 if kwargs.get("is_verbose"):

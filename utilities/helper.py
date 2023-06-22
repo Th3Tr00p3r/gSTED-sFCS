@@ -26,6 +26,70 @@ EPS = sys.float_info.epsilon
 Number = TypeVar("Number", int, float)
 
 
+@dataclass
+class Vector:
+    """Doc."""
+
+    _x: float
+    _y: float
+    units: str
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
+
+    def __repr__(self):
+        return f"Vector(x={self.x:.2f}, y={self.y:.2f}, units={self.units})"
+
+    def __iter__(self):
+        yield from (self.x, self.y)
+
+    def __getitem__(self, idx):
+        return tuple(self)[idx]
+
+    def __len__(self):
+        return 2
+
+    def __neg__(self):
+        return Vector(-self.x, -self.y, self.units)
+
+    def __add__(self, other):
+        if self.units == other.units:
+            return Vector(self.x + other.x, self.y + other.y, self.units)
+        else:
+            raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
+
+    def __sub__(self, other):
+        if self.units == other.units:
+            return Vector(self.x - other.x, self.y - other.y, self.units)
+        else:
+            raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
+
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            return Vector(self.x * other, self.y * other, self.units)
+        else:
+            raise NotImplementedError(f"Can only multiply {type(self)} with scalars, for now")
+
+    __rmul__ = __mul__
+
+    def __eq__(self, other):
+        if isinstance(other, tuple) or self.units == other.units:
+            try:
+                return tuple(self) == other
+            except TypeError:
+                raise TypeError("Can only compare Limits to other instances or tuples")
+        else:
+            raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
+
+    def __round__(self, ndigits=None):
+        return Vector(round(self.x, ndigits=ndigits), round(self.y, ndigits=ndigits), self.units)
+
+
 class MemMapping:
     """
     A convenience class working with Numpy memory-mapping.
@@ -99,7 +163,7 @@ class MemMapping:
         self.min = mmap_sub_arr.min()
 
     def delete(self):
-        """Delete the on-dsk array"""
+        """Delete the on-disk array"""
 
         self._dump_file_path.unlink()
 
@@ -240,10 +304,10 @@ class Limits:
         self_copy.upper = self.upper**other
         return self_copy
 
-    def __round__(self):
+    def __round__(self, ndigits=None):
         self_copy = copy(self)
-        self_copy.lower = round(self.lower)
-        self_copy.upper = round(self.upper)
+        self_copy.lower = round(self.lower, ndigits=ndigits)
+        self_copy.upper = round(self.upper, ndigits=ndigits)
         return self_copy
 
     def __bool__(self):
@@ -260,7 +324,17 @@ class Limits:
             else:
                 return np.nonzero((arr >= self.lower) & (arr <= self.upper))[0]
         else:
-            raise TypeError("Argument 'arr' must be a Numpy ndarray!")
+            try:
+                arr = tuple(arr)
+            except TypeError:
+                raise TypeError(f"Argument 'arr' (type {type(arr)}) must be iterable!")
+            else:
+                if not as_bool:
+                    raise NotImplementedError(
+                        f"Can only return boolean values for 'arr' input of type {type(arr)}."
+                    )
+                else:
+                    return [self.lower <= elem <= self.upper for elem in arr]
 
     def as_dict(self):
         if self.dict_labels is not None:
@@ -293,13 +367,21 @@ class Limits:
 
 
 class Gate(Limits):
-    """Convenience class for defining time-gates in ns using the Limits class"""
+    """
+    Convenience class for defining time-gates in ns using the Limits class.
+    Note that 'hard gates' are not the same as TDC gates; lower/upper values
+    of a hard gate represent actual times while TDC values must be added the pulse
+    delay time to match the hard gate.
+    """
 
-    def __init__(self, *args, is_hard: bool = False, hard_gate=None, units: str = "ns", **kwargs):
+    # TODO: perhaps I should change this class such that tdc gates and hard gates are attributes (inheriting Limits)?
+    # This would have to involve proper handling of older measurements!
+
+    def __init__(self, *args, hard_gate=None, units: str = "ns", **kwargs):
         if not args:
             args = (0, np.inf)
         super().__init__(*args, **kwargs)  # initialize self as Limits
-        self.hard_gate = self if is_hard else hard_gate
+        self.hard_gate = Gate(hard_gate) if hard_gate else None
         self.units = units
 
         if self.lower < 0:
@@ -309,7 +391,7 @@ class Gate(Limits):
             self.lower = 0  # TESTESTEST
         #            raise ValueError(f"Gating limits {self} must be between 0 and positive infinity.")
 
-        if is_hard and self.upper == np.inf:
+        if self.hard_gate is not None and self.hard_gate.upper == np.inf:
             raise ValueError("Hardware gating must have a finite upper limit.")
 
         if self.lower > self.upper:
@@ -398,6 +480,22 @@ class InterpExtrap1D:
             ax.axvline(x=self.x_lims.lower, color=color, lw=1, ls="--")
             ax.axvline(x=self.x_lims.upper, color=color, lw=1, ls="--")
             ax.legend()
+
+
+def get_encompassing_rectangle_dims(
+    dims: Tuple[float, float], angle_deg: float
+) -> Tuple[float, float]:
+    """
+    Given dimensions of a rectangle (width, height) and an angle of rotation (clockwise from negative X-axis),
+    return the encompassing cartesian rectangle's dimensions.
+    """
+
+    w, h = dims
+    angle_rad = math.radians(angle_deg)
+
+    h_enc = h * math.sin(angle_rad - math.pi / 2) + w * math.sin(math.pi - angle_rad)
+    w_enc = h * math.cos(angle_rad - math.pi / 2) + w * math.cos(math.pi - angle_rad)
+    return (w_enc, h_enc)
 
 
 def nan_helper(y):
@@ -893,8 +991,8 @@ def center_of_mass(arr: np.ndarray) -> Tuple[float, ...]:
         """
 
         total_mass = arr.sum()
-        displacements = np.arange(arr.shape[dim])
         masses_at_displacements = np.atleast_2d(arr).sum(axis=dim)
+        displacements = np.arange(masses_at_displacements.size)
         return 1 / total_mass * np.dot(displacements, masses_at_displacements)
 
     return tuple(center_of_mass_of_dimension(arr, dim) for dim in range(len(arr.shape)))
@@ -939,7 +1037,12 @@ def deep_getattr(obj, deep_attr_name: str, default=None):
 def div_ceil(x: Number, y: Number) -> int:
     """Returns x divided by y rounded towards positive infinity"""
 
-    return int(-(-x // y))
+    # case x and y are divisible
+    if x / y == x // y:
+        return int(x // y)
+    # otherwise, round up
+    else:
+        return int(-(-x // y))
 
 
 def reverse_dict(dict_: dict, ignore_unhashable=False) -> dict:

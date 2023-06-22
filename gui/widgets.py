@@ -94,10 +94,11 @@ class QtWidgetCollection:
             for attr_name, val in obj.items():
                 with suppress(AttributeError):
                     # AttributeError - obj contains key with no matching wdgt in coll
-                    wdgt = getattr(self, attr_name)
-                    parent_gui = getattr(gui, wdgt.gui_parent_name)
-                    if not isinstance(val, QtWidgetAccess):
-                        wdgt.set(val, parent_gui)
+                    if val is not None:
+                        wdgt = getattr(self, attr_name)
+                        parent_gui = getattr(gui, wdgt.gui_parent_name)
+                        if not isinstance(val, QtWidgetAccess):
+                            wdgt.set(val, parent_gui)
         else:
             for wdgt in vars(self).values():
                 parent_gui = getattr(gui, wdgt.gui_parent_name)
@@ -187,7 +188,7 @@ MAIN_TYPES = [
     "QTabWidget",
     "QCheckBox",
     "QToolBox",
-    "QDial",
+    #    "QDial",
 ]
 
 SETTINGS_TYPES = [
@@ -268,6 +269,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", False),
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
     fix_shift=("fixShift", "QCheckBox", "options", False),
+    median_factor=("medFac", "QDoubleSpinBox", "options", False),
     should_auto_roi=("autoRoi", "QCheckBox", "options", False),
     should_alleviate_bright_pixels=("alleviateBrightPixels", "QCheckBox", "options", False),
     should_subtract_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
@@ -375,6 +377,8 @@ SOL_MEAS_COLL = QtWidgetCollection(
     prog_bar_wdgt=("solScanProgressBar", "QSlider", "main", True),
     scan_type=("solScanType", "QComboBox", "main", False),
     floating_z_amplitude_um=("solScanFloatingAmp", "QSpinBox", "main", False),
+    stage_pattern=("solScanStagePattern", "QComboBox", "main", False),
+    stage_dwelltime_min=("solScanStageDwell", "QDoubleSpinBox", "main", False),
     repeat=("repeatSolMeas", "QRadioButton", "main", False),
     final=("finalSolMeas", "QRadioButton", "main", False),
     max_file_size_mb=("solScanMaxFileSize", "QDoubleSpinBox", "main", False),
@@ -388,6 +392,7 @@ SOL_MEAS_COLL = QtWidgetCollection(
     g0_wdgt=("g0", "QDoubleSpinBox", "main", True),
     tau_wdgt=("decayTime", "QDoubleSpinBox", "main", True),
     plot_wdgt=("solScanAcf", None, "main", True),
+    should_fit=("shouldFit", "QCheckBox", "main", False),
     fit_led=("ledFit", "QIcon", "main", True),
     should_accumulate_corrfuncs=("accumAcf", "QCheckBox", "main", False),
     meas_queue=("measQueue", "QListWidget", "main", True),

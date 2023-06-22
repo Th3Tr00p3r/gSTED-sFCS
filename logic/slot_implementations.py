@@ -263,11 +263,38 @@ class MainWin:
                     f"{self._app.devices.scanners.log_ref}({axis}) was displaced {str(um_disp)} um"
                 )
 
-    def move_stage(self, dir: str, steps: int):
+    def move_stage(self, dir: str = None, steps: int = None):
         """Doc."""
 
-        self._app.loop.create_task(self._app.devices.stage.move(dir=dir, steps=steps))
-        logging.info(f"{self._app.devices.stage.log_ref} moved {str(steps)} steps {str(dir)}")
+        if dir and steps:
+            move_vec = helper.Vector(
+                steps * int(dir == "LEFT") - steps * int(dir == "RIGHT"),
+                steps * int(dir == "UP") - steps * int(dir == "DOWN"),
+                "steps",
+            )
+            self._app.loop.create_task(self._app.devices.stage.move(move_vec))
+        else:
+            self._app.loop.create_task(
+                self._app.devices.stage.move(helper.Vector(0, 0, "steps"), relative=False)
+            )
+
+    def set_stage_origin(self):
+        """Doc."""
+
+        stage_dvc = self._app.devices.stage
+
+        if stage_dvc.curr_pos != (0, 0):
+            pressed = dialog.QuestionDialog(
+                txt=f"Are you sure you wish to set {stage_dvc.curr_pos} as the new origin?",
+                title=f"Calibrate {stage_dvc.log_ref.capitalize()} Origin",
+            ).display()
+            if pressed is False:
+                return
+            else:
+                stage_dvc.set_origin()
+
+    def stage_move_to_last_pos(self):
+        self._app.loop.create_task(self._app.devices.stage.move_to_last_pos())
 
     def open_spad_interface(self) -> None:
         """Doc."""
@@ -347,9 +374,15 @@ class MainWin:
                 scan_params = {}
 
             scan_params["pattern"] = pattern
-            # get parameters from GUI
+            # get general scan parameters individually from GUI (can create a new widget collection for them and use .gui_to_dict)
             kwargs = wdgts.SOL_MEAS_COLL.gui_to_dict(self._app.gui)
             scan_params["floating_z_amplitude_um"] = kwargs["floating_z_amplitude_um"]
+            scan_params["stage_pattern"] = kwargs["stage_pattern"]
+            scan_params["stage_dwelltime_s"] = (
+                kwargs["stage_dwelltime_min"] * 60
+                if scan_params["stage_pattern"] != "None"
+                else None
+            )
 
             # add to FIFO queue
             self._app.meas_queue.append(
@@ -639,10 +672,10 @@ class MainWin:
 
         method_dict = {
             "Forward scan - actual counts per pixel": "forward",
-            "Forward scan - points per pixel": "forward normalization",
+            "Forward scan normalization - points per pixel": "forward normalization",
             "Forward scan - normalized": "forward normalized",
             "Backwards scan - actual counts per pixel": "backward",
-            "Backwards scan - points per pixel": "backward normalization",
+            "Backwards scan normalization - points per pixel": "backward normalization",
             "Backwards scan - normalized": "backward normalized",
             "Both scans - interlaced": "interlaced",
             "Both scans - averaged": "averaged",
@@ -723,12 +756,12 @@ class MainWin:
         """Doc."""
 
         img_scn_wdgt_fillout_dict = {
-            "Locate Plane - YZ Coarse": ["YZ", 15, 15, 10, 80, 1000, 20, 0.9, 1],
-            "MFC - XY compartment": ["XY", 70, 70, 0, 80, 1000, 20, 0.9, 1],
-            "GB -  XY Coarse": ["XY", 15, 15, 0, 80, 1000, 20, 0.9, 1],
-            "GB - XY bead area": ["XY", 5, 5, 0, 80, 1000, 20, 0.9, 1],
-            "GB - XY single bead": ["XY", 1, 1, 0, 80, 1000, 20, 0.9, 1],
-            "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, 80, 1000, 20, 0.9, 1],
+            "Locate Plane - YZ Coarse": ["YZ", 15, 15, 0, None, None, None, 0.9, 1],
+            "MFC - XY compartment": ["XY", 70, 70, 0, None, None, None, 0.9, 1],
+            "GB -  XY Coarse": ["XY", 15, 15, 0, None, None, None, 0.9, 1],
+            "GB - XY bead area": ["XY", 5, 5, 0, None, None, None, 0.9, 1],
+            "GB - XY single bead": ["XY", 1, 1, 0, None, None, None, 0.9, 1],
+            "GB - YZ single bead": ["YZ", 2.5, 2.5, 0, None, None, None, 0.9, 1],
         }
 
         wdgts.IMG_SCAN_COLL.obj_to_gui(self._gui, img_scn_wdgt_fillout_dict[curr_text])
@@ -779,14 +812,20 @@ class MainWin:
             "Standard Static": {
                 "scan_type": "static",
                 "repeat": True,
+                "should_fit": True,
+                "should_accumulate_corrfuncs": False,
             },
             "Standard Angular": {
                 "scan_type": "angular",
                 "regular": True,
+                "should_fit": False,
+                "should_accumulate_corrfuncs": True,
             },
             "Standard Circular": {
                 "scan_type": "circle",
                 "regular": True,
+                "should_fit": False,
+                "should_accumulate_corrfuncs": True,
             },
         }
 
@@ -1121,7 +1160,13 @@ class MainWin:
                     curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
                 except IndexError:
                     # legacy template which has no underscores
-                    curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[0]
+                    try:
+                        curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[
+                            0
+                        ]
+                    except IndexError:
+                        # 'freestyle' template
+                        curr_template_prefix = curr_template
 
             data_import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._app.gui)
             data_import_wdgts["new_template"].set(curr_template_prefix)
@@ -1147,7 +1192,11 @@ class MainWin:
                 curr_template_prefix = re.findall("(^.*)(?=_\\*\\.[a-z]{3})", curr_template)[0]
             except IndexError:
                 # legacy template which has no underscores
-                curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[0]
+                try:
+                    curr_template_prefix = re.findall("(^.*)(?=\\*\\.[a-z]{3})", curr_template)[0]
+                except IndexError:
+                    # 'freestyle' template
+                    curr_template_prefix = curr_template
 
         if new_template_prefix == curr_template_prefix:
             logging.warning(
@@ -1487,7 +1536,7 @@ class MainWin:
                 self.switch_data_type()
                 return
             # get the center plane image, in "forward"
-            image = ci_image_data.construct_plane_image("forward")
+            image = ci_image_data.construct_plane_image("forward normalized")
             # plot it (below)
             data_import_wdgts["img_preview_disp"].obj.display_image(
                 image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False
@@ -1528,10 +1577,8 @@ class MainWin:
                 # Inferring data_dype from template
                 data_type = self.infer_data_type_from_template(current_template)
 
-                # loading and correlating
+                # Plotting lifetime images
                 try:
-                    #                    with suppress(AttributeError):
-                    #                        # AttributeError - No directories found
                     meas = ImageSFCSMeasurement()
                     img_data = meas.generate_lifetime_image_stack_data(
                         file_path=curr_dir / current_template,
@@ -1542,8 +1589,8 @@ class MainWin:
                     from utilities.display import Plotter
 
                     with Plotter(
-                        super_title=current_template,
-                        subplots=(1, meas.tdc_image_data.image_stack_forward.shape[2]),
+                        super_title=f"{current_template}:\nLifetime Images",
+                        subplots=(1, meas.lifetime_image_data.image_stack_forward.shape[2]),
                     ) as axes:
                         try:
                             for plane_idx, ax in enumerate(axes):
@@ -1555,32 +1602,24 @@ class MainWin:
                             # 'Axes' object is not iterable
                             axes.imshow(img_data.construct_plane_image("forward normalized"))
 
-                #                    meas.correlate_data(
-                #                        cf_name=data_type,
-                #                        is_verbose=True,
-                #                        **options_dict,
-                #                    )
+                    # Plotting TDC images with resolution estimate
+                    img_data = meas.tdc_image_data
+
+                    with Plotter(
+                        super_title=f"{current_template}:\nResolution Estimate",
+                        subplots=(1, img_data.image_stack_forward.shape[2]),
+                    ) as axes:
+                        try:
+                            for plane_idx, ax in enumerate(axes):
+                                meas.estimate_spatial_resolution(parent_ax=ax, plane_idx=plane_idx)
+                                ax.set_title(f"Scan/Plane #{plane_idx+1}")
+                        except TypeError:
+                            # 'Axes' object is not iterable
+                            meas.estimate_spatial_resolution(parent_ax=axes)
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                     err_hndlr(exc, sys._getframe(), locals())
                     return
-
-            #            # save data and populate combobox
-            #            imported_combobox1 = wdgts.SOL_MEAS_ANALYSIS_COLL.imported_templates
-            #            imported_combobox2 = wdgts.SOL_EXP_ANALYSIS_COLL.imported_templates
-
-    #            self._app.analysis.loaded_measurements[current_template] = meas
-
-    #            imported_combobox1.obj.addItem(current_template)
-    #            imported_combobox2.obj.addItem(current_template)
-    #
-    #            imported_combobox1.set(current_template)
-    #            imported_combobox2.set(current_template)
-    #
-    #            logging.info(f"Data '{current_template}' ready for analysis.")
-    #
-    #            self.toggle_save_processed_enabled()  # refresh save option
-    #            self.toggle_load_processed_enabled(current_template)  # refresh load option
 
     ##########################
     ## Analysis Tab - Single Measurement
@@ -1684,6 +1723,7 @@ class MainWin:
 
         # TODO: make this dynamic (so I don't have to add/remove rows for each new option)
         loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
+        loading_options["median_factor"] = import_wdgts["median_factor"]
         loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"
         loading_options["should_alleviate_bright_pixels"] = import_wdgts[
             "should_alleviate_bright_pixels"
@@ -2089,6 +2129,10 @@ class MainWin:
                 wdgt_coll["g0_ratio"].set(conf_g0 / sted_g0)
             logging.info(f"Experiment '{experiment_name}' loaded successfully.")
 
+            # display existing TDC calibrations in appropriate tab
+            kwargs["gui_display"] = wdgt_coll["gui_display_tdc_cal"].obj
+            experiment.plot_tdc_calib(**kwargs)
+
             # estimate resolution
             kwargs["gui_display"] = wdgt_coll["gui_display_resolution"].obj
             experiment.estimate_spatial_resolution(**kwargs)
@@ -2112,7 +2156,7 @@ class MainWin:
         experiment_name = wdgts.SOL_EXP_ANALYSIS_COLL.loaded_experiments.get()
         return self._app.analysis.loaded_experiments.get(experiment_name)
 
-    def calibrate_tdc(self, **kwargs) -> None:
+    def calibrate_tdc(self) -> None:
         """Doc."""
 
         wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
@@ -2131,6 +2175,18 @@ class MainWin:
         else:
             display_kwargs["gui_display"] = wdgt_coll["gui_display_comp_lifetimes"].obj
             experiment.compare_lifetimes(**display_kwargs)
+            self.get_lifetime_params()
+
+    def get_lifetime_params(self):
+        """Doc."""
+
+        experiment = self.get_experiment()
+        if (
+            experiment is not None
+            and hasattr(experiment.sted, "scan_type")
+            and hasattr(experiment.confocal, "scan_type")
+        ):
+            wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
 
             if hasattr(experiment.sted, "scan_type") and hasattr(experiment.confocal, "scan_type"):
                 lt_params = experiment.get_lifetime_parameters()
@@ -2138,8 +2194,7 @@ class MainWin:
                 # display parameters in GUI
                 wdgt_coll["fluoresence_lifetime"].set(lt_params.lifetime_ns)
                 wdgt_coll["sigma_sted"].set(lt_params.sigma_sted)
-                calc_pulse_delay_ns = lt_params.laser_pulse_delay_ns
-                wdgt_coll["laser_pulse_delay"].set(calc_pulse_delay_ns)
+                wdgt_coll["laser_pulse_delay"].set(lt_params.laser_pulse_delay_ns)
 
     def assign_gate(self) -> None:
         """Doc."""
