@@ -42,13 +42,21 @@ Python-based control GUI and analysis software for our optical measurement syste
 
 - Eric IDE (optional, but was invalueable during development) - very useful for Python GUI projects.
 
+<<<<<<< HEAD
 - [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for the GUI (**installed with Eric IDE**).
+=======
+- [PyQt5](https://pypi.org/project/PyQt5/) - Qt-Python API, used for GUI and timers (**installed with Eric IDE**).
+>>>>>>> ef09f3a54f373388cb8e1fe45ac5fca064715d39
 
 - [qasync](https://github.com/CabbageDevelopment/qasync) - to make PyQt5 work with Python's `asyncio` library.
 
 - NumPy.
 
+<<<<<<< HEAD
 - matplotlib - used for plotting.
+=======
+- matplotlib - used for plotting (currently only the camera, later the graphs).
+>>>>>>> ef09f3a54f373388cb8e1fe45ac5fca064715d39
 
 - [pyVISA](https://pypi.org/project/PyVISA/) - communication with VISA-supported devices.
 
@@ -58,6 +66,10 @@ Python-based control GUI and analysis software for our optical measurement syste
 
 - [ftd2xx](https://github.com/snmishra/ftd2xx) - communication with UM232, which is a usb port to the FPGA (TDC data).
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> ef09f3a54f373388cb8e1fe45ac5fca064715d39
 ## Installing Eric IDE on Windows:
 
 Eric IDE is notoriously complicated to install properly. I've tried to make it easier with the following steps (assuming Python is installed and added to PATH):
