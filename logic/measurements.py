@@ -773,6 +773,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.set_current_and_end_times()
 
         # turn on lasers
+        # TODO: try to move turning on the laser to right bfore the loop (after moving stage) to avoid unnecessary excitation
         try:
             await self.toggle_lasers()
         except (MeasurementError, errors.DeviceError) as exc:
@@ -800,6 +801,8 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             if self.stage_pattern:
                 if not self.stage_dvc.is_on:
                     self.stage_dvc.toggle(True)
+                # redefine the origin
+                self.stage_dvc.set_origin()
                 await self.stage_dvc.move(next(self.stage_pattern), relative=False)
 
             self.is_running = True
