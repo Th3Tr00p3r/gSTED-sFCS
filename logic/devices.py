@@ -1450,12 +1450,18 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
                     self.is_moving = True
                     self.write(f"mx {vec.x}")
                     await asyncio.sleep(max(0.2, 0.5 * abs(vec.x / 500)))  # wait while moving
+                    logging.debug(
+                        f"{self.log_ref} moved {abs(vec.x)} steps {('RIGHT' if vec.x < 0 else 'LEFT')}"
+                    )
 
                 # then Y
                 if vec.y:
                     self.is_moving = True
                     self.write(f"my {vec.y}")
                     await asyncio.sleep(max(0.2, 0.5 + abs(vec.y / 1000)))  # wait while moving
+                    logging.debug(
+                        f"{self.log_ref} moved {abs(vec.y)} steps {('DOWN' if vec.x < 0 else 'UP')}"
+                    )
 
                 self.write("ryx ")  # release
                 self.is_moving = False
