@@ -65,21 +65,13 @@ pixelClockHighTicks,2
 pixelClockLowTicks,10
 maxScanFreq,40
 AIclkDiv,100
-<<<<<<< HEAD
 stepperStageStepsPerSampleDrop,1800
-=======
-stepperStageStepsPerSampleDrop,2100
->>>>>>> ef09f3a54f373388cb8e1fe45ac5fca064715d39
 syncDelay,49.61
 xOrigin,0.0
 yOrigin,0.0
 zOrigin,5.0
 xConv,59.01
-<<<<<<< HEAD
-yConv,114.99
-=======
 yConv,70.67
->>>>>>> ef09f3a54f373388cb8e1fe45ac5fca064715d39
 zConv,10.0
 excIdleTimer,60.0
 depIdleTimer,60.0
