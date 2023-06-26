@@ -1,4 +1,4 @@
-newTemplate,sol_angular_exc
+newTemplate,test_angular_exc
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
@@ -31,7 +31,7 @@ depPow,260
 depCurr,1500
 stageSteps,250
 spadGateWidth,98
-spadEffGateWidth,98
+spadEffGateWidth,1
 solAnalysisRemoveOverSpinner,2.0
 expStrctFctrGMin,0.01
 customGateLifetimesLower,0.5
@@ -54,8 +54,8 @@ psdDelay,0.0
 psdEffDelay,49.61
 dataMonth,6
 dataYear,2023
-dataDay,22
-dataTemplate1,sol_angular_exc_121735_*.pkl
+dataDay,26
+dataTemplate1,test_angular_exc_133431_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -81,16 +81,16 @@ solScanParamsStacked,0
 depModeStacked,0
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
 solAveragingPlotTemporal,True
 solAveragingPlotSpatial,False
 assignLoadedMeas,False
 assignRawData,True
-regularSolMeas,False
-repeatSolMeas,True
+regularSolMeas,True
+repeatSolMeas,False
 finalSolMeas,False
 currMode,True
 powMode,False

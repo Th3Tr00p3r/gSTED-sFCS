@@ -385,17 +385,22 @@ class MainWin:
             )
 
             # add to FIFO queue
-            self._app.meas_queue.append(
-                meas.SolutionMeasurementProcedure(
-                    app=self._app,
-                    scan_params=scan_params,
-                    laser_mode=laser_mode.lower(),
-                    processing_options=self.get_processing_options_as_dict(),
-                    **kwargs,
-                )
+            measurement = meas.SolutionMeasurementProcedure(
+                app=self._app,
+                scan_params=scan_params,
+                laser_mode=laser_mode.lower(),
+                processing_options=self.get_processing_options_as_dict(),
+                **kwargs,
             )
+            self._app.meas_queue.append(measurement)
+            gated_str = (
+                f"gated{self._app.devices.spad.settings['gate_ns'].hard_gate.lower}ns"
+                if self._app.devices.spad.settings["mode"] == "external"
+                else "FR"
+            )
+            stage_str = f"{measurement.initial_stage_pos_steps.x:.0f}_{measurement.initial_stage_pos_steps.y:.0f}"
             new_item = QListWidgetItem(
-                f"{kwargs['file_template']}_{pattern}_{laser_mode.lower()} - {kwargs['duration']:.0f} {kwargs['duration_units']}{' (REPEATED)' if kwargs['repeat'] else ''}{' (FINAL)' if kwargs['final'] else ''}"
+                f"{kwargs['file_template']}_{pattern}_{laser_mode.lower()}_{gated_str}_StepperPos{stage_str} - {kwargs['duration']:.0f} {kwargs['duration_units']}{' (REPEATED)' if kwargs['repeat'] else ''}{' (FINAL)' if kwargs['final'] else ''}"
             )
             self._gui.main.measQueue.addItem(new_item)
             self._gui.main.measQueue.setCurrentItem(new_item)
@@ -459,6 +464,8 @@ class MainWin:
                 self._app.devices.dep_laser.laser_toggle(False)
             # re-enable queue
             self._gui.main.measQueue.setEnabled(True)
+            # send stage to origin
+            await self._app.devices.stage.move(helper.Vector(0, 0, "steps"), relative=False)
             logging.debug("All measurements completed.")
         else:
             logging.info("No measurements in queue!")
@@ -2463,7 +2470,7 @@ class SettWin:
 
         # auto-fix the issue if needed
         ai_buffer = self._app.last_meas_data["full_data"]["scan_settings"]["ai"]
-        self._app.devices.scanners.recalibrate_y_galvo(scan_params, ai_buffer)
+        #        self._app.devices.scanners.recalibrate_y_galvo(scan_params, ai_buffer) # equate axes (wrong!)
 
         # display the AO_ext and AI in the appointed widget
         if should_display:

@@ -312,6 +312,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
 
     async def set_gate(self):
         """Doc."""
+        # TODO: this should probably be united with 'set_lower_gate()' (delayer)
 
         # set the maximum possible gate width according to the lower gate chosen
         laser_period_ns = round(1 / (self.laser_freq_mhz * 1e6) * 1e9)
@@ -438,10 +439,9 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             self.toggle_led_and_switch(is_being_switched_on)
             self.is_on = is_being_switched_on
 
-            # get existing settings
+            # get existing settings to ensure consistency (show in GUI - should be the same as requested)
             response, _ = await self.mpd_command([("RD", None), ("RP", None)])
             current_delay_ps, current_pulse_width_ns = cast(List[str], response)
-            # Show delay in GUI
             self.eff_delay_ns = (
                 int(cast(str, current_pulse_width_ns)) + int(cast(str, current_delay_ps)) * 1e-3
             )
@@ -1373,7 +1373,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     _x_pos: QtWidgetAccess
     _y_pos: QtWidgetAccess
-    LIMITS = Limits(-5000, 5000)
+    LIMITS = Limits(-6500, 6500)
     LAST_POS_FILEPATH = Path("last_stage_position.pkl")
 
     def __init__(self, app):
@@ -1449,19 +1449,22 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
                 if vec.x:
                     self.is_moving = True
                     self.write(f"mx {vec.x}")
-                    await asyncio.sleep(max(0.2, 0.5 * abs(vec.x / 500)))  # wait while moving
                     logging.debug(
                         f"{self.log_ref} moved {abs(vec.x)} steps {('RIGHT' if vec.x < 0 else 'LEFT')}"
                     )
+                    # TODO: the sleep factor should go in the settings
+                    # sleep and block - don't allow other things while movement hasn't finished (not movement in Y yet)
+                    time.sleep(0.2 + abs(vec.x / 750))  # wait while moving
 
                 # then Y
                 if vec.y:
                     self.is_moving = True
                     self.write(f"my {vec.y}")
-                    await asyncio.sleep(max(0.2, 0.5 + abs(vec.y / 1000)))  # wait while moving
                     logging.debug(
                         f"{self.log_ref} moved {abs(vec.y)} steps {('DOWN' if vec.x < 0 else 'UP')}"
                     )
+                    # TODO: the sleep factor should go in the settings
+                    await asyncio.sleep(0.2 + abs(vec.y / 750))  # wait while moving
 
                 self.write("ryx ")  # release
                 self.is_moving = False

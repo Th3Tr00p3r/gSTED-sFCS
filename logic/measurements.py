@@ -7,6 +7,7 @@ import re
 import sys
 import time
 from contextlib import suppress
+from copy import deepcopy
 from datetime import datetime as dt
 from pathlib import Path
 from types import SimpleNamespace
@@ -52,6 +53,8 @@ class MeasurementProcedure:
         )
         self.stage_dvc = app.devices.stage
 
+        self.initial_stage_pos_steps: helper.Vector = self.stage_dvc.curr_pos
+
         self._app = app
         self.type = type
 
@@ -68,7 +71,7 @@ class MeasurementProcedure:
         else:
             self.dep_power_mw = None
         # keep the detector/delayer state for setting up the measurement before running
-        self.spad_settings = self.spad_dvc.settings
+        self.spad_settings = deepcopy(self.spad_dvc.settings)
 
         self.file_template = file_template
         self.save_path = save_path
@@ -158,7 +161,7 @@ class MeasurementProcedure:
                         break
                     # check if stage_dwelltime_s was reached
                     if (
-                        stage_dwelltime_s := self.scan_params["stage_dwelltime_s"]
+                        stage_dwelltime_s := self.scan_params.get("stage_dwelltime_s")
                     ) is not None and time.perf_counter() - dwell_start_s >= stage_dwelltime_s:
                         break
 
@@ -185,6 +188,7 @@ class MeasurementProcedure:
             "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
             "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
             "detector_settings": getattr(self.spad_dvc, "settings", {}),
+            "stage_pos_um": self.initial_stage_pos_steps,
         }
         full_data["delayer_settings"] = (
             self.delayer_dvc.settings if self.delayer_dvc.is_on else None
@@ -379,13 +383,20 @@ class MeasurementProcedure:
                     f"Requested laser mode ({self.laser_mode}) was not attained."
                 )
 
-    def ready_detector(self) -> None:
+    async def ready_detector(self) -> None:
         """
         Set the detector and pulse delayer to their selected values
         before starting the measurement.
         """
 
-        # TODO: fix me!
+        # Gated measurement
+        if self.spad_settings["mode"] == "external":
+            await self.delayer_dvc.set_lower_gate(self.spad_settings["gate_ns"].hard_gate.lower)
+            await self.spad_dvc.set_gate()
+            await self.delayer_dvc.toggle(True)
+        # Free-runing measureement
+        else:
+            await self.delayer_dvc.toggle(False)
 
     def init_scan_tasks(self, ao_sample_mode: str) -> None:
         """Doc."""
@@ -620,13 +631,18 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             self.scan_params["plane_orientation"] = "XY"
 
         # stage pattern
-        if self.scan_params["stage_pattern"] == "Snake":
+        if self.scan_params.get("stage_pattern") == "Snake":
             enc_dims = helper.get_encompassing_rectangle_dims(
                 (self.scan_params["max_line_len_um"], self.scan_params["scan_width_um"]),
                 self.scan_params["angle_deg"],
             )
             sample_size = self.stage_dvc.steps_per_sample_droplet / self.stage_dvc.steps_per_um
-            self.stage_pattern = vector_snake_pattern(enc_dims, (sample_size, sample_size))
+            stage_curr_pos_um = self.stage_dvc.curr_pos.convert_units(
+                1 / self.stage_dvc.steps_per_um, "um"
+            )
+            self.stage_pattern = vector_snake_pattern(
+                enc_dims, (sample_size, sample_size), stage_curr_pos_um
+            )
         else:
             self.stage_pattern = None
 
@@ -649,13 +665,18 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
     def set_current_and_end_times(self) -> None:
         """Doc."""
 
+        # setup GUI
         curr_datetime = dt.now()
-        self.start_time_str = curr_datetime.strftime("%H%M%S")
         end_datetime = curr_datetime + datetime.timedelta(seconds=int(self.duration_s))
         with suppress(AttributeError):
             # AttributeError: no widgets
             self.start_time_wdgt.set(curr_datetime.time())
             self.end_time_wdgt.set(end_datetime.time())
+        # keep datetime string for file naming
+        self.start_time_str = curr_datetime.strftime("%H%M%S")
+        # initialize measurement time
+        self.start_time = time.perf_counter()
+        self.time_passed_s = 0
 
     def setup_scan(self):
         """Doc."""
@@ -769,18 +790,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
     async def run(self, should_save=True):  # NOQA C901
         """Doc."""
 
-        # initialize gui start/end times
-        self.set_current_and_end_times()
-
-        # turn on lasers
-        # TODO: try to move turning on the laser to right bfore the loop (after moving stage) to avoid unnecessary excitation
-        try:
-            await self.toggle_lasers()
-        except (MeasurementError, errors.DeviceError) as exc:
-            await self.stop()
-            errors.err_hndlr(exc, sys._getframe(), locals())
-            return
-
+        # Setup the scan
         try:
             if self.scanning:
                 self.setup_scan()
@@ -796,20 +806,28 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             errors.err_hndlr(exc, sys._getframe(), locals())
             return
 
-        else:
-            # Initialize the stage and move to first stage position (optional)
-            if self.stage_pattern:
-                if not self.stage_dvc.is_on:
-                    self.stage_dvc.toggle(True)
-                # redefine the origin
-                self.stage_dvc.set_origin()
-                await self.stage_dvc.move(next(self.stage_pattern), relative=False)
+        # setup detector
+        await self.ready_detector()
 
-            self.is_running = True
-            self.start_time = time.perf_counter()
-            self.time_passed_s = 0
-            file_num = 1
-            logging.info(f"Running {self.type} measurement")
+        # Initialize the stage and move to first stage position (optional)
+        if self.stage_pattern:
+            if not self.stage_dvc.is_on:
+                self.stage_dvc.toggle(True)
+            await self.stage_dvc.move(next(self.stage_pattern), relative=False)
+
+        # Lastly - turn on lasers
+        try:
+            await self.toggle_lasers()
+        except (MeasurementError, errors.DeviceError) as exc:
+            await self.stop()
+            errors.err_hndlr(exc, sys._getframe(), locals())
+            return
+
+        # initialize start/end times
+        self.set_current_and_end_times()
+        self.is_running = True
+        file_num = 1
+        logging.info(f"Running {self.type} measurement")
 
         try:
             while self.is_running and self.time_passed_s < self.duration_s:
@@ -854,7 +872,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.scanners_dvc.fill_ai_buffer()
 
                 # Move stage (optional)
-                if self.stage_pattern:
+                if self.stage_pattern and self.time_passed_s < self.duration_s:
                     await self.stage_dvc.move(next(self.stage_pattern), relative=False)
 
                 # show/add the ACF of the latest file in GUI (if not manually stopped)
@@ -894,11 +912,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 # if not saving a file, keep the last measurement in memory
                 self._app.last_meas_data = self._prep_meas_dict()
             await self.stop()
-
-        # Move to stage origin (optional)
-        if self.stage_pattern:
-            await self.stage_dvc.move(helper.Vector(0, 0, "steps"), relative=False)
-            self.stage_dvc.toggle(False)
 
 
 class MeasurementError(Exception):

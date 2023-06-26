@@ -14,9 +14,11 @@ from utilities.helper import Limits, Vector, unify_length
 def vector_snake_pattern(
     scan_dimensions_um: Tuple[float, float],
     sample_dimemsions_um: Tuple[float, float],
+    init_pos: Vector,
 ) -> Iterable:
     """Doc."""
 
+    # build set of scan centers
     scan_width_um, scan_height_um = scan_dimensions_um
     sample_width_um, sample_height_um = sample_dimemsions_um
 
@@ -35,7 +37,7 @@ def vector_snake_pattern(
     )
 
     scan_centers_um = [
-        Vector(scan_center[0], scan_center[1], "um")
+        Vector(scan_center[0], scan_center[1], "um") + init_pos
         for scan_center in product(x_centers, y_centers)
     ]
 
@@ -50,6 +52,10 @@ def vector_snake_pattern(
             snake_scan_centers_um += reversed(
                 scan_centers_um[segment_num : segment_num + n_scan_areas_y]
             )
+
+    logging.info(
+        f"Stage snake pattern was created: {len(scan_centers_um)} centers, {scan_width_um:.1f}x{scan_height_um:.1f}={scan_width_um*scan_height_um:.1f} um^2 each, spread over {sample_width_um:.1f}x{sample_height_um:.1f}={sample_width_um*sample_height_um:.1f} um^2"
+    )
 
     # return an infinite cyclical generator (snake goes back to head when reaches tail, indefinitely)
     return cycle(snake_scan_centers_um)
