@@ -490,6 +490,18 @@ class MainWin(QtWidgets.QMainWindow):
         """
 
         self.solScanParamsStacked.setCurrentIndex(index)
+        # if circular, enable the precession option
+        self.circShouldPrecess.setEnabled(index == 1)
+
+    @QtCore.pyqtSlot(int)
+    def on_solScanStagePattern_currentIndexChanged(self, index: int) -> None:
+        """
+        Change 'solScanStageDwell' enabled status
+        according to index of the combo box 'solScanStagePattern'.
+        """
+
+        # if not 'None', enable setting the Dwell Time
+        self.solScanStageDwell.setEnabled(not index == 0)
 
     @QtCore.pyqtSlot(str)
     def on_solScanType_currentTextChanged(self, txt: str) -> None:

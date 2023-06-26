@@ -1,5 +1,7 @@
 """Miscellaneous helper functions/classes"""
 
+from __future__ import annotations
+
 import asyncio
 import functools
 import math
@@ -88,6 +90,11 @@ class Vector:
 
     def __round__(self, ndigits=None):
         return Vector(round(self.x, ndigits=ndigits), round(self.y, ndigits=ndigits), self.units)
+
+    def convert_units(self, mul_factor: float, units_str: str) -> Vector:
+        """Return a units-converted copy of a Vector, based on supplied multiplication factor"""
+
+        return Vector(self.x * mul_factor, self.y * mul_factor, units_str)
 
 
 class MemMapping:

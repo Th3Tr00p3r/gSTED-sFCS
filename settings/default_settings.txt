@@ -28,6 +28,12 @@ pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
 pixelClockOutput,/Dev3/PFI12
 pixelClockOutputExt,/Dev1/PFI5
+excMod,PicoQuant
+excTriggerExtAddr,Dev1/port0/line6
+excTriggerIntAddr,Dev3/port0/
+excAddr,Dev1/port0/line6
+depShutterAddr,Dev3/port0/line11
+depModelQuery,getmodel
 AOXaddr,Dev3/ao2, Dev3/ao3
 AOYaddr,Dev3/ao0, Dev3/ao1
 AOZaddr,Dev1/ao1
@@ -40,12 +46,6 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-excMod,PicoQuant
-excTriggerExtAddr,Dev1/port0/line6
-excTriggerIntAddr,Dev3/port0/
-excAddr,Dev1/port0/line6
-depShutterAddr,Dev3/port0/line11
-depModelQuery,getmodel
 arduinoAddr,COM3
 spadBaudRate,115200
 spadTimeout,100
@@ -65,19 +65,19 @@ pixelClockHighTicks,2
 pixelClockLowTicks,10
 maxScanFreq,40
 AIclkDiv,100
-stepperStageStepsPerSampleDrop,1800
+stepperStageStepsPerSampleDrop,1500
 syncDelay,49.61
+excIdleTimer,60.0
+depIdleTimer,60.0
 xOrigin,0.0
 yOrigin,0.0
 zOrigin,5.0
 xConv,59.01
 yConv,70.67
 zConv,10.0
-excIdleTimer,60.0
-depIdleTimer,60.0
 stepperStageStepsPerUm,1.6
 counterTriggerEdge,Rising
+excTriggerSrc,External (TDC)
 AOtriggerEdge,Rising
 AOwfType,Sine
-excTriggerSrc,External (TDC)
 counterCIdupCountPrevention,True

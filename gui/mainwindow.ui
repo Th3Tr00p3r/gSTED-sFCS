@@ -2308,569 +2308,420 @@ File</string>
                 <property name="title">
                  <string>Scan Parameters</string>
                 </property>
-                <layout class="QGridLayout" name="gridLayout_29" columnstretch="0">
+                <layout class="QGridLayout" name="gridLayout_29" rowstretch="0,0" columnstretch="0">
                  <property name="spacing">
                   <number>0</number>
                  </property>
-                 <item row="0" column="0">
-                  <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,10,0">
+                 <item row="1" column="0">
+                  <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1,1,10">
                    <property name="spacing">
                     <number>0</number>
                    </property>
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_71" stretch="10,1,1,0,10">
-                     <property name="spacing">
-                      <number>0</number>
+                    <widget class="QGroupBox" name="groupBox_25">
+                     <property name="title">
+                      <string>Bleaching Mitigation</string>
                      </property>
-                     <item>
-                      <spacer name="horizontalSpacer_14">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_108">
-                       <item>
-                        <widget class="QLabel" name="label_63">
-                         <property name="minimumSize">
-                          <size>
-                           <width>60</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="text">
-                          <string>Scan Type:</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QComboBox" name="solScanType">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="minimumSize">
-                          <size>
-                           <width>70</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="maximumSize">
-                          <size>
-                           <width>70</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="palette">
-                          <palette>
-                           <active>
-                            <colorrole role="Button">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="Base">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="Window">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="Highlight">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="HighlightedText">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>0</red>
-                               <green>0</green>
-                               <blue>0</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                           </active>
-                           <inactive>
-                            <colorrole role="Button">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="Base">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="Window">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="Highlight">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="HighlightedText">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>0</red>
-                               <green>0</green>
-                               <blue>0</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                           </inactive>
-                           <disabled>
-                            <colorrole role="Button">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="Base">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="Window">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>255</red>
-                               <green>255</green>
-                               <blue>255</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="Highlight">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>0</red>
-                               <green>120</green>
-                               <blue>215</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                            <colorrole role="HighlightedText">
-                             <brush brushstyle="SolidPattern">
-                              <color alpha="255">
-                               <red>0</red>
-                               <green>0</green>
-                               <blue>0</blue>
-                              </color>
-                             </brush>
-                            </colorrole>
-                           </disabled>
-                          </palette>
-                         </property>
-                         <property name="styleSheet">
-                          <string notr="true">background-color: rgb(255, 255, 255);</string>
-                         </property>
-                         <property name="currentIndex">
-                          <number>2</number>
-                         </property>
-                         <item>
-                          <property name="text">
-                           <string>angular</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>circle</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>static</string>
-                          </property>
-                         </item>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="verticalLayout_152">
-                       <property name="spacing">
-                        <number>0</number>
-                       </property>
-                       <item>
-                        <widget class="QLabel" name="label_65">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="minimumSize">
-                          <size>
-                           <width>0</width>
-                           <height>0</height>
-                          </size>
-                         </property>
-                         <property name="font">
-                          <font>
-                           <pointsize>8</pointsize>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Floating Z
-Amplitude (um)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QSpinBox" name="solScanFloatingAmp">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="minimumSize">
-                          <size>
-                           <width>0</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                         <property name="maximumSize">
-                          <size>
-                           <width>60</width>
-                           <height>30</height>
-                          </size>
-                         </property>
-                         <property name="maximum">
-                          <number>10</number>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <widget class="QGroupBox" name="groupBox_24">
-                       <property name="title">
-                        <string>Stage Scan (Anti-Bleaching)</string>
-                       </property>
-                       <layout class="QHBoxLayout" name="horizontalLayout_20">
+                     <layout class="QHBoxLayout" name="horizontalLayout_71">
+                      <property name="spacing">
+                       <number>2</number>
+                      </property>
+                      <item>
+                       <spacer name="horizontalSpacer_18">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                      <item>
+                       <layout class="QVBoxLayout" name="verticalLayout_173">
                         <property name="spacing">
                          <number>2</number>
                         </property>
                         <item>
-                         <layout class="QVBoxLayout" name="verticalLayout_165">
-                          <property name="spacing">
-                           <number>2</number>
+                         <widget class="QLabel" name="label_80">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                            <horstretch>0</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
                           </property>
-                          <item>
-                           <widget class="QLabel" name="label_66">
-                            <property name="minimumSize">
-                             <size>
-                              <width>60</width>
-                              <height>20</height>
-                             </size>
-                            </property>
-                            <property name="text">
-                             <string>Pattern</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item>
-                           <widget class="QComboBox" name="solScanStagePattern">
-                            <property name="sizePolicy">
-                             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                              <horstretch>0</horstretch>
-                              <verstretch>0</verstretch>
-                             </sizepolicy>
-                            </property>
-                            <property name="minimumSize">
-                             <size>
-                              <width>70</width>
-                              <height>20</height>
-                             </size>
-                            </property>
-                            <property name="maximumSize">
-                             <size>
-                              <width>70</width>
-                              <height>20</height>
-                             </size>
-                            </property>
-                            <property name="palette">
-                             <palette>
-                              <active>
-                               <colorrole role="Button">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="Base">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="Window">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="Highlight">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="HighlightedText">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>0</red>
-                                  <green>0</green>
-                                  <blue>0</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                              </active>
-                              <inactive>
-                               <colorrole role="Button">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="Base">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="Window">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="Highlight">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="HighlightedText">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>0</red>
-                                  <green>0</green>
-                                  <blue>0</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                              </inactive>
-                              <disabled>
-                               <colorrole role="Button">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="Base">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="Window">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>255</red>
-                                  <green>255</green>
-                                  <blue>255</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="Highlight">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>0</red>
-                                  <green>120</green>
-                                  <blue>215</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                               <colorrole role="HighlightedText">
-                                <brush brushstyle="SolidPattern">
-                                 <color alpha="255">
-                                  <red>0</red>
-                                  <green>0</green>
-                                  <blue>0</blue>
-                                 </color>
-                                </brush>
-                               </colorrole>
-                              </disabled>
-                             </palette>
-                            </property>
-                            <property name="toolTip">
-                             <string>Pattern in which the stage moves positions to avoid bleaching the sample.</string>
-                            </property>
-                            <property name="styleSheet">
-                             <string notr="true">background-color: rgb(255, 255, 255);</string>
-                            </property>
-                            <property name="currentIndex">
-                             <number>0</number>
-                            </property>
-                            <item>
-                             <property name="text">
-                              <string>None</string>
-                             </property>
-                            </item>
-                            <item>
-                             <property name="text">
-                              <string>Snake</string>
-                             </property>
-                            </item>
-                           </widget>
-                          </item>
-                         </layout>
+                          <property name="minimumSize">
+                           <size>
+                            <width>60</width>
+                            <height>20</height>
+                           </size>
+                          </property>
+                          <property name="text">
+                           <string>Stage Pattern</string>
+                          </property>
+                         </widget>
                         </item>
                         <item>
-                         <layout class="QVBoxLayout" name="verticalLayout_166">
+                         <widget class="QComboBox" name="solScanStagePattern">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                            <horstretch>0</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
+                          </property>
+                          <property name="minimumSize">
+                           <size>
+                            <width>70</width>
+                            <height>20</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>999</width>
+                            <height>20</height>
+                           </size>
+                          </property>
+                          <property name="palette">
+                           <palette>
+                            <active>
+                             <colorrole role="Button">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="Base">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="Window">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="Highlight">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="HighlightedText">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>0</red>
+                                <green>0</green>
+                                <blue>0</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                            </active>
+                            <inactive>
+                             <colorrole role="Button">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="Base">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="Window">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="Highlight">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="HighlightedText">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>0</red>
+                                <green>0</green>
+                                <blue>0</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                            </inactive>
+                            <disabled>
+                             <colorrole role="Button">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="Base">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="Window">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>255</red>
+                                <green>255</green>
+                                <blue>255</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="Highlight">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>0</red>
+                                <green>120</green>
+                                <blue>215</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                             <colorrole role="HighlightedText">
+                              <brush brushstyle="SolidPattern">
+                               <color alpha="255">
+                                <red>0</red>
+                                <green>0</green>
+                                <blue>0</blue>
+                               </color>
+                              </brush>
+                             </colorrole>
+                            </disabled>
+                           </palette>
+                          </property>
+                          <property name="toolTip">
+                           <string>Pattern in which the stage moves positions to avoid bleaching the sample.</string>
+                          </property>
+                          <property name="styleSheet">
+                           <string notr="true">background-color: rgb(255, 255, 255);</string>
+                          </property>
+                          <property name="currentIndex">
+                           <number>0</number>
+                          </property>
+                          <item>
+                           <property name="text">
+                            <string>None</string>
+                           </property>
+                          </item>
+                          <item>
+                           <property name="text">
+                            <string>Snake</string>
+                           </property>
+                          </item>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QVBoxLayout" name="verticalLayout_174">
+                        <property name="spacing">
+                         <number>2</number>
+                        </property>
+                        <item>
+                         <widget class="QLabel" name="label_81">
+                          <property name="minimumSize">
+                           <size>
+                            <width>60</width>
+                            <height>20</height>
+                           </size>
+                          </property>
+                          <property name="text">
+                           <string>Max Dwell (min)</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QDoubleSpinBox" name="solScanStageDwell">
+                          <property name="toolTip">
+                           <string>Amount of time to scan in one position, before moving on to the next in the pattern.</string>
+                          </property>
+                          <property name="decimals">
+                           <number>1</number>
+                          </property>
+                          <property name="minimum">
+                           <double>0.100000000000000</double>
+                          </property>
+                          <property name="maximum">
+                           <double>99999.000000000000000</double>
+                          </property>
+                          <property name="singleStep">
+                           <double>0.100000000000000</double>
+                          </property>
+                          <property name="value">
+                           <double>10.000000000000000</double>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QVBoxLayout" name="verticalLayout_175">
+                        <property name="spacing">
+                         <number>2</number>
+                        </property>
+                        <item>
+                         <spacer name="verticalSpacer_4">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>40</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                        <item>
+                         <widget class="QLabel" name="label_128">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                            <horstretch>0</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
+                          </property>
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>0</height>
+                           </size>
+                          </property>
+                          <property name="font">
+                           <font>
+                            <pointsize>8</pointsize>
+                           </font>
+                          </property>
+                          <property name="text">
+                           <string>Floating Z
+Amplitude (um)</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QSpinBox" name="solScanFloatingAmp">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                            <horstretch>0</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
+                          </property>
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>20</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>999</width>
+                            <height>30</height>
+                           </size>
+                          </property>
+                          <property name="maximum">
+                           <number>10</number>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_12">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>40</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QVBoxLayout" name="verticalLayout_176">
+                        <property name="spacing">
+                         <number>2</number>
+                        </property>
+                        <item>
+                         <layout class="QVBoxLayout" name="verticalLayout_108">
                           <property name="spacing">
                            <number>2</number>
                           </property>
                           <item>
-                           <widget class="QLabel" name="label_67">
-                            <property name="minimumSize">
-                             <size>
-                              <width>60</width>
-                              <height>20</height>
-                             </size>
-                            </property>
+                           <widget class="QLabel" name="label_28">
                             <property name="text">
-                             <string>Dwell Time (min)</string>
+                             <string>Should Precess</string>
                             </property>
                            </widget>
                           </item>
                           <item>
-                           <widget class="QDoubleSpinBox" name="solScanStageDwell">
+                           <widget class="QCheckBox" name="circShouldPrecess">
                             <property name="toolTip">
-                             <string>Amount of time to scan in one position, before moving on to the next in the pattern.</string>
+                             <string>Precess the circle around a 5 times smaller circle at 1/1000 the speed</string>
                             </property>
-                            <property name="decimals">
-                             <number>1</number>
-                            </property>
-                            <property name="minimum">
-                             <double>0.100000000000000</double>
-                            </property>
-                            <property name="maximum">
-                             <double>99999.000000000000000</double>
-                            </property>
-                            <property name="singleStep">
-                             <double>0.100000000000000</double>
-                            </property>
-                            <property name="value">
-                             <double>10.000000000000000</double>
+                            <property name="text">
+                             <string/>
                             </property>
                            </widget>
                           </item>
                          </layout>
                         </item>
                        </layout>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacer_35">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                    </layout>
+                      </item>
+                      <item>
+                       <spacer name="horizontalSpacer_19">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
                    </item>
                    <item>
                     <widget class="QStackedWidget" name="solScanParamsStacked">
@@ -3719,16 +3570,6 @@ Amplitude (um)</string>
                         </layout>
                        </item>
                        <item>
-                        <widget class="QCheckBox" name="circShouldPrecess">
-                         <property name="toolTip">
-                          <string>Precess the circle around a 5 times smaller circle at 1/1000 the speed</string>
-                         </property>
-                         <property name="text">
-                          <string>Should Precess</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
                         <spacer name="verticalSpacer">
                          <property name="orientation">
                           <enum>Qt::Vertical</enum>
@@ -3840,6 +3681,247 @@ Pattern:</string>
                       </spacer>
                      </item>
                     </layout>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="0" column="0">
+                  <layout class="QHBoxLayout" name="horizontalLayout_70">
+                   <property name="spacing">
+                    <number>2</number>
+                   </property>
+                   <item>
+                    <spacer name="horizontalSpacer_17">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>197</width>
+                       <height>39</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <layout class="QVBoxLayout" name="verticalLayout_152">
+                     <property name="spacing">
+                      <number>2</number>
+                     </property>
+                     <item>
+                      <widget class="QLabel" name="label_65">
+                       <property name="minimumSize">
+                        <size>
+                         <width>60</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>Scan Type:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="solScanType">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>70</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>70</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="palette">
+                        <palette>
+                         <active>
+                          <colorrole role="Button">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="Base">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="Window">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="Highlight">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="HighlightedText">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>0</red>
+                             <green>0</green>
+                             <blue>0</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                         </active>
+                         <inactive>
+                          <colorrole role="Button">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="Base">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="Window">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="Highlight">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="HighlightedText">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>0</red>
+                             <green>0</green>
+                             <blue>0</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                         </inactive>
+                         <disabled>
+                          <colorrole role="Button">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="Base">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="Window">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>255</red>
+                             <green>255</green>
+                             <blue>255</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="Highlight">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>0</red>
+                             <green>120</green>
+                             <blue>215</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                          <colorrole role="HighlightedText">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>0</red>
+                             <green>0</green>
+                             <blue>0</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                         </disabled>
+                        </palette>
+                       </property>
+                       <property name="styleSheet">
+                        <string notr="true">background-color: rgb(255, 255, 255);</string>
+                       </property>
+                       <property name="currentIndex">
+                        <number>2</number>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>angular</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>circle</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>static</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_42">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>196</width>
+                       <height>39</height>
+                      </size>
+                     </property>
+                    </spacer>
                    </item>
                   </layout>
                  </item>
