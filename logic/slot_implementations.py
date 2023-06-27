@@ -422,6 +422,25 @@ class MainWin:
                 )
             )
 
+    def move_meas_in_queue(self, direction: str):
+        """Doc."""
+
+        if direction == "UP":
+            idx = -1
+        elif direction == "DOWN":
+            idx = 1
+        else:
+            raise ValueError(f"Direction must be 'UP' or 'DOWN' (got '{direction}')")
+
+        with suppress(IndexError):
+            # IndexError: no measurements in queue...
+            meas_idx = self._gui.main.measQueue.currentRow()
+            meas_str = self._gui.main.measQueue.takeItem(meas_idx)
+            self._gui.main.measQueue.insertItem(meas_idx + idx, meas_str)
+            self._gui.main.measQueue.setCurrentRow(meas_idx + idx)
+            meas = self._app.meas_queue.pop(meas_idx)
+            self._app.meas_queue.insert(meas_idx, meas)
+
     def remove_meas_from_queue(self):
         """Doc."""
 
@@ -516,6 +535,13 @@ class MainWin:
                     self.main_gui.solScanDur.setEnabled(self.main_gui.repeatSolMeas.isChecked())
                     self.main_gui.solScanDurUnits.setEnabled(False)
                     self.main_gui.solScanFileTemplate.setEnabled(False)
+                    self.main_gui.beginMeasurements.setEnabled(False)
+                    self.main_gui.removeMeasFromQueue.setEnabled(False)
+                    self.main_gui.moveMeasUpQueue.setEnabled(False)
+                    self.main_gui.moveMeasDownQueue.setEnabled(False)
+                    self.main_gui.startSolQueueExc.setEnabled(False)
+                    self.main_gui.startSolQueueSted.setEnabled(False)
+                    self.main_gui.startSolQueueDep.setEnabled(False)
 
                 elif meas.type == "SFCSImage":
                     self.main_gui.startImgScanExc.setEnabled(False)
@@ -547,6 +573,13 @@ class MainWin:
                 self.main_gui.solScanDur.setEnabled(True)
                 self.main_gui.solScanDurUnits.setEnabled(True)
                 self.main_gui.solScanFileTemplate.setEnabled(True)
+                self.main_gui.beginMeasurements.setEnabled(True)
+                self.main_gui.removeMeasFromQueue.setEnabled(True)
+                self.main_gui.moveMeasUpQueue.setEnabled(True)
+                self.main_gui.moveMeasDownQueue.setEnabled(True)
+                self.main_gui.startSolQueueExc.setEnabled(True)
+                self.main_gui.startSolQueueSted.setEnabled(True)
+                self.main_gui.startSolQueueDep.setEnabled(True)
 
             if meas.type == "SFCSImage":
                 self.main_gui.startImgScanExc.setEnabled(True)

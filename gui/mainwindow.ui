@@ -4914,11 +4914,106 @@ All Measurements</string>
                          </widget>
                         </item>
                         <item>
-                         <widget class="QPushButton" name="removeMeasFromQueue">
-                          <property name="text">
-                           <string>Remove Selected Measurement</string>
+                         <layout class="QHBoxLayout" name="horizontalLayout_20" stretch="2,10,2">
+                          <property name="spacing">
+                           <number>2</number>
                           </property>
-                         </widget>
+                          <item>
+                           <widget class="QToolButton" name="moveMeasUpQueue">
+                            <property name="enabled">
+                             <bool>true</bool>
+                            </property>
+                            <property name="sizePolicy">
+                             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                              <horstretch>0</horstretch>
+                              <verstretch>0</verstretch>
+                             </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                             <size>
+                              <width>0</width>
+                              <height>0</height>
+                             </size>
+                            </property>
+                            <property name="maximumSize">
+                             <size>
+                              <width>9999</width>
+                              <height>9999</height>
+                             </size>
+                            </property>
+                            <property name="toolTip">
+                             <string>Move selected measurement
+UP the queue</string>
+                            </property>
+                            <property name="text">
+                             <string>...</string>
+                            </property>
+                            <property name="shortcut">
+                             <string/>
+                            </property>
+                            <property name="popupMode">
+                             <enum>QToolButton::DelayedPopup</enum>
+                            </property>
+                            <property name="autoRaise">
+                             <bool>false</bool>
+                            </property>
+                            <property name="arrowType">
+                             <enum>Qt::LeftArrow</enum>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QPushButton" name="removeMeasFromQueue">
+                            <property name="text">
+                             <string>Remove Selected Measurement</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QToolButton" name="moveMeasDownQueue">
+                            <property name="enabled">
+                             <bool>true</bool>
+                            </property>
+                            <property name="sizePolicy">
+                             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                              <horstretch>0</horstretch>
+                              <verstretch>0</verstretch>
+                             </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                             <size>
+                              <width>0</width>
+                              <height>0</height>
+                             </size>
+                            </property>
+                            <property name="maximumSize">
+                             <size>
+                              <width>9999</width>
+                              <height>9999</height>
+                             </size>
+                            </property>
+                            <property name="toolTip">
+                             <string>Move selected measurement
+DOWN the queue</string>
+                            </property>
+                            <property name="text">
+                             <string>...</string>
+                            </property>
+                            <property name="shortcut">
+                             <string>Shift+Right</string>
+                            </property>
+                            <property name="popupMode">
+                             <enum>QToolButton::DelayedPopup</enum>
+                            </property>
+                            <property name="autoRaise">
+                             <bool>false</bool>
+                            </property>
+                            <property name="arrowType">
+                             <enum>Qt::RightArrow</enum>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
                         </item>
                        </layout>
                       </widget>

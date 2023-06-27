@@ -65,7 +65,7 @@ pixelClockHighTicks,2
 pixelClockLowTicks,10
 maxScanFreq,40
 AIclkDiv,100
-stepperStageStepsPerSampleDrop,1500
+stepperStageStepsPerSampleDrop,1200
 syncDelay,49.61
 excIdleTimer,60.0
 depIdleTimer,60.0
