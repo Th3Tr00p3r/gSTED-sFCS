@@ -4742,6 +4742,9 @@ Pattern:</string>
                        </property>
                        <item>
                         <widget class="QPushButton" name="stopMeasurement">
+                         <property name="enabled">
+                          <bool>false</bool>
+                         </property>
                          <property name="text">
                           <string>Stop
 Current Measurement</string>
@@ -4750,6 +4753,9 @@ Current Measurement</string>
                        </item>
                        <item>
                         <widget class="QPushButton" name="stopMeasurements">
+                         <property name="enabled">
+                          <bool>false</bool>
+                         </property>
                          <property name="text">
                           <string>Stop
 All Measurements</string>

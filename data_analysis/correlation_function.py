@@ -1831,10 +1831,11 @@ class SolutionSFCSExperiment:
         conf_t = conf_t[np.isfinite(conf_hist)]
         conf_hist = conf_hist[np.isfinite(conf_hist)]
 
-        sted_hist = sted.tdc_calib.all_hist_norm
-        sted_t = sted.tdc_calib.t_hist
-        sted_t = sted_t[np.isfinite(sted_hist)]
-        sted_hist = sted_hist[np.isfinite(sted_hist)]
+        if sted.is_loaded:
+            sted_hist = sted.tdc_calib.all_hist_norm
+            sted_t = sted.tdc_calib.t_hist
+            sted_t = sted_t[np.isfinite(sted_hist)]
+            sted_hist = sted_hist[np.isfinite(sted_hist)]
 
         h_max, j_max = conf_hist.max(), conf_hist.argmax()
         t_max = conf_t[j_max]
@@ -1850,73 +1851,78 @@ class SolutionSFCSExperiment:
         conf_params = conf.tdc_calib.fit_lifetime_hist(
             fit_range=fit_range, fit_param_estimate=beta0
         )
+        lifetime_ns = conf_params.beta["tau"]
 
         # remove background
-        sted_bg = np.mean(sted_hist[Limits(bg_range).valid_indices(sted_t)])
         conf_bg = np.mean(conf_hist[Limits(bg_range).valid_indices(conf_t)])
-        sted_hist = sted_hist - sted_bg
         conf_hist = conf_hist - conf_bg
+        if sted.is_loaded:
+            sted_bg = np.mean(sted_hist[Limits(bg_range).valid_indices(sted_t)])
+            sted_hist = sted_hist - sted_bg
 
-        j = conf_t < 20
-        t = conf_t[j]
-        hist_ratio = conf_hist[j] / np.interp(t, sted_t, sted_hist, right=0)
-        if drop_idxs:
-            j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
-            t = t[j]
-            hist_ratio = hist_ratio[j]
+            j = conf_t < 20
+            t = conf_t[j]
+            hist_ratio = conf_hist[j] / np.interp(t, sted_t, sted_hist, right=0)
+            if drop_idxs:
+                j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
+                t = t[j]
+                hist_ratio = hist_ratio[j]
 
-        title = "Robust Linear Fit of the Linear Part of the Histogram Ratio"
-        with Plotter(figsize=(11.25, 7.5), super_title=title, **kwargs) as ax:
+            title = "Robust Linear Fit of the Linear Part of the Histogram Ratio"
+            with Plotter(figsize=(11.25, 7.5), super_title=title, **kwargs) as ax:
 
-            # Using inner Plotter for manual selection
-            title = "Use the mouse to place 2 markers\nlimiting the linear range:"
-            linear_range = Limits()
-            with Plotter(
-                parent_ax=ax, super_title=title, selection_limits=linear_range, **kwargs
-            ) as ax:
-                ax.plot(t, hist_ratio, label="hist_ratio")
-                ax.legend()
+                # Using inner Plotter for manual selection
+                title = "Use the mouse to place 2 markers\nlimiting the linear range:"
+                linear_range = Limits()
+                with Plotter(
+                    parent_ax=ax, super_title=title, selection_limits=linear_range, **kwargs
+                ) as ax:
+                    ax.plot(t, hist_ratio, label="hist_ratio")
+                    ax.legend()
 
-            j_selected = linear_range.valid_indices(t)
+                j_selected = linear_range.valid_indices(t)
 
-            if sted_field == "symmetric":
-                # Robustly fit linear model with RANSAC algorithm
-                ransac = linear_model.RANSACRegressor()
-                ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
-                p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
+                if sted_field == "symmetric":
+                    # Robustly fit linear model with RANSAC algorithm
+                    ransac = linear_model.RANSACRegressor()
+                    ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
+                    p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
 
-                ax.plot(t[j_selected], hist_ratio[j_selected], "oy", label="hist_ratio")
-                ax.plot(
-                    t[j_selected],
-                    np.polyval([p1, p0], t[j_selected]),
-                    "r",
-                    label=["linear range", "robust fit"],
-                )
-                ax.legend()
+                    ax.plot(t[j_selected], hist_ratio[j_selected], "oy", label="hist_ratio")
+                    ax.plot(
+                        t[j_selected],
+                        np.polyval([p1, p0], t[j_selected]),
+                        "r",
+                        label=["linear range", "robust fit"],
+                    )
+                    ax.legend()
 
-                lifetime_ns = conf_params.beta["tau"]
-                sigma_sted = p1 * lifetime_ns
-                try:
-                    laser_pulse_delay_ns = (1 - p0) / p1
-                except RuntimeWarning:
-                    laser_pulse_delay_ns = None
+                    sigma_sted = p1 * lifetime_ns
+                    try:
+                        laser_pulse_delay_ns = (1 - p0) / p1
+                    except RuntimeWarning:
+                        laser_pulse_delay_ns = None
 
-            elif sted_field == "paraboloid":
-                fit_params = curve_fit_lims(
-                    "ratio_of_lifetime_histograms_fit",
-                    param_estimates=(2, 1, 1),
-                    xs=t[j_selected],
-                    ys=hist_ratio[j_selected],
-                    ys_errors=np.ones(j_selected.sum()),
-                    should_plot=True,
-                )
+                elif sted_field == "paraboloid":
+                    fit_params = curve_fit_lims(
+                        "ratio_of_lifetime_histograms_fit",
+                        param_estimates=(2, 1, 1),
+                        xs=t[j_selected],
+                        ys=hist_ratio[j_selected],
+                        ys_errors=np.ones(j_selected.sum()),
+                        should_plot=True,
+                    )
 
-                lifetime_ns = conf_params.beta["tau"]
-                sigma_sted = (
-                    fit_params.beta["sigma_x"] * lifetime_ns,
-                    fit_params.beta["sigma_y"] * lifetime_ns,
-                )
-                laser_pulse_delay_ns = fit_params.beta["t0"]
+                    sigma_sted = (
+                        fit_params.beta["sigma_x"] * lifetime_ns,
+                        fit_params.beta["sigma_y"] * lifetime_ns,
+                    )
+                    laser_pulse_delay_ns = fit_params.beta["t0"]
+
+        # no STED! only (confocal) lifetime is available
+        else:
+            sigma_sted = 0
+            laser_pulse_delay_ns = 0
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params

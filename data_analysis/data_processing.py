@@ -471,7 +471,10 @@ class RawFileData:
             except IndexError:
                 return None
         else:
+            # TODO: IS THIS A MISTAKE??
             return self._pulse_runtime
+
+    #            return self._line_num
 
     @line_num.setter
     def line_num(self, new: np.ndarray):
@@ -1663,6 +1666,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 **kwargs,
             )
         except RuntimeError as exc:
+            # TODO: this should just be an error, and handled as such up the call chain
             print(f"{exc} Skipping file.")
             return None
 
@@ -1734,7 +1738,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 img_bw = self._threshold_and_smooth(img.copy())
             except ValueError:
                 raise RuntimeError("Automatic ROI selection: Thresholding failed")
-                return None
         elif roi_selection == "all":
             img_bw = np.full(img.shape, True)
         else:
@@ -1762,6 +1765,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         if kwargs.get("is_verbose"):
             print("Building ROI...", end=" ")
 
+        # TODO: this is an experimantal feature - it should be fixed so that only the "best" (least brightest spots) of each file are used
         if kwargs.get("should_alleviate_bright_pixels"):
             if kwargs.get("is_verbose"):
                 print("Getting rid of rows with bright spots on the single-scan level...", end=" ")
@@ -1786,10 +1790,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
                 # Handle faulty scans
                 if scan_prt.size < 100:
-                    print(
+                    raise RuntimeError(
                         f"One of the single scans (index {scan_idx}) is faulty. Ignoring whole file."
                     )
-                    return None
 
                 # prepare scan image to discriminate bad rows (with bright pixels)
                 scan_img, _, scan_pixel_num, scan_line_num, _ = self.convert_angular_scan_to_image(
@@ -1888,6 +1891,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     img_bw, pulse_runtime + prt_shift, self.laser_freq_hz, ao_sampling_freq_hz
                 )
             except IndexError:
+                # TODO: this should just be an error, and handled as such up the call chain
                 if kwargs.get("is_verbose"):
                     print("ROI is empty (need to figure out the cause). Skipping file.\n")
                 return None

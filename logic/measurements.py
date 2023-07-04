@@ -188,7 +188,6 @@ class MeasurementProcedure:
             "laser_freq_mhz": self.tdc_dvc.laser_freq_mhz,
             "avg_cnt_rate_khz": self.counter_dvc.avg_cnt_rate_khz,
             "detector_settings": getattr(self.spad_dvc, "settings", {}),
-            "stage_pos_um": self.initial_stage_pos_steps,
         }
         full_data["delayer_settings"] = (
             self.delayer_dvc.settings if self.delayer_dvc.is_on else None
@@ -197,6 +196,8 @@ class MeasurementProcedure:
         if self.scanning:
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
             full_data["scan_settings"] = dict(
+                stage_pattern=self.scan_params.get("stage_pattern"),
+                initial_stage_pos_steps=self.initial_stage_pos_steps,
                 pattern=self.scan_params["pattern"],
                 ai=np.array(self.scanners_dvc.ai_buffer, dtype=np.float32),
                 ao=self.ao_buffer.T,
@@ -871,9 +872,12 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 self.counter_dvc.fill_ci_buffer()
                 self.scanners_dvc.fill_ai_buffer()
 
-                # Move stage (optional)
-                if self.stage_pattern and self.time_passed_s < self.duration_s:
-                    await self.stage_dvc.move(next(self.stage_pattern), relative=False)
+                # Move stage to next center or to initial position if neasurement is done or manually stopped (optional)
+                if self.stage_pattern:
+                    if (self.time_passed_s < self.duration_s) or not self.is_running:
+                        await self.stage_dvc.move(self.initial_stage_pos_steps, relative=False)
+                    else:
+                        await self.stage_dvc.move(next(self.stage_pattern), relative=False)
 
                 # show/add the ACF of the latest file in GUI (if not manually stopped)
                 if self.should_disp_acf and self.is_running:

@@ -354,13 +354,6 @@ class MainWin:
                 title="Re-Calibrate Delayer Synchronization Time",
             ).display()
 
-    def show_stage_dock(self):
-        """Make the laser dock visible (convenience)."""
-
-        if not self.main_gui.stepperDock.isVisible():
-            self.main_gui.stepperDock.setVisible(True)
-            self.main_gui.actionStepper_Stage_Control.setChecked(True)
-
     def add_meas_to_queue(self, meas_type=None, laser_mode=None, **kwargs):
         """Doc."""
 
@@ -439,7 +432,7 @@ class MainWin:
             self._gui.main.measQueue.insertItem(meas_idx + idx, meas_str)
             self._gui.main.measQueue.setCurrentRow(meas_idx + idx)
             meas = self._app.meas_queue.pop(meas_idx)
-            self._app.meas_queue.insert(meas_idx, meas)
+            self._app.meas_queue.insert(meas_idx + idx, meas)
 
     def remove_meas_from_queue(self):
         """Doc."""
@@ -483,8 +476,8 @@ class MainWin:
                 self._app.devices.dep_laser.laser_toggle(False)
             # re-enable queue
             self._gui.main.measQueue.setEnabled(True)
-            # send stage to origin
-            await self._app.devices.stage.move(helper.Vector(0, 0, "steps"), relative=False)
+            # Turn off stage
+            self._app.devices.stage.toggle(False)
             logging.debug("All measurements completed.")
         else:
             logging.info("No measurements in queue!")
@@ -536,6 +529,8 @@ class MainWin:
                     self.main_gui.solScanDurUnits.setEnabled(False)
                     self.main_gui.solScanFileTemplate.setEnabled(False)
                     self.main_gui.beginMeasurements.setEnabled(False)
+                    self.main_gui.stopMeasurements.setEnabled(True)
+                    self.main_gui.stopMeasurement.setEnabled(True)
                     self.main_gui.removeMeasFromQueue.setEnabled(False)
                     self.main_gui.moveMeasUpQueue.setEnabled(False)
                     self.main_gui.moveMeasDownQueue.setEnabled(False)
@@ -574,6 +569,8 @@ class MainWin:
                 self.main_gui.solScanDurUnits.setEnabled(True)
                 self.main_gui.solScanFileTemplate.setEnabled(True)
                 self.main_gui.beginMeasurements.setEnabled(True)
+                self.main_gui.stopMeasurements.setEnabled(False)
+                self.main_gui.stopMeasurement.setEnabled(False)
                 self.main_gui.removeMeasFromQueue.setEnabled(True)
                 self.main_gui.moveMeasUpQueue.setEnabled(True)
                 self.main_gui.moveMeasDownQueue.setEnabled(True)
@@ -854,18 +851,21 @@ class MainWin:
                 "repeat": True,
                 "should_fit": True,
                 "should_accumulate_corrfuncs": False,
+                "stage_pattern": "None",
             },
             "Standard Angular": {
                 "scan_type": "angular",
                 "regular": True,
                 "should_fit": False,
                 "should_accumulate_corrfuncs": True,
+                "stage_pattern": "Snake",
             },
             "Standard Circular": {
                 "scan_type": "circle",
                 "regular": True,
                 "should_fit": False,
                 "should_accumulate_corrfuncs": True,
+                "stage_pattern": "Snake",
             },
         }
 
@@ -2221,20 +2221,17 @@ class MainWin:
         """Doc."""
 
         experiment = self.get_experiment()
-        if (
-            experiment is not None
-            and hasattr(experiment.sted, "scan_type")
-            and hasattr(experiment.confocal, "scan_type")
-        ):
+        if experiment is not None and hasattr(experiment.confocal, "scan_type"):
             wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
 
-            if hasattr(experiment.sted, "scan_type") and hasattr(experiment.confocal, "scan_type"):
+            if hasattr(experiment.confocal, "scan_type"):
                 lt_params = experiment.get_lifetime_parameters()
 
                 # display parameters in GUI
                 wdgt_coll["fluoresence_lifetime"].set(lt_params.lifetime_ns)
-                wdgt_coll["sigma_sted"].set(lt_params.sigma_sted)
                 wdgt_coll["laser_pulse_delay"].set(lt_params.laser_pulse_delay_ns)
+                if hasattr(experiment.sted, "scan_type"):
+                    wdgt_coll["sigma_sted"].set(lt_params.sigma_sted)
 
     def assign_gate(self) -> None:
         """Doc."""

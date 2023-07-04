@@ -1373,7 +1373,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     _x_pos: QtWidgetAccess
     _y_pos: QtWidgetAccess
-    LIMITS = Limits(-8000, 8000)
+    LIMITS = Limits(-5000, 5000)
     LAST_POS_FILEPATH = Path("last_stage_position.pkl")
 
     def __init__(self, app):
