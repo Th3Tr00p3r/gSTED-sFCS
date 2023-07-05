@@ -80,13 +80,17 @@ class Vector:
     __rmul__ = __mul__
 
     def __eq__(self, other):
-        if isinstance(other, tuple) or self.units == other.units:
-            try:
-                return tuple(self) == other
-            except TypeError:
-                raise TypeError("Can only compare Limits to other instances or tuples")
-        else:
-            raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
+        try:
+            if isinstance(other, tuple) or self.units == other.units:
+                try:
+                    return tuple(self) == other
+                except TypeError:
+                    raise TypeError("Can only compare Vectors to other instances or tuples")
+            else:
+                raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
+        except AttributeError:
+            # other has no 'units'
+            raise TypeError("Can only compare Vectors to other instances or tuples")
 
     def __round__(self, ndigits=None):
         return Vector(round(self.x, ndigits=ndigits), round(self.y, ndigits=ndigits), self.units)
@@ -959,9 +963,12 @@ def can_float(value: Any) -> bool:
         float(value)
         return True
     except (ValueError, TypeError):
-        if value == "-":  # consider hyphens part of float (minus sign)
-            return True
-        return False
+        try:
+            if value == "-":  # consider hyphens part of float (minus sign)
+                return True
+            return False
+        except TypeError:
+            return False
 
 
 def str_to_num(x):
