@@ -290,7 +290,7 @@ class CorrFunc:
 
         # calculate split durations
         self.split_durations_s = [
-            (split[0 if split.ndim != 1 else slice(None)] / self.laser_freq_hz).sum()
+            split[0 if split.ndim != 1 else slice(None)].sum() / self.laser_freq_hz
             for split in time_stamp_split_list
         ]
 
@@ -349,12 +349,18 @@ class CorrFunc:
                 # ext. afterpulse might be shorter/longer
                 self.cf_cr[idx] -= unify_length(self.subtracted_afterpulsing, (lag_len,))
 
-        self.countrate_list = corr_output.countrate_list
         try:  # xcorr
-            self.countrate_a = np.mean([countrate_pair.a for countrate_pair in self.countrate_list])
-            self.countrate_b = np.mean([countrate_pair.b for countrate_pair in self.countrate_list])
+            self.countrate_a = np.mean(
+                [countrate_pair.a for countrate_pair in corr_output.countrate_list]
+            )
+            self.countrate_b = np.mean(
+                [countrate_pair.b for countrate_pair in corr_output.countrate_list]
+            )
         except AttributeError:  # autocorr
-            self.countrate = np.mean([countrate for countrate in self.countrate_list])
+            self.countrate = np.mean([countrate for countrate in corr_output.countrate_list])
+
+        # keep all countrates
+        self.countrate_list = corr_output.countrate_list
 
     def average_correlation(
         self,
@@ -836,7 +842,7 @@ class SolutionSFCSMeasurement:
             (self.avg_cnt_rate_khz * 1e3 * self.duration_min * 60) * 7 / 1e6
         )
         print(
-            "total_byte_data_size_estimate_mb (all files): ", total_byte_data_size_estimate_mb
+            f"total_byte_data_size_estimate_mb (all files): {total_byte_data_size_estimate_mb:.2f}"
         )  # TESTESTEST
         if (
             should_parallel_process

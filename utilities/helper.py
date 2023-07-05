@@ -51,7 +51,7 @@ class Vector:
         yield from (self.x, self.y)
 
     def __getitem__(self, idx):
-        return tuple(self)[idx]
+        return tuple(self.x, self.y)[idx]
 
     def __len__(self):
         return 2

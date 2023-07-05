@@ -471,10 +471,7 @@ class RawFileData:
             except IndexError:
                 return None
         else:
-            # TODO: IS THIS A MISTAKE??
-            return self._pulse_runtime
-
-    #            return self._line_num
+            return self._line_num
 
     @line_num.setter
     def line_num(self, new: np.ndarray):

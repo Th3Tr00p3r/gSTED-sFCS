@@ -874,7 +874,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
                 # Move stage to next center or to initial position if neasurement is done or manually stopped (optional)
                 if self.stage_pattern:
-                    if (self.time_passed_s < self.duration_s) or not self.is_running:
+                    if (self.time_passed_s >= self.duration_s) or not self.is_running:
                         await self.stage_dvc.move(self.initial_stage_pos_steps, relative=False)
                     else:
                         await self.stage_dvc.move(next(self.stage_pattern), relative=False)
