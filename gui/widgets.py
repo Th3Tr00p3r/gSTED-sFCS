@@ -291,6 +291,7 @@ SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
     plot_spatial=("solAveragingPlotSpatial", "QRadioButton", "main", False),
     plot_temporal=("solAveragingPlotTemporal", "QRadioButton", "main", False),
     row_acf_disp=("solScanAcfDisp", None, "main", True),
+    countrate_disp=("solScanCountrateDisp", None, "main", True),
     imported_templates=("importedSolDataTemplates1", "QComboBox", "main", True),
     scan_img_file_num=("scanImgFileNum", "QSpinBox", "main", True),
     should_bw_mask=("bwMask", "QCheckBox", "main", False),

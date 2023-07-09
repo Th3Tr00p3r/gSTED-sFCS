@@ -1975,6 +1975,15 @@ class MainWin:
                 )
                 sol_data_analysis_wdgts["row_acf_disp"].obj.entitle_and_label(x_label, "G0")
 
+                sol_data_analysis_wdgts["countrate_disp"].obj.plot(
+                    np.cumsum(cf.split_durations_s),
+                    cf.countrate_list,
+                    should_clear=True,
+                )
+                sol_data_analysis_wdgts["countrate_disp"].obj.entitle_and_label(
+                    "measurement time (s)", "countrate"
+                )
+
             if meas.scan_type == "angular":
                 row_disc_method = sol_data_analysis_wdgts["row_dicrimination"].objectName()
                 if row_disc_method == "solAnalysisRemoveOver":
@@ -2012,6 +2021,15 @@ class MainWin:
                         cf.cf_cr[cf.j_good, :],
                     )
                     sol_data_analysis_wdgts["row_acf_disp"].obj.entitle_and_label(x_label, "G0")
+
+                    sol_data_analysis_wdgts["countrate_disp"].obj.plot(
+                        np.cumsum(cf.split_durations_s),
+                        cf.countrate_list,
+                        should_clear=True,
+                    )
+                    sol_data_analysis_wdgts["countrate_disp"].obj.entitle_and_label(
+                        "measurement time (s)", "countrate"
+                    )
 
                     sol_data_analysis_wdgts["mean_g0"].set(cf.g0 / 1e3)  # shown in thousands
                     sol_data_analysis_wdgts["mean_tau"].set(0)
@@ -2052,6 +2070,12 @@ class MainWin:
                         cf.g0,
                     )
                     sol_data_analysis_wdgts["row_acf_disp"].obj.plot(cf.lag, y_fit, color="red")
+                finally:
+                    sol_data_analysis_wdgts["countrate_disp"].obj.plot(
+                        np.cumsum(cf.split_durations_s),
+                        cf.countrate_list,
+                        should_clear=True,
+                    )
 
     def assign_template(self, type) -> None:
         """Doc."""

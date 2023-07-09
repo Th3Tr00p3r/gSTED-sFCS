@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -6145,7 +6145,7 @@ Measurement</string>
                   <item row="0" column="0">
                    <widget class="QTabWidget" name="tabWidget_2">
                     <property name="currentIndex">
-                     <number>1</number>
+                     <number>0</number>
                     </property>
                     <widget class="QWidget" name="tab_3">
                      <attribute name="title">
@@ -6200,7 +6200,7 @@ Measurement</string>
                             <bool>true</bool>
                            </property>
                            <property name="currentIndex">
-                            <number>0</number>
+                            <number>2</number>
                            </property>
                            <widget class="QWidget" name="tab_11">
                             <attribute name="title">
@@ -6558,6 +6558,26 @@ Mean ACF</string>
                                  </item>
                                 </layout>
                                </item>
+                              </layout>
+                             </item>
+                            </layout>
+                           </widget>
+                           <widget class="QWidget" name="tab_14">
+                            <attribute name="title">
+                             <string>Countrate</string>
+                            </attribute>
+                            <layout class="QHBoxLayout" name="horizontalLayout_64">
+                             <item>
+                              <layout class="QGridLayout" name="solAnalysisCountrateLayout" rowstretch="0" columnstretch="0">
+                               <property name="leftMargin">
+                                <number>0</number>
+                               </property>
+                               <property name="bottomMargin">
+                                <number>0</number>
+                               </property>
+                               <property name="spacing">
+                                <number>0</number>
+                               </property>
                               </layout>
                              </item>
                             </layout>

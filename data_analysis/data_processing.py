@@ -395,7 +395,7 @@ class RawFileData:
     @property
     def coarse(self):
         if self._was_data_dumped:
-            return self.read_mmap(0).astype(np.int16)
+            return self._read_mmap(0).astype(np.int16)
         else:
             return self._coarse
 
@@ -409,7 +409,7 @@ class RawFileData:
     @property
     def coarse2(self):
         if self._was_data_dumped:
-            return self.read_mmap(1).astype(np.int16)
+            return self._read_mmap(1).astype(np.int16)
         else:
             return self._coarse2
 
@@ -423,7 +423,7 @@ class RawFileData:
     @property
     def fine(self):
         if self._was_data_dumped:
-            return self.read_mmap(2).astype(np.int16)
+            return self._read_mmap(2).astype(np.int16)
         else:
             return self._fine
 
@@ -437,7 +437,7 @@ class RawFileData:
     @property
     def pulse_runtime(self):
         if self._was_data_dumped:
-            return self.read_mmap(3).astype(np.int64)
+            return self._read_mmap(3).astype(np.int64)
         else:
             return self._pulse_runtime
 
@@ -451,7 +451,7 @@ class RawFileData:
     @property
     def delay_time(self):
         if self._was_data_dumped:
-            return self.read_mmap(4).astype(np.float16)
+            return self._read_mmap(4).astype(np.float16)
         else:
             return self._delay_time
 
@@ -459,7 +459,7 @@ class RawFileData:
     def delay_time(self, new: np.ndarray):
         # NOTE: this does not allow for slicing! must assign a full delay_time array of same size
         if self._was_data_dumped:
-            return self.write_mmap_row(4, new)
+            return self._write_mmap_row(4, new)
         else:
             self._delay_time = new
 
@@ -467,7 +467,7 @@ class RawFileData:
     def line_num(self):
         if self._was_data_dumped:
             try:
-                return self.read_mmap(5).astype(np.int16)
+                return self._read_mmap(5).astype(np.int16)
             except IndexError:
                 return None
         else:
@@ -480,7 +480,7 @@ class RawFileData:
         else:
             self._line_num = new
 
-    def read_mmap(self, row_idx: Union[int, slice] = slice(None), file_path=None):
+    def _read_mmap(self, row_idx: Union[int, slice] = slice(None), file_path=None):
         """
         Access the data from disk by memory-mapping, and get the 'row_idx' row.
         If row_idx was not supplied, retrieve the whole array.
@@ -494,7 +494,7 @@ class RawFileData:
             fix_imports=False,
         )[row_idx]
 
-    def write_mmap_row(self, row_idx: int, new_row: np.ndarray):
+    def _write_mmap_row(self, row_idx: int, new_row: np.ndarray):
         """
         Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
         each write should take about ???, therefore unnoticeable.
@@ -564,7 +564,7 @@ class RawFileData:
         """Compress (blosc) and save the memory-mapped data in a provided folder"""
 
         # load the data from dump path
-        data = self.read_mmap()
+        data = self._read_mmap()
 
         # compress and save to processed folder ('dir_path')
         Path.mkdir(dir_path, parents=True, exist_ok=True)  # creating the folder if needed

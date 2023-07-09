@@ -118,6 +118,7 @@ class MainWin(QtWidgets.QMainWindow):
 
         self.solScanImgDisp = GuiDisplay(self.solAnalysisScanImageLayout, self)
         self.solScanAcfDisp = GuiDisplay(self.solAnalysisAveragingLayout, self)
+        self.solScanCountrateDisp = GuiDisplay(self.solAnalysisCountrateLayout, self)
 
         self.imgScanPreviewDisp = GuiDisplay(self.importImgPreviewLayout)
 
