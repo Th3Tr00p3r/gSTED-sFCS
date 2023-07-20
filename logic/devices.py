@@ -1447,7 +1447,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             if all(self.LIMITS.valid_indices(self.curr_pos + vec)):
                 # X first
                 if vec.x:
-                    self.is_moving = True
+                    #                    self.is_moving = True
                     self.write(f"mx {vec.x}")
                     logging.debug(
                         f"{self.log_ref} moved {abs(vec.x)} steps {('RIGHT' if vec.x < 0 else 'LEFT')}"
@@ -1458,7 +1458,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
                 # then Y
                 if vec.y:
-                    self.is_moving = True
+                    #                    self.is_moving = True
                     self.write(f"my {vec.y}")
                     logging.debug(
                         f"{self.log_ref} moved {abs(vec.y)} steps {('DOWN' if vec.x < 0 else 'UP')}"
@@ -1483,6 +1483,9 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         # already in motion
         else:
             logging.info(f"{self.log_ref} is already in motion!")
+
+    #            await asyncio.sleep(1)  # TESTESTEST
+    #            self.is_moving = False # TESTESTEST
 
     def set_origin(self) -> None:
         """Set current position as the new origin"""
