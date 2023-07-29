@@ -499,9 +499,9 @@ class ImageMeasurementProcedure(MeasurementProcedure):
 
             ratio = round(min_freq / line_freq)
             if ratio > ppl:
-                return helper.div_ceil(ratio, 2) * 2
+                return int(np.ceil(ratio / 2)) * 2
             else:
-                return helper.div_ceil(ppl, 2) * 2
+                return int(np.ceil(ppl / 2)) * 2
 
         # fix line freq, pxl clk low ticks, and ppl
         self.scan_params["line_freq_hz"], clk_div = sync_line_freq(

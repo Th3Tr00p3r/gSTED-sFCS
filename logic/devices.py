@@ -30,7 +30,6 @@ from utilities.helper import (
     Limits,
     Vector,
     deep_getattr,
-    div_ceil,
     generate_numbers_from_string,
     str_to_num,
 )
@@ -756,7 +755,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 init_pos = self.last_int_ao[self.AXIS_INDEX[axis]]
 
             total_dist = abs(final_pos - init_pos)
-            n_steps = div_ceil(total_dist, step_sz)
+            n_steps = int(np.ceil(total_dist / step_sz))
 
             if n_steps < 2:  # one small step needs no smoothing
                 return
@@ -1079,7 +1078,7 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         if rate is None:
             rate = self.tasks.ci[-1].timing.samp_clk_rate
 
-        n_reads = div_ceil(interval_s, (1 / rate))
+        n_reads = int(np.ceil(interval_s * rate))
 
         if len(self.ci_buffer) > n_reads:
             self.avg_cnt_rate_khz = (

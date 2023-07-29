@@ -43,7 +43,6 @@ from utilities.helper import (
     Gate,
     InterpExtrap1D,
     Limits,
-    div_ceil,
     extrapolate_over_noise,
     unify_length,
 )
@@ -133,12 +132,14 @@ class CorrFunc:
     g0: float
     fit_params: FitParams
 
-    def __init__(self, name: str, correlator_type: int, laser_freq_hz, **kwargs):
+    def __init__(self, name: str, correlator_type: int, laser_freq_hz, gate_ns: Gate, **kwargs):
         self.name = name
         self.correlator_type = correlator_type
         self.laser_freq_hz = laser_freq_hz
+        self.gate_ns = gate_ns
         self.afterpulsing_filter = kwargs.get("afterpulsing_filter")
         self.duration_min = kwargs.get("duration_min")
+        self.structure_factors: Dict[str, StructureFactor] = {}
 
     def __add__(self, other):
         """Averages (weighted) all attributes of two CorrFunc objects and returns a new CorrFunc instance"""
@@ -162,6 +163,7 @@ class CorrFunc:
             f"{self.name}",
             self.correlator_type,
             self.laser_freq_hz,
+            Gate(),
             afterpulsing_filter=self.afterpulsing_filter,
         )
 
@@ -304,7 +306,6 @@ class CorrFunc:
         corr_output,
         afterpulse_params,
         bg_corr_list,
-        gate_ns=Gate(),
         should_subtract_afterpulsing: bool = False,
         external_afterpulsing: np.ndarray = None,
         **kwargs,
@@ -327,7 +328,7 @@ class CorrFunc:
                 self.subtracted_afterpulsing = external_afterpulsing
             else:
                 self.subtracted_afterpulsing = calculate_calibrated_afterpulse(
-                    self.lag, afterpulse_params, gate_ns, self.laser_freq_hz
+                    self.lag, afterpulse_params, self.gate_ns, self.laser_freq_hz
                 )
 
         # zero-pad and generate cf_cr
@@ -1097,12 +1098,17 @@ class SolutionSFCSMeasurement:
         # Unite TDC gate and detector gate
         # TODO: detector gate represents the actual effective gate (since pulse travel time is already synchronized before measuring), This means that
         # I should add the fit-deduced pulse travel time (affected by TDC +/- 2.5 ns) to the lower gate to compare with TDC gate???
-        gate_ns = Gate(tdc_gate_ns, hard_gate=self.detector_settings["gate_ns"])
+        laser_pulse_period_ns = 1e9 / self.laser_freq_hz
+        if tdc_gate_ns.upper >= laser_pulse_period_ns:
+            tdc_gate_ns.upper = np.inf
+        gate_ns = Gate(
+            tdc_gate_ns, hard_gate=self.detector_settings["gate_ns"].hard_gate
+        )  # TESTESTEST
 
         #  add gate to cf_name
-        if gate_ns:
+        if gate_ns or gate_ns.hard_gate:
             # TODO: cf_name should not contain any description other than gate and "afterpulsing" yes/no (description is in self.type)
-            cf_name = f"gated {cf_name} {gate_ns}"
+            cf_name = f"gated {cf_name} {gate_ns}{f' ({gate_ns.hard_gate} hard)' if gate_ns.hard_gate else ''}"
 
         # the following conditions require TDC calibration prior to creating splits
         if afterpulsing_method not in {"subtract calibrated", "filter", "none"}:
@@ -1116,13 +1122,23 @@ class SolutionSFCSMeasurement:
         # Calculate afterpulsing filter if doesn't alreay exist (optional)
         afterpulsing_filter = None
         if is_filtered:
-            if corr_options.get("is_verbose"):
-                print("Preparing Afterpulsing filter... ", end="")
-            afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
-                gate_ns, self.type, **corr_options
-            )
-            if corr_options.get("is_verbose"):
-                print("Done.")
+            # case ungated or hard gated (confocal or STED) - calculate new filter
+            if not gate_ns or gate_ns.hard_gate:
+                if corr_options.get("is_verbose"):
+                    print("Preparing Afterpulsing filter... ", end="")
+                afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
+                    gate_ns, self.type, **corr_options
+                )
+                # keeping the ungated filter (for use with TDC gated later on)
+                if gate_ns.hard_gate is None:
+                    self.ungated_afterpulsing_filter = afterpulsing_filter
+                if corr_options.get("is_verbose"):
+                    print("Done.")
+            # TDC gate only - can use ungated filter
+            else:
+                if corr_options.get("is_verbose"):
+                    print(f"Using existing ungated {self.type} afterpulsing filter.")
+                afterpulsing_filter = self.ungated_afterpulsing_filter
 
         # build correlator input - create list of split data for correlator.
         if self.corr_input_list is None:
@@ -1187,6 +1203,7 @@ class SolutionSFCSMeasurement:
             cf_name,
             correlator_option,
             self.laser_freq_hz,
+            gate_ns,
             afterpulsing_filter=afterpulsing_filter if is_filtered else None,
             duration_min=self.duration_min,
         )
@@ -1197,7 +1214,6 @@ class SolutionSFCSMeasurement:
             else self.afterpulse_params,
             getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
             external_afterpulsing=external_afterpulsing,
-            gate_ns=gate_ns,
             corr_filter_list=final_filter_input_list if is_filtered else None,
             should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
             **corr_options,
@@ -1297,6 +1313,8 @@ class SolutionSFCSMeasurement:
                 else f"{xx} ({gate1_ns} vs. {gate2_ns} ns)",
                 correlator_option.auto if xx in {"AA", "BB"} else correlator_option.cross,
                 self.laser_freq_hz,
+                # TODO: this (gate1_ns) is just to silence mypy. crosscorr currently not operational (needs testing)
+                gate1_ns,
             )
             for xx in xcorr_types
         }
@@ -1474,7 +1492,13 @@ class SolutionSFCSMeasurement:
                 cf.plot_hankel_transform(parent_ax=axes, **kwargs)
 
     def calculate_structure_factors(
-        self, cal_meas, interp_types=["gaussian"], parent_ax=None, is_verbose=False, **kwargs
+        self,
+        cal_meas,
+        interp_types=["gaussian"],
+        parent_ax=None,
+        is_verbose=False,
+        should_force=False,
+        **kwargs,
     ):
         """
         Given a calibration SolutionSFCSMeasurement, i.e. one performed on a below-resolution sample
@@ -1496,7 +1520,12 @@ class SolutionSFCSMeasurement:
             else self.type,
         )
         for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
-            CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
+            if not CF.structure_factors or should_force:
+                try:  # TESTESTEST - avoid losing everything because of a single bad limit choice/noisy gate
+                    CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
+                except RuntimeError:
+                    # exponent overflow
+                    continue
 
         if is_verbose:
             print("Done.")
@@ -2012,15 +2041,14 @@ class SolutionSFCSExperiment:
         """
 
         meas = getattr(self, meas_type)
-        cf_names = list(meas.cf.keys())
         # remove all gates
         if gate_list is None:
             print(
-                f"Removing ALL '{meas_type}' gates {gate_list} for experiment '{self.name}'... ",
+                f"Removing ALL '{meas_type}' TDC gates {gate_list} for experiment '{self.name}'... ",
                 end="",
             )
-            for cf_name in cf_names:
-                if "gated" in cf_name:
+            for cf_name, cf in meas.cf.items():
+                if cf.gate_ns:
                     meas.cf.pop(cf_name)
         else:
             print(
@@ -2028,7 +2056,7 @@ class SolutionSFCSExperiment:
                 end="",
             )
             for tdc_gate_ns in gate_list:
-                for cf_name in cf_names:
+                for cf_name in meas.cf.keys():
                     if str(tdc_gate_ns) in cf_name:
                         meas.cf.pop(cf_name)
                         print(f"Removed {tdc_gate_ns}... ", end="")
@@ -2689,7 +2717,7 @@ class ImageSFCSMeasurement:
 
         # calculate and return needed values
         eff_idxs = ((dim1_ao_single - dim1_min) // pxl_size_v + 1).astype(np.int16)
-        pxls_per_line = div_ceil(self.scan_settings["dim1_um"], pxl_size_um)
+        pxls_per_line = int(np.ceil(self.scan_settings["dim1_um"] / pxl_size_um))
         line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
         return eff_idxs, pxls_per_line, line_ticks_v
 
@@ -2767,7 +2795,7 @@ class ImageSFCSMeasurement:
 def calculate_calibrated_afterpulse(
     lag: np.ndarray,
     afterpulse_params: Tuple[str, np.ndarray] = default_system_info["afterpulse_params"],
-    gate_ns: Tuple[float, float] = (0, np.inf),
+    gate_ns: Union[Tuple[float, float], Gate] = (0, np.inf),
     laser_freq_hz: float = 1e7,
 ) -> np.ndarray:
     """Doc."""

@@ -23,7 +23,6 @@ from utilities.helper import (
     Limits,
     MemMapping,
     chunked_bincount,
-    div_ceil,
     nan_helper,
     xcorr,
 )
@@ -122,7 +121,7 @@ class AngularScanDataMixin:
 
         cnt = cnt.copy()
         height, width = cnt.shape
-        step = div_ceil(width, 1000)  # handling "slow" scans with many points per line
+        step = int(np.ceil(width / 1000))  # handling "slow" scans with many points per line
 
         # replacing outliers with median value
         med = np.median(cnt)
@@ -655,9 +654,9 @@ class AfterpulsingFilter:
         # create a filter for genuine fluorscene (ignoring afterpulsing)
         bin_num = np.digitize(split_dt, self.fine_bins)
         # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
-        filter = np.hstack((filter, [0]))  # TODO: should the filter be created like this?
+        filter = np.hstack(([0], filter, [0]))  # TODO: should the filter be created like this?
         # add the relevent filter values to the correlator filter input list
-        filter_input = filter[bin_num - 1]
+        filter_input = filter[bin_num]
         return filter_input
 
     def plot(self, parent_ax=None, **plot_kwargs):
@@ -710,9 +709,12 @@ class AfterpulsingFilter:
 
             axes[1].legend()
 
-            if self.valid_limits.upper != np.inf:
-                axes[0].set_xlim(*self.valid_limits)
-                axes[1].set_xlim(*self.valid_limits)
+            # focus on valid limits
+            plot_lims = Limits(self.valid_limits)
+            if plot_lims.upper == np.inf:
+                plot_lims.upper = max(self.t_hist)
+            axes[0].set_xlim(*plot_lims)
+            axes[1].set_xlim(*plot_lims)
 
 
 @dataclass
@@ -869,7 +871,7 @@ class TDCPhotonFileData:
                 )[:, gate1_idxs | gate2_idxs]
 
             xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
-            for split_idx in range(n_splits := div_ceil(section_time, split_duration)):
+            for split_idx in range(n_splits := int(np.ceil(section_time / split_duration))):
                 for xx in xcorr_types:
                     if xx == "AA":
                         xcorr_input_dict[xx].append(
@@ -1136,7 +1138,7 @@ class TDCCalibration:
         # define valid bins to work with
         peak_bin = max(np.nanargmax(all_hist_norm) - 2, 0)
         peak_to_end_limits = Limits(t_hist[peak_bin], np.inf)
-        valid_limits = peak_to_end_limits & gate_ns
+        valid_limits = peak_to_end_limits & gate_ns.hard_gate
         valid_idxs = valid_limits.valid_indices(t_hist)
 
         # interpolate over NaNs
@@ -1170,9 +1172,10 @@ class TDCCalibration:
 
         # Return the filter to original dimensions by adding zeros in the detector-gated zone
         # prepare padding for the gated-out/noisy part of the histogram
-        lower_idx = round(valid_limits.lower * 10)
+        #        lower_idx = round(valid_limits.lower * 10)
+        lower_idx = int(np.ceil(valid_limits.lower * 10))  # TESTESTEST
         F_pad_before = np.zeros((2, lower_idx))
-        if gate_ns.upper != np.inf:
+        if valid_limits.upper != np.inf:
             upper_idx = int(valid_limits.upper * 10)
             F_pad_after = np.zeros((2, len(t_hist) - upper_idx))
         else:
