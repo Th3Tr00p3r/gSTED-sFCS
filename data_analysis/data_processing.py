@@ -24,6 +24,7 @@ from utilities.helper import (
     MemMapping,
     chunked_bincount,
     nan_helper,
+    unify_length,
     xcorr,
 )
 
@@ -701,11 +702,17 @@ class AfterpulsingFilter:
                 axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
             except ValueError as exc:
                 print(exc)
-                print("^ ignoring the last filter element...")
+                print("^ unifying lengh of filter to t_hist...")
                 axes[1].plot(
-                    self.t_hist, self.filter.T[:-1], label=["F_1j (signal)", "F_2j (afterpulsing)"]
+                    self.t_hist,
+                    unify_length(self.filter.T, (self.t_hist.size, 2)),
+                    label=["F_1j (signal)", "F_2j (afterpulsing)"],
                 )
-                axes[1].plot(self.t_hist, self.filter.sum(axis=0)[:-1], label="F.sum(axis=0)")
+                axes[1].plot(
+                    self.t_hist,
+                    unify_length(self.filter.sum(axis=0), self.t_hist.shape),
+                    label="F.sum(axis=0)",
+                )
 
             axes[1].legend()
 
@@ -1124,9 +1131,10 @@ class TDCCalibration:
 
     def calculate_afterpulsing_filter(
         self,
-        gate_ns: Gate,
+        hard_gate_ns: Gate,
         meas_type: str,
         baseline_tail_perc=0.3,
+        hard_gate_max_bin=-40,
         **kwargs,
     ) -> np.ndarray:
         """Doc."""
@@ -1137,8 +1145,12 @@ class TDCCalibration:
 
         # define valid bins to work with
         peak_bin = max(np.nanargmax(all_hist_norm) - 2, 0)
-        peak_to_end_limits = Limits(t_hist[peak_bin], np.inf)
-        valid_limits = peak_to_end_limits & gate_ns.hard_gate
+        if hard_gate_ns:
+            # in case of a hard gate, make the max bin 'hard_gate_max_bin' / 10  (4 ns defualt) smaller
+            valid_limits = Limits(t_hist[peak_bin], t_hist[hard_gate_max_bin]) & hard_gate_ns
+        else:
+            # otherwise, leave the upper limit open
+            valid_limits = Limits(t_hist[peak_bin], np.inf)
         valid_idxs = valid_limits.valid_indices(t_hist)
 
         # interpolate over NaNs
@@ -1147,14 +1159,7 @@ class TDCCalibration:
         all_hist_norm[nans] = np.interp(x(nans), x(~nans), all_hist_norm[~nans])
 
         # calculate the baseline using the mean of the tail of the (hard-gate-limited) histogram
-        if gate_ns.hard_gate:
-            in_hard_gate_idxs = gate_ns.hard_gate.valid_indices(t_hist)
-        else:
-            # use all indices
-            in_hard_gate_idxs = slice(None)
-        baseline = all_hist_norm[in_hard_gate_idxs][
-            -round(len(t_hist) * baseline_tail_perc) :
-        ].mean()
+        baseline = all_hist_norm[valid_idxs][-round(len(t_hist) * baseline_tail_perc) :].mean()
 
         # normalization factor
         norm_factor = (all_hist_norm[valid_idxs] - baseline).sum()
@@ -1177,7 +1182,7 @@ class TDCCalibration:
         F_pad_before = np.zeros((2, lower_idx))
         if valid_limits.upper != np.inf:
             upper_idx = int(valid_limits.upper * 10)
-            F_pad_after = np.zeros((2, len(t_hist) - upper_idx))
+            F_pad_after = np.zeros((2, max(0, len(t_hist) - upper_idx)))
         else:
             F_pad_after = np.zeros((2, 0))
         F = np.hstack((F_pad_before, F, F_pad_after))

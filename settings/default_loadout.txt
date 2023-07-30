@@ -1,6 +1,6 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
-newTemplate,FreeATTO_TE_static_exc
+newTemplate,bp300ATTO_Gated_0ns_angular_exc
 solImportFileSelectionPattern,1
 lineEdit,
 experimentName,test
@@ -59,10 +59,10 @@ solScanDurUnits,seconds
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - normalized
-dataMonth,7
-dataYear,2023
-dataDay,26
-dataTemplate1,FreeATTO_TE_static_exc_144504_*.pkl
+dataMonth,11
+dataYear,2022
+dataDay,3
+dataTemplate1,bp300ATTO_Gated_0ns_angular_exc_151847_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -84,8 +84,8 @@ repeatSolMeas,False
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveOver,True

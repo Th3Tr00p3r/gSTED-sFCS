@@ -15,6 +15,7 @@ from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
 
 from data_analysis.data_processing import (
+    AfterpulsingFilter,
     ImageStackData,
     TDCCalibration,
     TDCPhotonDataProcessor,
@@ -738,6 +739,7 @@ class SolutionSFCSMeasurement:
         self.was_processed_data_loaded = False
         self.data = TDCPhotonMeasurementData()
         self.corr_input_list: List[np.ndarray] = None
+        self.afterpulsing_filter: AfterpulsingFilter = None
 
     def read_fpga_data(
         self,
@@ -970,9 +972,15 @@ class SolutionSFCSMeasurement:
         elif self.detector_settings[
             "gate_ns"
         ]:  # hard gate has TDC gate? remove it and leave only hard gate
-            self.detector_settings["gate_ns"] = Gate(
-                hard_gate=self.detector_settings["gate_ns"].hard_gate
-            )
+            try:
+                self.detector_settings["gate_ns"] = Gate(
+                    hard_gate=self.detector_settings["gate_ns"].hard_gate
+                )
+            except AttributeError:
+                # legacy Limits as Gate
+                self.detector_settings["gate_ns"] = Gate(
+                    hard_gate=self.detector_settings["gate_ns"]
+                )
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -1120,25 +1128,20 @@ class SolutionSFCSMeasurement:
                 self.calibrate_tdc(**corr_options)
 
         # Calculate afterpulsing filter if doesn't alreay exist (optional)
-        afterpulsing_filter = None
         if is_filtered:
-            # case ungated or hard gated (confocal or STED) - calculate new filter
-            if not gate_ns or gate_ns.hard_gate:
+            # case first time correlating the measurement:
+            if not self.afterpulsing_filter:
                 if corr_options.get("is_verbose"):
                     print("Preparing Afterpulsing filter... ", end="")
-                afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
-                    gate_ns, self.type, **corr_options
+                self.afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
+                    gate_ns.hard_gate, self.type, **corr_options
                 )
-                # keeping the ungated filter (for use with TDC gated later on)
-                if gate_ns.hard_gate is None:
-                    self.ungated_afterpulsing_filter = afterpulsing_filter
                 if corr_options.get("is_verbose"):
                     print("Done.")
-            # TDC gate only - can use ungated filter
+            # TDC gates can use original (hard-gated or not) filter
             else:
                 if corr_options.get("is_verbose"):
-                    print(f"Using existing ungated {self.type} afterpulsing filter.")
-                afterpulsing_filter = self.ungated_afterpulsing_filter
+                    print(f"Using existing {self.type} afterpulsing filter.")
 
         # build correlator input - create list of split data for correlator.
         if self.corr_input_list is None:
@@ -1174,8 +1177,8 @@ class SolutionSFCSMeasurement:
                 valid_idxs = slice(None)
 
             # filter input
-            if afterpulsing_filter:
-                split_filter = afterpulsing_filter.get_split_filter_input(
+            if is_filtered:
+                split_filter = self.afterpulsing_filter.get_split_filter_input(
                     dt_prt_split[0][valid_idxs], get_afterpulsing
                 )
                 final_filter_input_list.append(split_filter)
@@ -1204,7 +1207,7 @@ class SolutionSFCSMeasurement:
             correlator_option,
             self.laser_freq_hz,
             gate_ns,
-            afterpulsing_filter=afterpulsing_filter if is_filtered else None,
+            afterpulsing_filter=self.afterpulsing_filter if is_filtered else None,
             duration_min=self.duration_min,
         )
         CF.correlate_measurement(
@@ -1702,7 +1705,7 @@ class SolutionSFCSExperiment:
                 file_path_template = Path(file_path_template)
                 dir_path, file_template = file_path_template.parent, file_path_template.name
                 # load pre-processed
-                dir_path = dir_path / "processed" / re.sub("_[*].pkl", "", file_template)
+                dir_path = dir_path / "processed" / re.sub("_[*].(pkl|mat)", "", file_template)
                 measurement = load_processed_solution_measurement(
                     dir_path,
                     file_template,
@@ -2047,9 +2050,8 @@ class SolutionSFCSExperiment:
                 f"Removing ALL '{meas_type}' TDC gates {gate_list} for experiment '{self.name}'... ",
                 end="",
             )
-            for cf_name, cf in meas.cf.items():
-                if cf.gate_ns:
-                    meas.cf.pop(cf_name)
+            meas.cf = {cf_name: cf for cf_name, cf in meas.cf.items() if not cf.gate_ns}
+
         else:
             print(
                 f"Removing multiple '{meas_type}' gates {gate_list} for experiment '{self.name}'... ",
