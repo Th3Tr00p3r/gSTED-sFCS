@@ -15,6 +15,7 @@ from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
 
 from data_analysis.data_processing import (
+    AfterpulsingFilter,
     ImageStackData,
     TDCCalibration,
     TDCPhotonDataProcessor,
@@ -43,7 +44,6 @@ from utilities.helper import (
     Gate,
     InterpExtrap1D,
     Limits,
-    div_ceil,
     extrapolate_over_noise,
     unify_length,
 )
@@ -133,12 +133,14 @@ class CorrFunc:
     g0: float
     fit_params: FitParams
 
-    def __init__(self, name: str, correlator_type: int, laser_freq_hz, **kwargs):
+    def __init__(self, name: str, correlator_type: int, laser_freq_hz, gate_ns: Gate, **kwargs):
         self.name = name
         self.correlator_type = correlator_type
         self.laser_freq_hz = laser_freq_hz
+        self.gate_ns = gate_ns
         self.afterpulsing_filter = kwargs.get("afterpulsing_filter")
         self.duration_min = kwargs.get("duration_min")
+        self.structure_factors: Dict[str, StructureFactor] = {}
 
     def __add__(self, other):
         """Averages (weighted) all attributes of two CorrFunc objects and returns a new CorrFunc instance"""
@@ -162,6 +164,7 @@ class CorrFunc:
             f"{self.name}",
             self.correlator_type,
             self.laser_freq_hz,
+            Gate(),
             afterpulsing_filter=self.afterpulsing_filter,
         )
 
@@ -290,7 +293,7 @@ class CorrFunc:
 
         # calculate split durations
         self.split_durations_s = [
-            (split[0 if split.ndim != 1 else slice(None)] / self.laser_freq_hz).sum()
+            split[0 if split.ndim != 1 else slice(None)].sum() / self.laser_freq_hz
             for split in time_stamp_split_list
         ]
 
@@ -304,7 +307,6 @@ class CorrFunc:
         corr_output,
         afterpulse_params,
         bg_corr_list,
-        gate_ns=Gate(),
         should_subtract_afterpulsing: bool = False,
         external_afterpulsing: np.ndarray = None,
         **kwargs,
@@ -327,7 +329,7 @@ class CorrFunc:
                 self.subtracted_afterpulsing = external_afterpulsing
             else:
                 self.subtracted_afterpulsing = calculate_calibrated_afterpulse(
-                    self.lag, afterpulse_params, gate_ns, self.laser_freq_hz
+                    self.lag, afterpulse_params, self.gate_ns, self.laser_freq_hz
                 )
 
         # zero-pad and generate cf_cr
@@ -349,12 +351,18 @@ class CorrFunc:
                 # ext. afterpulse might be shorter/longer
                 self.cf_cr[idx] -= unify_length(self.subtracted_afterpulsing, (lag_len,))
 
-        self.countrate_list = corr_output.countrate_list
         try:  # xcorr
-            self.countrate_a = np.mean([countrate_pair.a for countrate_pair in self.countrate_list])
-            self.countrate_b = np.mean([countrate_pair.b for countrate_pair in self.countrate_list])
+            self.countrate_a = np.mean(
+                [countrate_pair.a for countrate_pair in corr_output.countrate_list]
+            )
+            self.countrate_b = np.mean(
+                [countrate_pair.b for countrate_pair in corr_output.countrate_list]
+            )
         except AttributeError:  # autocorr
-            self.countrate = np.mean([countrate for countrate in self.countrate_list])
+            self.countrate = np.mean([countrate for countrate in corr_output.countrate_list])
+
+        # keep all countrates
+        self.countrate_list = corr_output.countrate_list
 
     def average_correlation(
         self,
@@ -490,7 +498,7 @@ class CorrFunc:
         y_field=None,
         y_error_field=None,
         fit_param_estimate=None,
-        fit_range=(np.NINF, np.inf),
+        fit_range=None,
         x_scale=None,
         y_scale=None,
         bounds=(np.NINF, np.inf),
@@ -510,7 +518,7 @@ class CorrFunc:
                 y_field = "avg_cf_cr"
                 y_scale = "linear"
                 y_error_field = "error_cf_cr"
-                if fit_range == (np.NINF, np.inf):
+                if fit_range is None:
                     fit_range = (1e-3, 10)
 
             elif fit_name == "zero_centered_zero_bg_normalized_gaussian_1d_fit":
@@ -524,8 +532,11 @@ class CorrFunc:
                 y_field = "normalized"
                 y_scale = "linear"
                 y_error_field = "error_normalized"
-                if fit_range == (np.NINF, np.inf):
+                if fit_range is None:
                     fit_range = (1e-2, 100)
+
+        elif fit_range is None:
+            fit_range = (np.NINF, np.inf)
 
         x = getattr(self, x_field)
         y = getattr(self, y_field)
@@ -731,6 +742,21 @@ class SolutionSFCSMeasurement:
         self.was_processed_data_loaded = False
         self.data = TDCPhotonMeasurementData()
         self.corr_input_list: List[np.ndarray] = None
+        self.afterpulsing_filter: AfterpulsingFilter = None
+
+    @property
+    def avg_cnt_rate_khz(self):
+        """Calculate the mean effective (in sample) countrate using the first CorrFunc object in .cf"""
+
+        in_sample_countrate_list = list(self.cf.values())[0].countrate_list
+        return np.mean(in_sample_countrate_list) * 1e-3
+
+    @property
+    def std_cnt_rate_khz(self):
+        """Calculate the standard deviation from mean effective (in sample) countrate using the first CorrFunc object in .cf"""
+
+        in_sample_countrate_list = list(self.cf.values())[0].countrate_list
+        return np.std(in_sample_countrate_list, ddof=1) * 1e-3
 
     def read_fpga_data(
         self,
@@ -788,13 +814,7 @@ class SolutionSFCSMeasurement:
         else:  # static
             self.bg_line_corr_list = []
 
-        # calculate average count rate
-        self.avg_cnt_rate_khz = np.mean([p.general.avg_cnt_rate_khz for p in self.data])
-        try:
-            self.std_cnt_rate_khz = np.std([p.general.avg_cnt_rate_khz for p in self.data], ddof=1)
-        except RuntimeWarning:  # single file
-            self.std_cnt_rate_khz = 0.0
-
+        # caculate durations
         calc_duration_mins = sum([p.general.duration_s for p in self.data]) / 60
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
@@ -833,10 +853,10 @@ class SolutionSFCSMeasurement:
         # estimate byte_data size (of each file) - total photons times 7 (bytes per photon) in Mega-bytes
         # TODO: estimation should be for a single file (must know the original number of files!) and condition should depend on actual number of file
         total_byte_data_size_estimate_mb = (
-            (self.avg_cnt_rate_khz * 1e3 * self.duration_min * 60) * 7 / 1e6
+            (self.est_avg_cnt_rate_khz * 1e3 * self.duration_min * 60) * 7 / 1e6
         )
         print(
-            "total_byte_data_size_estimate_mb (all files): ", total_byte_data_size_estimate_mb
+            f"total_byte_data_size_estimate_mb (all files): {total_byte_data_size_estimate_mb:.2f}"
         )  # TESTESTEST
         if (
             should_parallel_process
@@ -935,7 +955,7 @@ class SolutionSFCSMeasurement:
         full_data = file_dict["full_data"]
 
         # get countrate estimate (for multiprocessing threshod). calculated more precisely in the end of processing.ArithmeticError
-        self.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
+        self.est_avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
         self.afterpulse_params = file_dict["system_info"]["afterpulse_params"]
         self.detector_settings = full_data.get("detector_settings")
@@ -963,9 +983,15 @@ class SolutionSFCSMeasurement:
         elif self.detector_settings[
             "gate_ns"
         ]:  # hard gate has TDC gate? remove it and leave only hard gate
-            self.detector_settings["gate_ns"] = Gate(
-                hard_gate=self.detector_settings["gate_ns"].hard_gate
-            )
+            try:
+                self.detector_settings["gate_ns"] = Gate(
+                    hard_gate=self.detector_settings["gate_ns"].hard_gate
+                )
+            except AttributeError:
+                # legacy Limits as Gate
+                self.detector_settings["gate_ns"] = Gate(
+                    hard_gate=self.detector_settings["gate_ns"]
+                )
 
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
@@ -1091,12 +1117,17 @@ class SolutionSFCSMeasurement:
         # Unite TDC gate and detector gate
         # TODO: detector gate represents the actual effective gate (since pulse travel time is already synchronized before measuring), This means that
         # I should add the fit-deduced pulse travel time (affected by TDC +/- 2.5 ns) to the lower gate to compare with TDC gate???
-        gate_ns = Gate(tdc_gate_ns, hard_gate=self.detector_settings["gate_ns"])
+        laser_pulse_period_ns = 1e9 / self.laser_freq_hz
+        if tdc_gate_ns.upper >= laser_pulse_period_ns:
+            tdc_gate_ns.upper = np.inf
+        gate_ns = Gate(
+            tdc_gate_ns, hard_gate=self.detector_settings["gate_ns"].hard_gate
+        )  # TESTESTEST
 
         #  add gate to cf_name
-        if gate_ns:
+        if gate_ns or gate_ns.hard_gate:
             # TODO: cf_name should not contain any description other than gate and "afterpulsing" yes/no (description is in self.type)
-            cf_name = f"gated {cf_name} {gate_ns}"
+            cf_name = f"gated {cf_name} {gate_ns}{f' ({gate_ns.hard_gate} hard)' if gate_ns.hard_gate else ''}"
 
         # the following conditions require TDC calibration prior to creating splits
         if afterpulsing_method not in {"subtract calibrated", "filter", "none"}:
@@ -1108,15 +1139,20 @@ class SolutionSFCSMeasurement:
                 self.calibrate_tdc(**corr_options)
 
         # Calculate afterpulsing filter if doesn't alreay exist (optional)
-        afterpulsing_filter = None
         if is_filtered:
-            if corr_options.get("is_verbose"):
-                print("Preparing Afterpulsing filter... ", end="")
-            afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
-                gate_ns, self.type, **corr_options
-            )
-            if corr_options.get("is_verbose"):
-                print("Done.")
+            # case first time correlating the measurement:
+            if not self.afterpulsing_filter:
+                if corr_options.get("is_verbose"):
+                    print("Preparing Afterpulsing filter... ", end="")
+                self.afterpulsing_filter = self.tdc_calib.calculate_afterpulsing_filter(
+                    gate_ns.hard_gate, self.type, **corr_options
+                )
+                if corr_options.get("is_verbose"):
+                    print("Done.")
+            # TDC gates can use original (hard-gated or not) filter
+            else:
+                if corr_options.get("is_verbose"):
+                    print(f"Using existing {self.type} afterpulsing filter.")
 
         # build correlator input - create list of split data for correlator.
         if self.corr_input_list is None:
@@ -1152,8 +1188,8 @@ class SolutionSFCSMeasurement:
                 valid_idxs = slice(None)
 
             # filter input
-            if afterpulsing_filter:
-                split_filter = afterpulsing_filter.get_split_filter_input(
+            if is_filtered:
+                split_filter = self.afterpulsing_filter.get_split_filter_input(
                     dt_prt_split[0][valid_idxs], get_afterpulsing
                 )
                 final_filter_input_list.append(split_filter)
@@ -1181,7 +1217,8 @@ class SolutionSFCSMeasurement:
             cf_name,
             correlator_option,
             self.laser_freq_hz,
-            afterpulsing_filter=afterpulsing_filter if is_filtered else None,
+            gate_ns,
+            afterpulsing_filter=self.afterpulsing_filter if is_filtered else None,
             duration_min=self.duration_min,
         )
         CF.correlate_measurement(
@@ -1191,7 +1228,6 @@ class SolutionSFCSMeasurement:
             else self.afterpulse_params,
             getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
             external_afterpulsing=external_afterpulsing,
-            gate_ns=gate_ns,
             corr_filter_list=final_filter_input_list if is_filtered else None,
             should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
             **corr_options,
@@ -1200,7 +1236,8 @@ class SolutionSFCSMeasurement:
         try:  # temporal to spatial conversion, if scanning
             CF.vt_um = self.v_um_ms * CF.lag
         except AttributeError:
-            CF.vt_um = CF.lag  # static
+            # static
+            CF.vt_um = CF.lag
 
         if corr_options.get("is_verbose"):
             print("- Done.")
@@ -1291,6 +1328,8 @@ class SolutionSFCSMeasurement:
                 else f"{xx} ({gate1_ns} vs. {gate2_ns} ns)",
                 correlator_option.auto if xx in {"AA", "BB"} else correlator_option.cross,
                 self.laser_freq_hz,
+                # TODO: this (gate1_ns) is just to silence mypy. crosscorr currently not operational (needs testing)
+                gate1_ns,
             )
             for xx in xcorr_types
         }
@@ -1323,27 +1362,34 @@ class SolutionSFCSMeasurement:
     def display_scan_images(self) -> None:
         """Doc."""
 
-        if self.scan_type == "angular":
-            with Plotter(subplots=(1, self.n_files), fontsize=8, should_force_aspect=True) as axes:
-                if not hasattr(
-                    axes, "size"
-                ):  # if axes is not an ndarray (only happens if reading just one file)
-                    axes = np.array([axes])
-                for file_idx, (ax, image, roi) in enumerate(
-                    zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
-                ):
-                    ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
-                    ax.set_xlabel("Pixel Index")
-                    ax.set_ylabel("Line Index")
-                    ax.imshow(image, interpolation="none")
-                    ax.plot(roi["col"], roi["row"], color="white")
+        try:
+            if self.scan_type == "angular":
+                with Plotter(
+                    subplots=(1, self.n_files), fontsize=8, should_force_aspect=True
+                ) as axes:
+                    if not hasattr(
+                        axes, "size"
+                    ):  # if axes is not an ndarray (only happens if reading just one file)
+                        axes = np.array([axes])
+                    for file_idx, (ax, image, roi) in enumerate(
+                        zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
+                    ):
+                        ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
+                        ax.set_xlabel("Pixel Index")
+                        ax.set_ylabel("Line Index")
+                        ax.imshow(image, interpolation="none")
+                        ax.plot(roi["col"], roi["row"], color="white")
 
-        elif self.scan_type == "circle":
-            with Plotter(fontsize=8, should_force_aspect=True) as ax:
-                ax.imshow(self.scan_image, interpolation="none")
+            elif self.scan_type == "circle":
+                with Plotter(fontsize=8, should_force_aspect=True) as ax:
+                    ax.imshow(self.scan_image, interpolation="none")
 
-        else:
-            raise ValueError(f"Can't display scan images for '{self.scan_type}' scans.")
+            else:
+                raise ValueError(f"Can't display scan images for '{self.scan_type}' scans.")
+
+        except AttributeError:
+            # Measurement not loaded!
+            raise RuntimeError(f"'{self.type}' not loaded!")
 
     def plot_correlation_functions(
         self,
@@ -1373,7 +1419,7 @@ class SolutionSFCSMeasurement:
                 )
             ax.legend()
 
-    def estimate_spatial_resolution(self, colors=None, **kwargs) -> Iterator[str]:
+    def estimate_spatial_resolution(self, colors=None, fit_range=None, **kwargs) -> Iterator[str]:
         """
         Perform Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions in the measurement
         in order to estimate the resolution improvement. This is relevant only for calibration experiments (i.e. 300 bp samples).
@@ -1385,6 +1431,7 @@ class SolutionSFCSMeasurement:
         for CF in self.cf.values():
             CF.fit_correlation_function(
                 fit_name="zero_centered_zero_bg_normalized_gaussian_1d_fit",
+                fit_range=fit_range,
             )
 
         with Plotter(
@@ -1404,6 +1451,8 @@ class SolutionSFCSMeasurement:
                 hwhm_error = list(FP.beta_error.values())[0] * 1e3 * HWHM_FACTOR
                 fit_label = f"{CF.name}: ${hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.0f}$)"
                 FP.plot(parent_ax=ax, color=color, fit_label=fit_label, **kwargs)
+            ax.set_xlabel("vt_um")
+            ax.set_ylabel("normalized ACF")
 
             ax.legend()
 
@@ -1468,7 +1517,13 @@ class SolutionSFCSMeasurement:
                 cf.plot_hankel_transform(parent_ax=axes, **kwargs)
 
     def calculate_structure_factors(
-        self, cal_meas, interp_types=["gaussian"], parent_ax=None, is_verbose=False, **kwargs
+        self,
+        cal_meas,
+        interp_types=["gaussian"],
+        parent_ax=None,
+        is_verbose=False,
+        should_force=False,
+        **kwargs,
     ):
         """
         Given a calibration SolutionSFCSMeasurement, i.e. one performed on a below-resolution sample
@@ -1490,7 +1545,12 @@ class SolutionSFCSMeasurement:
             else self.type,
         )
         for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
-            CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
+            if not CF.structure_factors or should_force:
+                try:  # TESTESTEST - avoid losing everything because of a single bad limit choice/noisy gate
+                    CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
+                except RuntimeError:
+                    # exponent overflow
+                    continue
 
         if is_verbose:
             print("Done.")
@@ -1667,7 +1727,7 @@ class SolutionSFCSExperiment:
                 file_path_template = Path(file_path_template)
                 dir_path, file_template = file_path_template.parent, file_path_template.name
                 # load pre-processed
-                dir_path = dir_path / "processed" / re.sub("_[*].pkl", "", file_template)
+                dir_path = dir_path / "processed" / re.sub("_[*].(pkl|mat)", "", file_template)
                 measurement = load_processed_solution_measurement(
                     dir_path,
                     file_template,
@@ -1819,9 +1879,11 @@ class SolutionSFCSExperiment:
         fit_range=None,
         param_estimates=None,
         bg_range=Limits(40, 60),
+        should_plot=True,
         **kwargs,
     ) -> LifeTimeParams:
         """Doc."""
+        # TODO: the default bg_range may fail for hard-gated measurements! Check it out and add manual selection or some automatic heuristic solution.
 
         conf = self.confocal
         sted = self.sted
@@ -1831,10 +1893,11 @@ class SolutionSFCSExperiment:
         conf_t = conf_t[np.isfinite(conf_hist)]
         conf_hist = conf_hist[np.isfinite(conf_hist)]
 
-        sted_hist = sted.tdc_calib.all_hist_norm
-        sted_t = sted.tdc_calib.t_hist
-        sted_t = sted_t[np.isfinite(sted_hist)]
-        sted_hist = sted_hist[np.isfinite(sted_hist)]
+        if sted.is_loaded:
+            sted_hist = sted.tdc_calib.all_hist_norm
+            sted_t = sted.tdc_calib.t_hist
+            sted_t = sted_t[np.isfinite(sted_hist)]
+            sted_hist = sted_hist[np.isfinite(sted_hist)]
 
         h_max, j_max = conf_hist.max(), conf_hist.argmax()
         t_max = conf_t[j_max]
@@ -1850,73 +1913,80 @@ class SolutionSFCSExperiment:
         conf_params = conf.tdc_calib.fit_lifetime_hist(
             fit_range=fit_range, fit_param_estimate=beta0
         )
+        lifetime_ns = conf_params.beta["tau"]
+        if should_plot:
+            conf_params.plot(super_title="Lifetime Fit")
 
         # remove background
-        sted_bg = np.mean(sted_hist[Limits(bg_range).valid_indices(sted_t)])
         conf_bg = np.mean(conf_hist[Limits(bg_range).valid_indices(conf_t)])
-        sted_hist = sted_hist - sted_bg
         conf_hist = conf_hist - conf_bg
+        if sted.is_loaded:
+            sted_bg = np.mean(sted_hist[Limits(bg_range).valid_indices(sted_t)])
+            sted_hist = sted_hist - sted_bg
 
-        j = conf_t < 20
-        t = conf_t[j]
-        hist_ratio = conf_hist[j] / np.interp(t, sted_t, sted_hist, right=0)
-        if drop_idxs:
-            j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
-            t = t[j]
-            hist_ratio = hist_ratio[j]
+            j = conf_t < 20
+            t = conf_t[j]
+            hist_ratio = conf_hist[j] / np.interp(t, sted_t, sted_hist, right=0)
+            if drop_idxs:
+                j = np.setdiff1d(np.arange(1, len(t)), drop_idxs)
+                t = t[j]
+                hist_ratio = hist_ratio[j]
 
-        title = "Robust Linear Fit of the Linear Part of the Histogram Ratio"
-        with Plotter(figsize=(11.25, 7.5), super_title=title, **kwargs) as ax:
+            title = "Robust Linear Fit of the Linear Part of the Histogram Ratio"
+            with Plotter(figsize=(11.25, 7.5), super_title=title, **kwargs) as ax:
 
-            # Using inner Plotter for manual selection
-            title = "Use the mouse to place 2 markers\nlimiting the linear range:"
-            linear_range = Limits()
-            with Plotter(
-                parent_ax=ax, super_title=title, selection_limits=linear_range, **kwargs
-            ) as ax:
-                ax.plot(t, hist_ratio, label="hist_ratio")
-                ax.legend()
+                # Using inner Plotter for manual selection
+                title = "Use the mouse to place 2 markers\nlimiting the linear range:"
+                linear_range = Limits()
+                with Plotter(
+                    parent_ax=ax, super_title=title, selection_limits=linear_range, **kwargs
+                ) as ax:
+                    ax.plot(t, hist_ratio, label="hist_ratio")
+                    ax.legend()
 
-            j_selected = linear_range.valid_indices(t)
+                j_selected = linear_range.valid_indices(t)
 
-            if sted_field == "symmetric":
-                # Robustly fit linear model with RANSAC algorithm
-                ransac = linear_model.RANSACRegressor()
-                ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
-                p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
+                if sted_field == "symmetric":
+                    # Robustly fit linear model with RANSAC algorithm
+                    ransac = linear_model.RANSACRegressor()
+                    ransac.fit(t[j_selected][:, np.newaxis], hist_ratio[j_selected])
+                    p0, p1 = ransac.estimator_.intercept_, ransac.estimator_.coef_[0]
 
-                ax.plot(t[j_selected], hist_ratio[j_selected], "oy", label="hist_ratio")
-                ax.plot(
-                    t[j_selected],
-                    np.polyval([p1, p0], t[j_selected]),
-                    "r",
-                    label=["linear range", "robust fit"],
-                )
-                ax.legend()
+                    ax.plot(t[j_selected], hist_ratio[j_selected], "oy", label="hist_ratio")
+                    ax.plot(
+                        t[j_selected],
+                        np.polyval([p1, p0], t[j_selected]),
+                        "r",
+                        label=["linear range", "robust fit"],
+                    )
+                    ax.legend()
 
-                lifetime_ns = conf_params.beta["tau"]
-                sigma_sted = p1 * lifetime_ns
-                try:
-                    laser_pulse_delay_ns = (1 - p0) / p1
-                except RuntimeWarning:
-                    laser_pulse_delay_ns = None
+                    sigma_sted = p1 * lifetime_ns
+                    try:
+                        laser_pulse_delay_ns = (1 - p0) / p1
+                    except RuntimeWarning:
+                        laser_pulse_delay_ns = None
 
-            elif sted_field == "paraboloid":
-                fit_params = curve_fit_lims(
-                    "ratio_of_lifetime_histograms_fit",
-                    param_estimates=(2, 1, 1),
-                    xs=t[j_selected],
-                    ys=hist_ratio[j_selected],
-                    ys_errors=np.ones(j_selected.sum()),
-                    should_plot=True,
-                )
+                elif sted_field == "paraboloid":
+                    fit_params = curve_fit_lims(
+                        "ratio_of_lifetime_histograms_fit",
+                        param_estimates=(2, 1, 1),
+                        xs=t[j_selected],
+                        ys=hist_ratio[j_selected],
+                        ys_errors=np.ones(j_selected.sum()),
+                        should_plot=True,
+                    )
 
-                lifetime_ns = conf_params.beta["tau"]
-                sigma_sted = (
-                    fit_params.beta["sigma_x"] * lifetime_ns,
-                    fit_params.beta["sigma_y"] * lifetime_ns,
-                )
-                laser_pulse_delay_ns = fit_params.beta["t0"]
+                    sigma_sted = (
+                        fit_params.beta["sigma_x"] * lifetime_ns,
+                        fit_params.beta["sigma_y"] * lifetime_ns,
+                    )
+                    laser_pulse_delay_ns = fit_params.beta["t0"]
+
+        # no STED! only (confocal) lifetime is available
+        else:
+            sigma_sted = 0
+            laser_pulse_delay_ns = 0
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params
@@ -2000,23 +2070,21 @@ class SolutionSFCSExperiment:
         """
 
         meas = getattr(self, meas_type)
-        cf_names = list(meas.cf.keys())
         # remove all gates
         if gate_list is None:
             print(
-                f"Removing ALL '{meas_type}' gates {gate_list} for experiment '{self.name}'... ",
+                f"Removing ALL '{meas_type}' TDC gates {gate_list} for experiment '{self.name}'... ",
                 end="",
             )
-            for cf_name in cf_names:
-                if "gated" in cf_name:
-                    meas.cf.pop(cf_name)
+            meas.cf = {cf_name: cf for cf_name, cf in meas.cf.items() if not cf.gate_ns}
+
         else:
             print(
                 f"Removing multiple '{meas_type}' gates {gate_list} for experiment '{self.name}'... ",
                 end="",
             )
             for tdc_gate_ns in gate_list:
-                for cf_name in cf_names:
+                for cf_name in meas.cf.keys():
                     if str(tdc_gate_ns) in cf_name:
                         meas.cf.pop(cf_name)
                         print(f"Removed {tdc_gate_ns}... ", end="")
@@ -2271,7 +2339,7 @@ class ImageSFCSMeasurement:
         self.ci_image_data = None
 
     def read_fpga_data(
-        self, file_path: Path = None, file_dict: Dict = None, **proc_options
+        self, file_path: Path = None, file_dict: Dict = None, len_factor=0.005, **proc_options
     ) -> None:
         """Doc."""
 
@@ -2297,9 +2365,9 @@ class ImageSFCSMeasurement:
             end=" ",
         )
         # Processing data
-        if "len_factor" not in proc_options:
-            proc_options["len_factor"] = 0.001
-        p = self.data_processor.process_data(0, self._file_dict["full_data"], **proc_options)
+        p = self.data_processor.process_data(
+            0, self._file_dict["full_data"], len_factor=len_factor, is_verbose=True, **proc_options
+        )
         print("Done.\n")
         # Appending data to self
         if p is not None:
@@ -2480,8 +2548,10 @@ class ImageSFCSMeasurement:
         file_dict: Dict = None,
         gate_ns: Gate = Gate(),
         min_n_photons: int = None,
-        median_factor=0.5,
+        median_factor=1.5,
         is_multiscan=False,
+        auto_gating=True,
+        auto_gate_width_ns=15,
         **kwargs,
     ) -> ImageStackData:
         """Doc."""
@@ -2495,6 +2565,16 @@ class ImageSFCSMeasurement:
                 raise ValueError(
                     "Must supply either a file path or a file dictionary if no data is loaded!"
                 )
+
+        # auto-gating
+        if not gate_ns and auto_gating:
+            print("Determining gate automatically, according to histogram peak... ", end="")
+            # calibrate TDC (if not already calibrated)
+            if not hasattr(self, "tdc_calib"):
+                self.calibrate_tdc()
+            peak_time_ns = self.tdc_calib.t_hist[np.nanargmax(self.tdc_calib.all_hist_norm)]
+            gate_ns = Gate(peak_time_ns, auto_gate_width_ns + peak_time_ns)
+            print(f"Done: {gate_ns}.")
 
         # auto-determination of 'min_n_photons' if not given
         if min_n_photons is None:
@@ -2530,7 +2610,9 @@ class ImageSFCSMeasurement:
 
         pulse_runtime = data.raw.pulse_runtime
         sample_runtime = pulse_runtime * self.ao_sampling_freq_hz // self.laser_freq_hz
-        self.calibrate_tdc()
+        if not hasattr(self, "tdc_calib"):
+            # calibrate TDC (if not already calibrated)
+            self.calibrate_tdc()
         delay_time = data.raw.delay_time
 
         # gate
@@ -2677,7 +2759,7 @@ class ImageSFCSMeasurement:
 
         # calculate and return needed values
         eff_idxs = ((dim1_ao_single - dim1_min) // pxl_size_v + 1).astype(np.int16)
-        pxls_per_line = div_ceil(self.scan_settings["dim1_um"], pxl_size_um)
+        pxls_per_line = int(np.ceil(self.scan_settings["dim1_um"] / pxl_size_um))
         line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
         return eff_idxs, pxls_per_line, line_ticks_v
 
@@ -2686,6 +2768,7 @@ class ImageSFCSMeasurement:
 
         img = self.tdc_image_data.construct_plane_image("forward normalized", **kwargs)
         fp = fit_2d_gaussian_to_image(img)
+
         x0, y0, sigma_x, sigma_y, phi = (
             fp.beta["x0"],
             fp.beta["y0"],
@@ -2755,7 +2838,7 @@ class ImageSFCSMeasurement:
 def calculate_calibrated_afterpulse(
     lag: np.ndarray,
     afterpulse_params: Tuple[str, np.ndarray] = default_system_info["afterpulse_params"],
-    gate_ns: Tuple[float, float] = (0, np.inf),
+    gate_ns: Union[Tuple[float, float], Gate] = (0, np.inf),
     laser_freq_hz: float = 1e7,
 ) -> np.ndarray:
     """Doc."""

@@ -118,6 +118,7 @@ class MainWin(QtWidgets.QMainWindow):
 
         self.solScanImgDisp = GuiDisplay(self.solAnalysisScanImageLayout, self)
         self.solScanAcfDisp = GuiDisplay(self.solAnalysisAveragingLayout, self)
+        self.solScanCountrateDisp = GuiDisplay(self.solAnalysisCountrateLayout, self)
 
         self.imgScanPreviewDisp = GuiDisplay(self.importImgPreviewLayout)
 
@@ -229,6 +230,10 @@ class MainWin(QtWidgets.QMainWindow):
         self.startSolQueueSted.released.connect(
             lambda: self.impl.add_meas_to_queue("SFCSSolution", "Sted")
         )
+
+        # re-position measurement in queue
+        self.moveMeasDownQueue.released.connect(lambda: self.impl.move_meas_in_queue("DOWN"))
+        self.moveMeasUpQueue.released.connect(lambda: self.impl.move_meas_in_queue("UP"))
 
         # remove selected measurement from queue
         self.removeMeasFromQueue.released.connect(lambda: self.impl.remove_meas_from_queue())

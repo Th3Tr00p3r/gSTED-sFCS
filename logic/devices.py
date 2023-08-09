@@ -30,7 +30,6 @@ from utilities.helper import (
     Limits,
     Vector,
     deep_getattr,
-    div_ceil,
     generate_numbers_from_string,
     str_to_num,
 )
@@ -756,7 +755,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
                 init_pos = self.last_int_ao[self.AXIS_INDEX[axis]]
 
             total_dist = abs(final_pos - init_pos)
-            n_steps = div_ceil(total_dist, step_sz)
+            n_steps = int(np.ceil(total_dist / step_sz))
 
             if n_steps < 2:  # one small step needs no smoothing
                 return
@@ -1079,7 +1078,7 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         if rate is None:
             rate = self.tasks.ci[-1].timing.samp_clk_rate
 
-        n_reads = div_ceil(interval_s, (1 / rate))
+        n_reads = int(np.ceil(interval_s * rate))
 
         if len(self.ci_buffer) > n_reads:
             self.avg_cnt_rate_khz = (
@@ -1373,7 +1372,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     _x_pos: QtWidgetAccess
     _y_pos: QtWidgetAccess
-    LIMITS = Limits(-6500, 6500)
+    LIMITS = Limits(-5000, 5000)
     LAST_POS_FILEPATH = Path("last_stage_position.pkl")
 
     def __init__(self, app):
@@ -1447,7 +1446,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             if all(self.LIMITS.valid_indices(self.curr_pos + vec)):
                 # X first
                 if vec.x:
-                    self.is_moving = True
+                    #                    self.is_moving = True
                     self.write(f"mx {vec.x}")
                     logging.debug(
                         f"{self.log_ref} moved {abs(vec.x)} steps {('RIGHT' if vec.x < 0 else 'LEFT')}"
@@ -1458,7 +1457,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
                 # then Y
                 if vec.y:
-                    self.is_moving = True
+                    #                    self.is_moving = True
                     self.write(f"my {vec.y}")
                     logging.debug(
                         f"{self.log_ref} moved {abs(vec.y)} steps {('DOWN' if vec.x < 0 else 'UP')}"
@@ -1483,6 +1482,9 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         # already in motion
         else:
             logging.info(f"{self.log_ref} is already in motion!")
+
+    #            await asyncio.sleep(1)  # TESTESTEST
+    #            self.is_moving = False # TESTESTEST
 
     def set_origin(self) -> None:
         """Set current position as the new origin"""

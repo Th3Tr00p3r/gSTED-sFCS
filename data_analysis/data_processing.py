@@ -23,8 +23,8 @@ from utilities.helper import (
     Limits,
     MemMapping,
     chunked_bincount,
-    div_ceil,
     nan_helper,
+    unify_length,
     xcorr,
 )
 
@@ -122,7 +122,7 @@ class AngularScanDataMixin:
 
         cnt = cnt.copy()
         height, width = cnt.shape
-        step = div_ceil(width, 1000)  # handling "slow" scans with many points per line
+        step = int(np.ceil(width / 1000))  # handling "slow" scans with many points per line
 
         # replacing outliers with median value
         med = np.median(cnt)
@@ -395,7 +395,7 @@ class RawFileData:
     @property
     def coarse(self):
         if self._was_data_dumped:
-            return self.read_mmap(0).astype(np.int16)
+            return self._read_mmap(0).astype(np.int16)
         else:
             return self._coarse
 
@@ -409,7 +409,7 @@ class RawFileData:
     @property
     def coarse2(self):
         if self._was_data_dumped:
-            return self.read_mmap(1).astype(np.int16)
+            return self._read_mmap(1).astype(np.int16)
         else:
             return self._coarse2
 
@@ -423,7 +423,7 @@ class RawFileData:
     @property
     def fine(self):
         if self._was_data_dumped:
-            return self.read_mmap(2).astype(np.int16)
+            return self._read_mmap(2).astype(np.int16)
         else:
             return self._fine
 
@@ -437,7 +437,7 @@ class RawFileData:
     @property
     def pulse_runtime(self):
         if self._was_data_dumped:
-            return self.read_mmap(3).astype(np.int64)
+            return self._read_mmap(3).astype(np.int64)
         else:
             return self._pulse_runtime
 
@@ -451,7 +451,7 @@ class RawFileData:
     @property
     def delay_time(self):
         if self._was_data_dumped:
-            return self.read_mmap(4).astype(np.float16)
+            return self._read_mmap(4).astype(np.float16)
         else:
             return self._delay_time
 
@@ -459,7 +459,7 @@ class RawFileData:
     def delay_time(self, new: np.ndarray):
         # NOTE: this does not allow for slicing! must assign a full delay_time array of same size
         if self._was_data_dumped:
-            return self.write_mmap_row(4, new)
+            return self._write_mmap_row(4, new)
         else:
             self._delay_time = new
 
@@ -467,11 +467,11 @@ class RawFileData:
     def line_num(self):
         if self._was_data_dumped:
             try:
-                return self.read_mmap(5).astype(np.int16)
+                return self._read_mmap(5).astype(np.int16)
             except IndexError:
                 return None
         else:
-            return self._pulse_runtime
+            return self._line_num
 
     @line_num.setter
     def line_num(self, new: np.ndarray):
@@ -480,7 +480,7 @@ class RawFileData:
         else:
             self._line_num = new
 
-    def read_mmap(self, row_idx: Union[int, slice] = slice(None), file_path=None):
+    def _read_mmap(self, row_idx: Union[int, slice] = slice(None), file_path=None):
         """
         Access the data from disk by memory-mapping, and get the 'row_idx' row.
         If row_idx was not supplied, retrieve the whole array.
@@ -494,7 +494,7 @@ class RawFileData:
             fix_imports=False,
         )[row_idx]
 
-    def write_mmap_row(self, row_idx: int, new_row: np.ndarray):
+    def _write_mmap_row(self, row_idx: int, new_row: np.ndarray):
         """
         Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
         each write should take about ???, therefore unnoticeable.
@@ -564,7 +564,7 @@ class RawFileData:
         """Compress (blosc) and save the memory-mapped data in a provided folder"""
 
         # load the data from dump path
-        data = self.read_mmap()
+        data = self._read_mmap()
 
         # compress and save to processed folder ('dir_path')
         Path.mkdir(dir_path, parents=True, exist_ok=True)  # creating the folder if needed
@@ -655,9 +655,9 @@ class AfterpulsingFilter:
         # create a filter for genuine fluorscene (ignoring afterpulsing)
         bin_num = np.digitize(split_dt, self.fine_bins)
         # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
-        filter = np.hstack((filter, [0]))  # TODO: should the filter be created like this?
+        filter = np.hstack(([0], filter, [0]))  # TODO: should the filter be created like this?
         # add the relevent filter values to the correlator filter input list
-        filter_input = filter[bin_num - 1]
+        filter_input = filter[bin_num]
         return filter_input
 
     def plot(self, parent_ax=None, **plot_kwargs):
@@ -702,17 +702,26 @@ class AfterpulsingFilter:
                 axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
             except ValueError as exc:
                 print(exc)
-                print("^ ignoring the last filter element...")
+                print("^ unifying lengh of filter to t_hist...")
                 axes[1].plot(
-                    self.t_hist, self.filter.T[:-1], label=["F_1j (signal)", "F_2j (afterpulsing)"]
+                    self.t_hist,
+                    unify_length(self.filter.T, (self.t_hist.size, 2)),
+                    label=["F_1j (signal)", "F_2j (afterpulsing)"],
                 )
-                axes[1].plot(self.t_hist, self.filter.sum(axis=0)[:-1], label="F.sum(axis=0)")
+                axes[1].plot(
+                    self.t_hist,
+                    unify_length(self.filter.sum(axis=0), self.t_hist.shape),
+                    label="F.sum(axis=0)",
+                )
 
             axes[1].legend()
 
-            if self.valid_limits.upper != np.inf:
-                axes[0].set_xlim(*self.valid_limits)
-                axes[1].set_xlim(*self.valid_limits)
+            # focus on valid limits
+            plot_lims = Limits(self.valid_limits)
+            if plot_lims.upper == np.inf:
+                plot_lims.upper = max(self.t_hist)
+            axes[0].set_xlim(*plot_lims)
+            axes[1].set_xlim(*plot_lims)
 
 
 @dataclass
@@ -869,7 +878,7 @@ class TDCPhotonFileData:
                 )[:, gate1_idxs | gate2_idxs]
 
             xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
-            for split_idx in range(n_splits := div_ceil(section_time, split_duration)):
+            for split_idx in range(n_splits := int(np.ceil(section_time / split_duration))):
                 for xx in xcorr_types:
                     if xx == "AA":
                         xcorr_input_dict[xx].append(
@@ -1122,9 +1131,10 @@ class TDCCalibration:
 
     def calculate_afterpulsing_filter(
         self,
-        gate_ns: Gate,
+        hard_gate_ns: Gate,
         meas_type: str,
         baseline_tail_perc=0.3,
+        hard_gate_max_bin=-40,
         **kwargs,
     ) -> np.ndarray:
         """Doc."""
@@ -1135,8 +1145,12 @@ class TDCCalibration:
 
         # define valid bins to work with
         peak_bin = max(np.nanargmax(all_hist_norm) - 2, 0)
-        peak_to_end_limits = Limits(t_hist[peak_bin], np.inf)
-        valid_limits = peak_to_end_limits & gate_ns
+        if hard_gate_ns:
+            # in case of a hard gate, make the max bin 'hard_gate_max_bin' / 10  (4 ns defualt) smaller
+            valid_limits = Limits(t_hist[peak_bin], t_hist[hard_gate_max_bin]) & hard_gate_ns
+        else:
+            # otherwise, leave the upper limit open
+            valid_limits = Limits(t_hist[peak_bin], np.inf)
         valid_idxs = valid_limits.valid_indices(t_hist)
 
         # interpolate over NaNs
@@ -1145,14 +1159,7 @@ class TDCCalibration:
         all_hist_norm[nans] = np.interp(x(nans), x(~nans), all_hist_norm[~nans])
 
         # calculate the baseline using the mean of the tail of the (hard-gate-limited) histogram
-        if gate_ns.hard_gate:
-            in_hard_gate_idxs = gate_ns.hard_gate.valid_indices(t_hist)
-        else:
-            # use all indices
-            in_hard_gate_idxs = slice(None)
-        baseline = all_hist_norm[in_hard_gate_idxs][
-            -round(len(t_hist) * baseline_tail_perc) :
-        ].mean()
+        baseline = all_hist_norm[valid_idxs][-round(len(t_hist) * baseline_tail_perc) :].mean()
 
         # normalization factor
         norm_factor = (all_hist_norm[valid_idxs] - baseline).sum()
@@ -1170,11 +1177,12 @@ class TDCCalibration:
 
         # Return the filter to original dimensions by adding zeros in the detector-gated zone
         # prepare padding for the gated-out/noisy part of the histogram
-        lower_idx = round(valid_limits.lower * 10)
+        #        lower_idx = round(valid_limits.lower * 10)
+        lower_idx = int(np.ceil(valid_limits.lower * 10))  # TESTESTEST
         F_pad_before = np.zeros((2, lower_idx))
-        if gate_ns.upper != np.inf:
+        if valid_limits.upper != np.inf:
             upper_idx = int(valid_limits.upper * 10)
-            F_pad_after = np.zeros((2, len(t_hist) - upper_idx))
+            F_pad_after = np.zeros((2, max(0, len(t_hist) - upper_idx)))
         else:
             F_pad_after = np.zeros((2, 0))
         F = np.hstack((F_pad_before, F, F_pad_after))
@@ -1305,7 +1313,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 )
                 if should_use_all_sections:
                     print(
-                        f"Using all valid (> {len_factor:.0%}) sections ({len(section_runtime_edges)}/{len(section_edges)}).",
+                        f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_edges)}/{len(section_edges)}).",
                         end=" ",
                     )
                 else:  # Use largest section only
@@ -1663,6 +1671,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 **kwargs,
             )
         except RuntimeError as exc:
+            # TODO: this should just be an error, and handled as such up the call chain
             print(f"{exc} Skipping file.")
             return None
 
@@ -1734,7 +1743,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 img_bw = self._threshold_and_smooth(img.copy())
             except ValueError:
                 raise RuntimeError("Automatic ROI selection: Thresholding failed")
-                return None
         elif roi_selection == "all":
             img_bw = np.full(img.shape, True)
         else:
@@ -1762,6 +1770,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         if kwargs.get("is_verbose"):
             print("Building ROI...", end=" ")
 
+        # TODO: this is an experimantal feature - it should be fixed so that only the "best" (least bright spots) of each file are used
         if kwargs.get("should_alleviate_bright_pixels"):
             if kwargs.get("is_verbose"):
                 print("Getting rid of rows with bright spots on the single-scan level...", end=" ")
@@ -1786,10 +1795,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
                 # Handle faulty scans
                 if scan_prt.size < 100:
-                    print(
+                    raise RuntimeError(
                         f"One of the single scans (index {scan_idx}) is faulty. Ignoring whole file."
                     )
-                    return None
 
                 # prepare scan image to discriminate bad rows (with bright pixels)
                 scan_img, _, scan_pixel_num, scan_line_num, _ = self.convert_angular_scan_to_image(
@@ -1888,6 +1896,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     img_bw, pulse_runtime + prt_shift, self.laser_freq_hz, ao_sampling_freq_hz
                 )
             except IndexError:
+                # TODO: this should just be an error, and handled as such up the call chain
                 if kwargs.get("is_verbose"):
                     print("ROI is empty (need to figure out the cause). Skipping file.\n")
                 return None

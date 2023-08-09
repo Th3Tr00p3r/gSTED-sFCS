@@ -49,10 +49,10 @@ class GuiDisplay:
             ax.set_xlabel(x_label)
             ax.set_ylabel(y_label)
 
-    def plot(self, x, y, *args, **kwargs):
+    def plot(self, x, y, *args, should_clear=False, **kwargs):
         """Wrapper for matplotlib.pyplot.plot."""
 
-        options = self.GuiDisplayOptions(clear=False)
+        options = self.GuiDisplayOptions() if should_clear else self.GuiDisplayOptions(clear=False)
         with Plotter(gui_display=self, gui_options=options) as ax:
             ax.plot(x, y, *args, **kwargs)
 

@@ -51,7 +51,7 @@ class Vector:
         yield from (self.x, self.y)
 
     def __getitem__(self, idx):
-        return tuple(self)[idx]
+        return tuple(self.x, self.y)[idx]
 
     def __len__(self):
         return 2
@@ -80,13 +80,17 @@ class Vector:
     __rmul__ = __mul__
 
     def __eq__(self, other):
-        if isinstance(other, tuple) or self.units == other.units:
-            try:
-                return tuple(self) == other
-            except TypeError:
-                raise TypeError("Can only compare Limits to other instances or tuples")
-        else:
-            raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
+        try:
+            if isinstance(other, tuple) or self.units == other.units:
+                try:
+                    return tuple(self) == other
+                except TypeError:
+                    raise TypeError("Can only compare Vectors to other instances or tuples")
+            else:
+                raise TypeError(f"Vectors are of different units! ({self.units}, {other.units})")
+        except AttributeError:
+            # other has no 'units'
+            raise TypeError("Can only compare Vectors to other instances or tuples")
 
     def __round__(self, ndigits=None):
         return Vector(round(self.x, ndigits=ndigits), round(self.y, ndigits=ndigits), self.units)
@@ -112,18 +116,7 @@ class MemMapping:
         self._file_name = file_name
         self._dump_path = dump_path
         self._dump_file_path = self._dump_path / self._file_name
-        self._dump(arr)
-
-        # keep some useful attributes for quick access
-        self.shape = arr.shape
-        self.size = arr.size
-        self.max = arr.max()
-        self.min = arr.min()
-
-    def _dump(self, arr: np.ndarray):
-        """Dump the data to disk. Called at initialization only."""
-
-        # save
+        # dump
         Path.mkdir(self._dump_path, parents=True, exist_ok=True)
         np.save(
             self._dump_file_path,
@@ -131,6 +124,12 @@ class MemMapping:
             allow_pickle=False,
             fix_imports=False,
         )
+
+        # keep some useful attributes for quick access
+        self.shape = arr.shape
+        self.size = arr.size
+        self.max = arr.max()
+        self.min = arr.min()
 
     def read(self):
         """
@@ -959,9 +958,12 @@ def can_float(value: Any) -> bool:
         float(value)
         return True
     except (ValueError, TypeError):
-        if value == "-":  # consider hyphens part of float (minus sign)
-            return True
-        return False
+        try:
+            if value == "-":  # consider hyphens part of float (minus sign)
+                return True
+            return False
+        except TypeError:
+            return False
 
 
 def str_to_num(x):
@@ -1039,17 +1041,6 @@ def deep_getattr(obj, deep_attr_name: str, default=None):
     for attr_name in deep_attr_name.split("."):
         obj = getattr(obj, attr_name, default)
     return obj
-
-
-def div_ceil(x: Number, y: Number) -> int:
-    """Returns x divided by y rounded towards positive infinity"""
-
-    # case x and y are divisible
-    if x / y == x // y:
-        return int(x // y)
-    # otherwise, round up
-    else:
-        return int(-(-x // y))
 
 
 def reverse_dict(dict_: dict, ignore_unhashable=False) -> dict:

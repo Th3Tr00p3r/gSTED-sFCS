@@ -354,13 +354,6 @@ class MainWin:
                 title="Re-Calibrate Delayer Synchronization Time",
             ).display()
 
-    def show_stage_dock(self):
-        """Make the laser dock visible (convenience)."""
-
-        if not self.main_gui.stepperDock.isVisible():
-            self.main_gui.stepperDock.setVisible(True)
-            self.main_gui.actionStepper_Stage_Control.setChecked(True)
-
     def add_meas_to_queue(self, meas_type=None, laser_mode=None, **kwargs):
         """Doc."""
 
@@ -422,6 +415,25 @@ class MainWin:
                 )
             )
 
+    def move_meas_in_queue(self, direction: str):
+        """Doc."""
+
+        if direction == "UP":
+            idx = -1
+        elif direction == "DOWN":
+            idx = 1
+        else:
+            raise ValueError(f"Direction must be 'UP' or 'DOWN' (got '{direction}')")
+
+        with suppress(IndexError):
+            # IndexError: no measurements in queue...
+            meas_idx = self._gui.main.measQueue.currentRow()
+            meas_str = self._gui.main.measQueue.takeItem(meas_idx)
+            self._gui.main.measQueue.insertItem(meas_idx + idx, meas_str)
+            self._gui.main.measQueue.setCurrentRow(meas_idx + idx)
+            meas = self._app.meas_queue.pop(meas_idx)
+            self._app.meas_queue.insert(meas_idx + idx, meas)
+
     def remove_meas_from_queue(self):
         """Doc."""
 
@@ -464,8 +476,8 @@ class MainWin:
                 self._app.devices.dep_laser.laser_toggle(False)
             # re-enable queue
             self._gui.main.measQueue.setEnabled(True)
-            # send stage to origin
-            await self._app.devices.stage.move(helper.Vector(0, 0, "steps"), relative=False)
+            # Turn off stage
+            self._app.devices.stage.toggle(False)
             logging.debug("All measurements completed.")
         else:
             logging.info("No measurements in queue!")
@@ -516,6 +528,15 @@ class MainWin:
                     self.main_gui.solScanDur.setEnabled(self.main_gui.repeatSolMeas.isChecked())
                     self.main_gui.solScanDurUnits.setEnabled(False)
                     self.main_gui.solScanFileTemplate.setEnabled(False)
+                    self.main_gui.beginMeasurements.setEnabled(False)
+                    self.main_gui.stopMeasurements.setEnabled(True)
+                    self.main_gui.stopMeasurement.setEnabled(True)
+                    self.main_gui.removeMeasFromQueue.setEnabled(False)
+                    self.main_gui.moveMeasUpQueue.setEnabled(False)
+                    self.main_gui.moveMeasDownQueue.setEnabled(False)
+                    self.main_gui.startSolQueueExc.setEnabled(False)
+                    self.main_gui.startSolQueueSted.setEnabled(False)
+                    self.main_gui.startSolQueueDep.setEnabled(False)
 
                 elif meas.type == "SFCSImage":
                     self.main_gui.startImgScanExc.setEnabled(False)
@@ -547,6 +568,15 @@ class MainWin:
                 self.main_gui.solScanDur.setEnabled(True)
                 self.main_gui.solScanDurUnits.setEnabled(True)
                 self.main_gui.solScanFileTemplate.setEnabled(True)
+                self.main_gui.beginMeasurements.setEnabled(True)
+                self.main_gui.stopMeasurements.setEnabled(False)
+                self.main_gui.stopMeasurement.setEnabled(False)
+                self.main_gui.removeMeasFromQueue.setEnabled(True)
+                self.main_gui.moveMeasUpQueue.setEnabled(True)
+                self.main_gui.moveMeasDownQueue.setEnabled(True)
+                self.main_gui.startSolQueueExc.setEnabled(True)
+                self.main_gui.startSolQueueSted.setEnabled(True)
+                self.main_gui.startSolQueueDep.setEnabled(True)
 
             if meas.type == "SFCSImage":
                 self.main_gui.startImgScanExc.setEnabled(True)
@@ -821,18 +851,21 @@ class MainWin:
                 "repeat": True,
                 "should_fit": True,
                 "should_accumulate_corrfuncs": False,
+                "stage_pattern": "None",
             },
             "Standard Angular": {
                 "scan_type": "angular",
                 "regular": True,
                 "should_fit": False,
                 "should_accumulate_corrfuncs": True,
+                "stage_pattern": "Snake",
             },
             "Standard Circular": {
                 "scan_type": "circle",
                 "regular": True,
                 "should_fit": False,
                 "should_accumulate_corrfuncs": True,
+                "stage_pattern": "Snake",
             },
         }
 
@@ -1617,12 +1650,18 @@ class MainWin:
                         subplots=(1, img_data.image_stack_forward.shape[2]),
                     ) as axes:
                         try:
-                            for plane_idx, ax in enumerate(axes):
-                                meas.estimate_spatial_resolution(parent_ax=ax, plane_idx=plane_idx)
-                                ax.set_title(f"Scan/Plane #{plane_idx+1}")
-                        except TypeError:
-                            # 'Axes' object is not iterable
-                            meas.estimate_spatial_resolution(parent_ax=axes)
+                            try:
+                                for plane_idx, ax in enumerate(axes):
+                                    meas.estimate_spatial_resolution(
+                                        parent_ax=ax, plane_idx=plane_idx
+                                    )
+                                    ax.set_title(f"Scan/Plane #{plane_idx+1}")
+                            except TypeError:
+                                # 'Axes' object is not iterable
+                                meas.estimate_spatial_resolution(parent_ax=axes)
+                        except RuntimeError as exc:
+                            # Fit failed?
+                            print(f"Spatial resolution estimate failed! [{exc}]")
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                     err_hndlr(exc, sys._getframe(), locals())
@@ -1942,6 +1981,15 @@ class MainWin:
                 )
                 sol_data_analysis_wdgts["row_acf_disp"].obj.entitle_and_label(x_label, "G0")
 
+                sol_data_analysis_wdgts["countrate_disp"].obj.plot(
+                    np.cumsum(cf.split_durations_s),
+                    cf.countrate_list,
+                    should_clear=True,
+                )
+                sol_data_analysis_wdgts["countrate_disp"].obj.entitle_and_label(
+                    "measurement time (s)", "countrate"
+                )
+
             if meas.scan_type == "angular":
                 row_disc_method = sol_data_analysis_wdgts["row_dicrimination"].objectName()
                 if row_disc_method == "solAnalysisRemoveOver":
@@ -1979,6 +2027,15 @@ class MainWin:
                         cf.cf_cr[cf.j_good, :],
                     )
                     sol_data_analysis_wdgts["row_acf_disp"].obj.entitle_and_label(x_label, "G0")
+
+                    sol_data_analysis_wdgts["countrate_disp"].obj.plot(
+                        np.cumsum(cf.split_durations_s),
+                        cf.countrate_list,
+                        should_clear=True,
+                    )
+                    sol_data_analysis_wdgts["countrate_disp"].obj.entitle_and_label(
+                        "measurement time (s)", "countrate"
+                    )
 
                     sol_data_analysis_wdgts["mean_g0"].set(cf.g0 / 1e3)  # shown in thousands
                     sol_data_analysis_wdgts["mean_tau"].set(0)
@@ -2019,6 +2076,12 @@ class MainWin:
                         cf.g0,
                     )
                     sol_data_analysis_wdgts["row_acf_disp"].obj.plot(cf.lag, y_fit, color="red")
+                finally:
+                    sol_data_analysis_wdgts["countrate_disp"].obj.plot(
+                        np.cumsum(cf.split_durations_s),
+                        cf.countrate_list,
+                        should_clear=True,
+                    )
 
     def assign_template(self, type) -> None:
         """Doc."""
@@ -2188,20 +2251,17 @@ class MainWin:
         """Doc."""
 
         experiment = self.get_experiment()
-        if (
-            experiment is not None
-            and hasattr(experiment.sted, "scan_type")
-            and hasattr(experiment.confocal, "scan_type")
-        ):
+        if experiment is not None and hasattr(experiment.confocal, "scan_type"):
             wdgt_coll = wdgts.SOL_EXP_ANALYSIS_COLL.gui_to_dict(self._gui)
 
-            if hasattr(experiment.sted, "scan_type") and hasattr(experiment.confocal, "scan_type"):
+            if hasattr(experiment.confocal, "scan_type"):
                 lt_params = experiment.get_lifetime_parameters()
 
                 # display parameters in GUI
                 wdgt_coll["fluoresence_lifetime"].set(lt_params.lifetime_ns)
-                wdgt_coll["sigma_sted"].set(lt_params.sigma_sted)
                 wdgt_coll["laser_pulse_delay"].set(lt_params.laser_pulse_delay_ns)
+                if hasattr(experiment.sted, "scan_type"):
+                    wdgt_coll["sigma_sted"].set(lt_params.sigma_sted)
 
     def assign_gate(self) -> None:
         """Doc."""
