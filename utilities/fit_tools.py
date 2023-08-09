@@ -53,8 +53,8 @@ class FitParams:
     def plot(self, color=None, fit_label="Fit", **kwargs):
         """Doc."""
 
+        kwargs["super_title"] = kwargs.get("super_title", f"Curve Fit ({self.fit_func.__name__})")
         with Plotter(
-            super_title=f"Curve Fit ({self.fit_func.__name__})",
             xlim=(min(self.x), max(self.x)),
             ylim=(min(self.y), max(self.y)),
             **kwargs,
@@ -248,9 +248,9 @@ def gaussian_2d_fit(xy_tuple, amplitude, x0, y0, sigma_x, sigma_y, phi, offset):
     x, y = xy_tuple
     x0 = float(x0)
     y0 = float(y0)
-    a = (np.cos(phi) ** 2) / (2 * sigma_x ** 2) + (np.sin(phi) ** 2) / (2 * sigma_y ** 2)
-    b = -(np.sin(2 * phi)) / (4 * sigma_x ** 2) + (np.sin(2 * phi)) / (4 * sigma_y ** 2)
-    c = (np.sin(phi) ** 2) / (2 * sigma_x ** 2) + (np.cos(phi) ** 2) / (2 * sigma_y ** 2)
+    a = (np.cos(phi) ** 2) / (2 * sigma_x**2) + (np.sin(phi) ** 2) / (2 * sigma_y**2)
+    b = -(np.sin(2 * phi)) / (4 * sigma_x**2) + (np.sin(2 * phi)) / (4 * sigma_y**2)
+    c = (np.sin(phi) ** 2) / (2 * sigma_x**2) + (np.cos(phi) ** 2) / (2 * sigma_y**2)
     g = offset + amplitude * np.exp(
         -(a * ((x - x0) ** 2) + 2 * b * (x - x0) * (y - y0) + c * ((y - y0) ** 2))
     )
@@ -266,7 +266,7 @@ def zero_intersect_linear_fit(t, m):
 
 
 def power_fit(t, a, n):
-    return a * t ** n
+    return a * t**n
 
 
 def polynomial_fit(t, *beta):
@@ -276,7 +276,7 @@ def polynomial_fit(t, *beta):
     """
 
     amplitude_row_vec = np.array(beta)[:, np.newaxis].T
-    power_column_vec = np.array([t ** n for n in range(len(beta))])
+    power_column_vec = np.array([t**n for n in range(len(beta))])
     return (amplitude_row_vec @ power_column_vec).squeeze()
 
 

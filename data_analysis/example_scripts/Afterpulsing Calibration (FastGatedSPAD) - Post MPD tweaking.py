@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.13.8
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -49,7 +49,7 @@ except NameError:
     print("Working from: ", PROJECT_ROOT)
 
 from data_analysis.correlation_function import (
-    SFCSExperiment,
+    SolutionSFCSExperiment,
     calculate_calibrated_afterpulse,
 )
 from utilities.display import Plotter
@@ -62,45 +62,74 @@ DATA_ROOT = Path("D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data")  # Laptop/Lab P
 # DATA_ROOT = Path("D:\???")  # Oleg's
 DATA_TYPE = "solution"
 
+# SHOULD_SAVE = True
+SHOULD_SAVE = False
+
+
+def save_figure(fig, fig_path):
+    if SHOULD_SAVE:
+        fig.savefig(fig_path)
+        print(f"Figure saved at: '{fig_path}'")
+    else:
+        print(f"Figure was NOT saved! 'SHOULD_SAVE' is False!")
+
+
 # %% [markdown]
 # Choosing the data templates:
 
 # %%
 data_label_dict = {
-    "White Noise 5 kHz (after fix)": SimpleNamespace(
+    "White Noise 5 kHz (new, after fix)": SimpleNamespace(
         date="17_08_2022",
         template="halogen5khz_static_exc_132750_*.pkl",
         file_selection="Use All",
         force_processing=False,
-        #         force_processing=True,
     ),
-    "White Noise 60 kHz  (after fix)": SimpleNamespace(
+    "White Noise 60 kHz  (new, after fix)": SimpleNamespace(
         date="17_08_2022",
         template="halogen60khz_static_exc_145502_*.pkl",
         file_selection="Use All",
         force_processing=False,
     ),
-    "White Noise 300 kHz  (after fix)": SimpleNamespace(
+    "White Noise 300 kHz  (new, after fix)": SimpleNamespace(
         date="17_08_2022",
         template="halogen300khz_static_exc_152832_*.pkl",
         file_selection="Use All",
         force_processing=False,
     ),
-    "White Noise 5 kHz (before fix)": SimpleNamespace(
-        date="21_06_2022",
-        template="halogen5khz_static_exc_152832_*.pkl",
+    #     "White Noise 5 kHz (before fix)": SimpleNamespace(
+    #         date="21_06_2022",
+    #         template="halogen5khz_static_exc_152832_*.pkl",
+    #         file_selection="Use All",
+    #         force_processing=True,
+    #     ),
+    #     "White Noise 60 kHz (before fix)": SimpleNamespace(
+    #         date="27_06_2022",
+    #         template="halogen60khz_static_exc_132729_*.pkl",
+    #         file_selection="Use All",
+    #         force_processing=True,
+    #     ),
+    #     "White Noise 305 kHz (before fix)": SimpleNamespace(
+    #         date="21_06_2022",
+    #         template="halogen300khz_static_exc_150947_*.pkl",
+    #         file_selection="Use All",
+    #         force_processing=True,
+    #     ),
+    "White Noise 4 kHz (old detector)": SimpleNamespace(
+        date="08_11_2021",
+        template="halogen_4kHz_static_exc_112742_*.pkl",
         file_selection="Use All",
         force_processing=False,
     ),
-    "White Noise 60 kHz (before fix)": SimpleNamespace(
-        date="27_06_2022",
-        template="halogen60khz_static_exc_132729_*.pkl",
+    "White Noise 40 kHz  (old detector)": SimpleNamespace(
+        date="08_11_2021",
+        template="halogen_40kHz_static_exc_121330_*.pkl",
         file_selection="Use All",
         force_processing=False,
     ),
-    "White Noise 305 kHz (before fix)": SimpleNamespace(
-        date="21_06_2022",
-        template="halogen300khz_static_exc_150947_*.pkl",
+    "White Noise 300 kHz  (old detector)": SimpleNamespace(
+        date="08_11_2021",
+        template="halogen_300kHz_static_exc_125927_*.pkl",
         file_selection="Use All",
         force_processing=False,
     ),
@@ -121,7 +150,7 @@ if "halogen_exp_dict" not in locals():
 
 for label in data_labels:
     if label not in halogen_exp_dict:
-        halogen_exp_dict[label] = SFCSExperiment(name=label)
+        halogen_exp_dict[label] = SolutionSFCSExperiment(name=label)
 
 label_load_kwargs_dict = {
     label: dict(confocal_template=tmplt_path, file_selection=data.file_selection)
@@ -153,7 +182,7 @@ for label in used_labels:
             should_plot=False,
             force_processing=data_label_dict[label].force_processing or FORCE_ALL,
             should_re_correlate=FORCE_ALL,
-            should_subtract_afterpulse=False,
+            afterpulsing_method="none",
             should_unite_start_times=True,  # for uniting the two 5 kHz measurements
             **label_load_kwargs_dict[label],
         )
@@ -171,6 +200,30 @@ for label in used_labels:
     meas = halogen_exp_dict[label].confocal
     print(f"'{label}' countrate: {meas.avg_cnt_rate_khz:.2f} +/- {meas.std_cnt_rate_khz:.2f}")
 
+
+# %% [markdown]
+# Display the 'after fix' afterpulsings together
+
+# %%
+with Plotter(
+    super_title="Afterpulsing Curves",
+    xlabel="$t\ (ms)$",
+    ylabel="Mean ACF times\nCountrate",
+    x_scale="log",
+    xlim=(5e-4, 1e0),
+    ylim=(-1, 8.5e4),
+    figsize=(5, 5),
+) as ax:
+    for label, exp in halogen_exp_dict.items():
+        cf = exp.confocal.cf["confocal"]
+        ax.plot(cf.lag, cf.avg_cf_cr, "--" if "old" in label else "-", label=label)
+    ax.legend()
+
+# %% [markdown]
+# Save the above figure
+
+# %%
+save_figure(ax.figure, "OldVsNewAP.eps")
 
 # %% [markdown]
 # Multiexponent Fitting

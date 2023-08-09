@@ -1313,7 +1313,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 )
                 if should_use_all_sections:
                     print(
-                        f"Using all valid (> {len_factor:.0%}) sections ({len(section_runtime_edges)}/{len(section_edges)}).",
+                        f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_edges)}/{len(section_edges)}).",
                         end=" ",
                     )
                 else:  # Use largest section only
@@ -1770,7 +1770,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         if kwargs.get("is_verbose"):
             print("Building ROI...", end=" ")
 
-        # TODO: this is an experimantal feature - it should be fixed so that only the "best" (least brightest spots) of each file are used
+        # TODO: this is an experimantal feature - it should be fixed so that only the "best" (least bright spots) of each file are used
         if kwargs.get("should_alleviate_bright_pixels"):
             if kwargs.get("is_verbose"):
                 print("Getting rid of rows with bright spots on the single-scan level...", end=" ")

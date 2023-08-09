@@ -498,7 +498,7 @@ class CorrFunc:
         y_field=None,
         y_error_field=None,
         fit_param_estimate=None,
-        fit_range=(np.NINF, np.inf),
+        fit_range=None,
         x_scale=None,
         y_scale=None,
         bounds=(np.NINF, np.inf),
@@ -518,7 +518,7 @@ class CorrFunc:
                 y_field = "avg_cf_cr"
                 y_scale = "linear"
                 y_error_field = "error_cf_cr"
-                if fit_range == (np.NINF, np.inf):
+                if fit_range is None:
                     fit_range = (1e-3, 10)
 
             elif fit_name == "zero_centered_zero_bg_normalized_gaussian_1d_fit":
@@ -532,8 +532,11 @@ class CorrFunc:
                 y_field = "normalized"
                 y_scale = "linear"
                 y_error_field = "error_normalized"
-                if fit_range == (np.NINF, np.inf):
+                if fit_range is None:
                     fit_range = (1e-2, 100)
+
+        elif fit_range is None:
+            fit_range = (np.NINF, np.inf)
 
         x = getattr(self, x_field)
         y = getattr(self, y_field)
@@ -741,6 +744,20 @@ class SolutionSFCSMeasurement:
         self.corr_input_list: List[np.ndarray] = None
         self.afterpulsing_filter: AfterpulsingFilter = None
 
+    @property
+    def avg_cnt_rate_khz(self):
+        """Calculate the mean effective (in sample) countrate using the first CorrFunc object in .cf"""
+
+        in_sample_countrate_list = list(self.cf.values())[0].countrate_list
+        return np.mean(in_sample_countrate_list) * 1e-3
+
+    @property
+    def std_cnt_rate_khz(self):
+        """Calculate the standard deviation from mean effective (in sample) countrate using the first CorrFunc object in .cf"""
+
+        in_sample_countrate_list = list(self.cf.values())[0].countrate_list
+        return np.std(in_sample_countrate_list, ddof=1) * 1e-3
+
     def read_fpga_data(
         self,
         file_path_template: Union[str, Path],
@@ -797,13 +814,7 @@ class SolutionSFCSMeasurement:
         else:  # static
             self.bg_line_corr_list = []
 
-        # calculate average count rate
-        self.avg_cnt_rate_khz = np.mean([p.general.avg_cnt_rate_khz for p in self.data])
-        try:
-            self.std_cnt_rate_khz = np.std([p.general.avg_cnt_rate_khz for p in self.data], ddof=1)
-        except RuntimeWarning:  # single file
-            self.std_cnt_rate_khz = 0.0
-
+        # caculate durations
         calc_duration_mins = sum([p.general.duration_s for p in self.data]) / 60
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
@@ -842,7 +853,7 @@ class SolutionSFCSMeasurement:
         # estimate byte_data size (of each file) - total photons times 7 (bytes per photon) in Mega-bytes
         # TODO: estimation should be for a single file (must know the original number of files!) and condition should depend on actual number of file
         total_byte_data_size_estimate_mb = (
-            (self.avg_cnt_rate_khz * 1e3 * self.duration_min * 60) * 7 / 1e6
+            (self.est_avg_cnt_rate_khz * 1e3 * self.duration_min * 60) * 7 / 1e6
         )
         print(
             f"total_byte_data_size_estimate_mb (all files): {total_byte_data_size_estimate_mb:.2f}"
@@ -944,7 +955,7 @@ class SolutionSFCSMeasurement:
         full_data = file_dict["full_data"]
 
         # get countrate estimate (for multiprocessing threshod). calculated more precisely in the end of processing.ArithmeticError
-        self.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
+        self.est_avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
         self.afterpulse_params = file_dict["system_info"]["afterpulse_params"]
         self.detector_settings = full_data.get("detector_settings")
@@ -1225,7 +1236,8 @@ class SolutionSFCSMeasurement:
         try:  # temporal to spatial conversion, if scanning
             CF.vt_um = self.v_um_ms * CF.lag
         except AttributeError:
-            CF.vt_um = CF.lag  # static
+            # static
+            CF.vt_um = CF.lag
 
         if corr_options.get("is_verbose"):
             print("- Done.")
@@ -1350,27 +1362,34 @@ class SolutionSFCSMeasurement:
     def display_scan_images(self) -> None:
         """Doc."""
 
-        if self.scan_type == "angular":
-            with Plotter(subplots=(1, self.n_files), fontsize=8, should_force_aspect=True) as axes:
-                if not hasattr(
-                    axes, "size"
-                ):  # if axes is not an ndarray (only happens if reading just one file)
-                    axes = np.array([axes])
-                for file_idx, (ax, image, roi) in enumerate(
-                    zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
-                ):
-                    ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
-                    ax.set_xlabel("Pixel Index")
-                    ax.set_ylabel("Line Index")
-                    ax.imshow(image, interpolation="none")
-                    ax.plot(roi["col"], roi["row"], color="white")
+        try:
+            if self.scan_type == "angular":
+                with Plotter(
+                    subplots=(1, self.n_files), fontsize=8, should_force_aspect=True
+                ) as axes:
+                    if not hasattr(
+                        axes, "size"
+                    ):  # if axes is not an ndarray (only happens if reading just one file)
+                        axes = np.array([axes])
+                    for file_idx, (ax, image, roi) in enumerate(
+                        zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
+                    ):
+                        ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
+                        ax.set_xlabel("Pixel Index")
+                        ax.set_ylabel("Line Index")
+                        ax.imshow(image, interpolation="none")
+                        ax.plot(roi["col"], roi["row"], color="white")
 
-        elif self.scan_type == "circle":
-            with Plotter(fontsize=8, should_force_aspect=True) as ax:
-                ax.imshow(self.scan_image, interpolation="none")
+            elif self.scan_type == "circle":
+                with Plotter(fontsize=8, should_force_aspect=True) as ax:
+                    ax.imshow(self.scan_image, interpolation="none")
 
-        else:
-            raise ValueError(f"Can't display scan images for '{self.scan_type}' scans.")
+            else:
+                raise ValueError(f"Can't display scan images for '{self.scan_type}' scans.")
+
+        except AttributeError:
+            # Measurement not loaded!
+            raise RuntimeError(f"'{self.type}' not loaded!")
 
     def plot_correlation_functions(
         self,
@@ -1400,7 +1419,7 @@ class SolutionSFCSMeasurement:
                 )
             ax.legend()
 
-    def estimate_spatial_resolution(self, colors=None, **kwargs) -> Iterator[str]:
+    def estimate_spatial_resolution(self, colors=None, fit_range=None, **kwargs) -> Iterator[str]:
         """
         Perform Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions in the measurement
         in order to estimate the resolution improvement. This is relevant only for calibration experiments (i.e. 300 bp samples).
@@ -1412,6 +1431,7 @@ class SolutionSFCSMeasurement:
         for CF in self.cf.values():
             CF.fit_correlation_function(
                 fit_name="zero_centered_zero_bg_normalized_gaussian_1d_fit",
+                fit_range=fit_range,
             )
 
         with Plotter(
@@ -1431,6 +1451,8 @@ class SolutionSFCSMeasurement:
                 hwhm_error = list(FP.beta_error.values())[0] * 1e3 * HWHM_FACTOR
                 fit_label = f"{CF.name}: ${hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.0f}$)"
                 FP.plot(parent_ax=ax, color=color, fit_label=fit_label, **kwargs)
+            ax.set_xlabel("vt_um")
+            ax.set_ylabel("normalized ACF")
 
             ax.legend()
 
@@ -1857,9 +1879,11 @@ class SolutionSFCSExperiment:
         fit_range=None,
         param_estimates=None,
         bg_range=Limits(40, 60),
+        should_plot=True,
         **kwargs,
     ) -> LifeTimeParams:
         """Doc."""
+        # TODO: the default bg_range may fail for hard-gated measurements! Check it out and add manual selection or some automatic heuristic solution.
 
         conf = self.confocal
         sted = self.sted
@@ -1890,6 +1914,8 @@ class SolutionSFCSExperiment:
             fit_range=fit_range, fit_param_estimate=beta0
         )
         lifetime_ns = conf_params.beta["tau"]
+        if should_plot:
+            conf_params.plot(super_title="Lifetime Fit")
 
         # remove background
         conf_bg = np.mean(conf_hist[Limits(bg_range).valid_indices(conf_t)])
@@ -2313,7 +2339,7 @@ class ImageSFCSMeasurement:
         self.ci_image_data = None
 
     def read_fpga_data(
-        self, file_path: Path = None, file_dict: Dict = None, **proc_options
+        self, file_path: Path = None, file_dict: Dict = None, len_factor=0.005, **proc_options
     ) -> None:
         """Doc."""
 
@@ -2339,9 +2365,9 @@ class ImageSFCSMeasurement:
             end=" ",
         )
         # Processing data
-        if "len_factor" not in proc_options:
-            proc_options["len_factor"] = 0.001
-        p = self.data_processor.process_data(0, self._file_dict["full_data"], **proc_options)
+        p = self.data_processor.process_data(
+            0, self._file_dict["full_data"], len_factor=len_factor, is_verbose=True, **proc_options
+        )
         print("Done.\n")
         # Appending data to self
         if p is not None:
@@ -2522,8 +2548,10 @@ class ImageSFCSMeasurement:
         file_dict: Dict = None,
         gate_ns: Gate = Gate(),
         min_n_photons: int = None,
-        median_factor=0.5,
+        median_factor=1.5,
         is_multiscan=False,
+        auto_gating=True,
+        auto_gate_width_ns=15,
         **kwargs,
     ) -> ImageStackData:
         """Doc."""
@@ -2537,6 +2565,16 @@ class ImageSFCSMeasurement:
                 raise ValueError(
                     "Must supply either a file path or a file dictionary if no data is loaded!"
                 )
+
+        # auto-gating
+        if not gate_ns and auto_gating:
+            print("Determining gate automatically, according to histogram peak... ", end="")
+            # calibrate TDC (if not already calibrated)
+            if not hasattr(self, "tdc_calib"):
+                self.calibrate_tdc()
+            peak_time_ns = self.tdc_calib.t_hist[np.nanargmax(self.tdc_calib.all_hist_norm)]
+            gate_ns = Gate(peak_time_ns, auto_gate_width_ns + peak_time_ns)
+            print(f"Done: {gate_ns}.")
 
         # auto-determination of 'min_n_photons' if not given
         if min_n_photons is None:
@@ -2572,7 +2610,9 @@ class ImageSFCSMeasurement:
 
         pulse_runtime = data.raw.pulse_runtime
         sample_runtime = pulse_runtime * self.ao_sampling_freq_hz // self.laser_freq_hz
-        self.calibrate_tdc()
+        if not hasattr(self, "tdc_calib"):
+            # calibrate TDC (if not already calibrated)
+            self.calibrate_tdc()
         delay_time = data.raw.delay_time
 
         # gate
@@ -2728,6 +2768,7 @@ class ImageSFCSMeasurement:
 
         img = self.tdc_image_data.construct_plane_image("forward normalized", **kwargs)
         fp = fit_2d_gaussian_to_image(img)
+
         x0, y0, sigma_x, sigma_y, phi = (
             fp.beta["x0"],
             fp.beta["y0"],

@@ -1650,12 +1650,18 @@ class MainWin:
                         subplots=(1, img_data.image_stack_forward.shape[2]),
                     ) as axes:
                         try:
-                            for plane_idx, ax in enumerate(axes):
-                                meas.estimate_spatial_resolution(parent_ax=ax, plane_idx=plane_idx)
-                                ax.set_title(f"Scan/Plane #{plane_idx+1}")
-                        except TypeError:
-                            # 'Axes' object is not iterable
-                            meas.estimate_spatial_resolution(parent_ax=axes)
+                            try:
+                                for plane_idx, ax in enumerate(axes):
+                                    meas.estimate_spatial_resolution(
+                                        parent_ax=ax, plane_idx=plane_idx
+                                    )
+                                    ax.set_title(f"Scan/Plane #{plane_idx+1}")
+                            except TypeError:
+                                # 'Axes' object is not iterable
+                                meas.estimate_spatial_resolution(parent_ax=axes)
+                        except RuntimeError as exc:
+                            # Fit failed?
+                            print(f"Spatial resolution estimate failed! [{exc}]")
 
                 except (NotImplementedError, RuntimeError, ValueError, FileNotFoundError) as exc:
                     err_hndlr(exc, sys._getframe(), locals())
