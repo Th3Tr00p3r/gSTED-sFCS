@@ -469,6 +469,7 @@ def plot_acfs(
     avg_cf_cr: np.ndarray,
     g0: float,
     cf_cr: np.ndarray = None,
+    n_lines=14,
     **kwargs,
 ):
     """Doc."""
@@ -491,6 +492,7 @@ def plot_acfs(
 
     with Plotter(**kwargs) as ax:
         if cf_cr is not None:
+            cf_cr = helper.batch_mean_rows(cf_cr, n_lines)
             cmap = get_gradient_colormap(cf_cr.shape[0])
             ax.set_prop_cycle(color=cmap)
             ax.plot(x_arr, cf_cr.T, lw=0.4)

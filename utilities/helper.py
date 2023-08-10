@@ -488,6 +488,37 @@ class InterpExtrap1D:
             ax.legend()
 
 
+def batch_mean_rows(arr: np.ndarray, n_rows: int):
+    """
+    Compute the mean of batches of rows from a 2D numpy array.
+
+    This function takes a 2D numpy array and an integer `n_rows` as input. It divides the array's rows
+    into approximately equal-sized batches and computes the mean along each column for each batch.
+    The resulting mean values are stacked vertically to form a new 2D numpy array.
+
+    Parameters:
+        arr (np.ndarray): A 2D numpy array with shape (num_rows, num_columns).
+        n_rows (int): The desired number of batches for computing the mean.
+
+    Returns:
+        np.ndarray: A new 2D numpy array containing the mean values of each batch of rows.
+
+    Example:
+        input_array = np.array([[1, 2, 3],
+                                [4, 5, 6],
+                                [7, 8, 9],
+                                [10, 11, 12],
+                                [13, 14, 15]])
+        n_rows = 2
+        output_array = batch_mean_rows(input_array, n_rows)
+        print(output_array)
+        # Output:
+        # array([[ 4. ,  5. ,  6. ],
+        #        [11.5, 12.5, 13.5]])
+    """
+    return np.vstack([arr.mean(axis=0) for arr in np.array_split(arr, n_rows) if arr.any()])
+
+
 def get_encompassing_rectangle_dims(
     dims: Tuple[float, float], angle_deg: float
 ) -> Tuple[float, float]:

@@ -84,6 +84,7 @@ class AngularScanDataMixin:
             img[j, :], _ = np.histogram(pixel_num[line_num == j], bins=bins)
 
         if should_fix_shift:
+            # TODO: (low priority) if there are multiple sections in the raw data, perhpas the pixel shift can be calculated only for the first section and the same shift used for the rest.
             if kwargs.get("is_verbose"):
                 print("Fixing data shift...", end=" ")
             pix_shift = self._get_data_shift(img, **kwargs)
@@ -1308,7 +1309,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         if proc_options.get("is_verbose"):
             if len(section_edges) > 1:
                 print(
-                    f"Found {len(section_edges)} sections of lengths: {', '.join(map(str, section_lengths))}.",
+                    f"Found {len(section_edges)} sections of lengths: {', '.join([str(round(sec_len * 1e-3)) for sec_len in section_lengths])} Kb.",
                     end=" ",
                 )
                 if should_use_all_sections:
@@ -1319,7 +1320,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 else:  # Use largest section only
                     print(f"Using largest (section num.{np.argmax(section_lengths)+1}).", end=" ")
             else:
-                print(f"Found a single section of length: {section_lengths[0]}.", end=" ")
+                print(
+                    f"Found a single section of length: {section_lengths[0]*1e-6:.1f} Mb.", end=" "
+                )
             if tot_single_errors > 0:
                 print(f"Encountered {tot_single_errors} ignoreable single errors.", end=" ")
 
