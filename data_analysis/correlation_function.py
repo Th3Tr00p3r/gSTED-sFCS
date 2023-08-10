@@ -1917,10 +1917,10 @@ class SolutionSFCSExperiment:
         if should_plot:
             conf_params.plot(super_title="Lifetime Fit")
 
-        # remove background
-        conf_bg = np.mean(conf_hist[Limits(bg_range).valid_indices(conf_t)])
-        conf_hist = conf_hist - conf_bg
         if sted.is_loaded:
+            # remove background
+            conf_bg = np.mean(conf_hist[Limits(bg_range).valid_indices(conf_t)])
+            conf_hist = conf_hist - conf_bg
             sted_bg = np.mean(sted_hist[Limits(bg_range).valid_indices(sted_t)])
             sted_hist = sted_hist - sted_bg
 
@@ -1986,7 +1986,7 @@ class SolutionSFCSExperiment:
         # no STED! only (confocal) lifetime is available
         else:
             sigma_sted = 0
-            laser_pulse_delay_ns = 0
+            laser_pulse_delay_ns = float(t_max)
 
         self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
         return self.lifetime_params
