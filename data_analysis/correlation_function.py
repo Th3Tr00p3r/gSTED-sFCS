@@ -672,7 +672,7 @@ class CorrFunc:
         interp_types: List[str],
         parent_ax=None,
         should_plot=False,
-        is_verbose=False,
+        is_verbose=True,
         **kwargs,
     ):
         """
@@ -683,7 +683,7 @@ class CorrFunc:
         """
 
         if is_verbose:
-            print(f"Calculating '{self.name}' Hankel transform...", end=" ")
+            print(f"Calculating '{self.name}' structure factor...", end=" ")
 
         # calculate Hankel transforms (with selected interpolation type)
         if parent_names := kwargs.pop("parent_names", None):
@@ -1120,9 +1120,7 @@ class SolutionSFCSMeasurement:
         laser_pulse_period_ns = 1e9 / self.laser_freq_hz
         if tdc_gate_ns.upper >= laser_pulse_period_ns:
             tdc_gate_ns.upper = np.inf
-        gate_ns = Gate(
-            tdc_gate_ns, hard_gate=self.detector_settings["gate_ns"].hard_gate
-        )  # TESTESTEST
+        gate_ns = Gate(tdc_gate_ns, hard_gate=self.detector_settings["gate_ns"].hard_gate)
 
         #  add gate to cf_name
         if gate_ns or gate_ns.hard_gate:
@@ -1521,7 +1519,7 @@ class SolutionSFCSMeasurement:
         cal_meas,
         interp_types=["gaussian"],
         parent_ax=None,
-        is_verbose=False,
+        is_verbose=True,
         should_force=False,
         **kwargs,
     ):
@@ -1533,7 +1531,7 @@ class SolutionSFCSMeasurement:
         """
 
         if is_verbose:
-            print(f"Calculating all structure factors for '{self.type}' measurement...", end=" ")
+            print(f"Calculating all structure factors for '{self.type}' measurement... ", end="")
 
         # calculate without plotting
         kwargs["parent_names"] = (
@@ -1547,10 +1545,14 @@ class SolutionSFCSMeasurement:
         for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
             if not CF.structure_factors or should_force:
                 try:  # TESTESTEST - avoid losing everything because of a single bad limit choice/noisy gate
-                    CF.calculate_structure_factor(cal_CF, interp_types, is_verbose=False, **kwargs)
+                    CF.calculate_structure_factor(
+                        cal_CF, interp_types, is_verbose=is_verbose, **kwargs
+                    )
                 except RuntimeError:
                     # exponent overflow
                     continue
+            elif is_verbose:
+                print("Using existing... ", end="")
 
         if is_verbose:
             print("Done.")
@@ -2265,15 +2267,16 @@ class SolutionSFCSExperiment:
         """
 
         if is_verbose:
-            print(f"Calculating all structure factors for '{self.name}' experiment...", end=" ")
+            print(f"Calculating all structure factors for '{self.name}' experiment... ", end="")
 
         # calculated without plotting
         kwargs["parent_names"] = (self.name, cal_exp.name)
-        for meas_type in ("confocal", "sted"):
-            cal_meas = getattr(cal_exp, meas_type)
-            getattr(self, meas_type).calculate_structure_factors(
-                cal_meas, interp_types, is_verbose=False, **kwargs
-            )
+        for meas in [getattr(self, meas_type) for meas_type in ("confocal", "sted")]:
+            if meas.is_loaded:
+                cal_meas = getattr(cal_exp, meas.type)
+                getattr(self, meas.type).calculate_structure_factors(
+                    cal_meas, interp_types, is_verbose=is_verbose, **kwargs
+                )
 
         # keep reference to calibration experiment
         self.cal_exp = cal_exp
@@ -2295,8 +2298,9 @@ class SolutionSFCSExperiment:
                 super_title=f"Experiment '{exp.name}': Hankel Transforms",
                 **kwargs,
             ) as axes:
-                for meas_type in ("confocal", "sted"):
-                    getattr(exp, meas_type).plot_hankel_transforms(parent_ax=axes, **kwargs)
+                for meas in [getattr(exp, meas_type) for meas_type in ("confocal", "sted")]:
+                    if meas.is_loaded:
+                        meas.plot_hankel_transforms(parent_ax=axes, **kwargs)
 
         # plot the structure factors in another figure
         with Plotter(
@@ -2304,11 +2308,12 @@ class SolutionSFCSExperiment:
             super_title=f"Experiment '{self.name}': Structure factors",
             **kwargs,
         ) as axes:
-            for meas_type in ("confocal", "sted"):
-                getattr(self, meas_type).plot_structure_factors(
-                    parent_ax=axes,
-                    **kwargs,
-                )
+            for meas in [getattr(self, meas_type) for meas_type in ("confocal", "sted")]:
+                if meas.is_loaded:
+                    meas.plot_structure_factors(
+                        parent_ax=axes,
+                        **kwargs,
+                    )
             for ax, interp_type in zip(axes if len(interp_types) > 1 else [axes], interp_types):
                 ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
 
