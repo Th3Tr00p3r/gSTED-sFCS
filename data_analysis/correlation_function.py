@@ -1552,10 +1552,7 @@ class SolutionSFCSMeasurement:
                     # exponent overflow
                     continue
             elif is_verbose:
-                print("Using existing... ", end="")
-
-        if is_verbose:
-            print("Done.")
+                print("Using existing... Done.")
 
     def plot_structure_factors(self, **kwargs):
         """Doc."""
@@ -1817,7 +1814,7 @@ class SolutionSFCSExperiment:
     def save_processed_measurements(self, meas_types=["confocal", "sted"], **kwargs):
         """Doc."""
 
-        print("Saving processed measurements to disk...")
+        print(f"Experiment '{self.name}': Saving processed measurements to disk...")
         if self.confocal.is_loaded and "confocal" in meas_types:
             if self.confocal.save_processed(**kwargs):
                 print("Confocal saved.")
@@ -2280,9 +2277,6 @@ class SolutionSFCSExperiment:
 
         # keep reference to calibration experiment
         self.cal_exp = cal_exp
-
-        if is_verbose:
-            print("Done.")
 
     def plot_structure_factors(self, **kwargs):
         """Doc."""
