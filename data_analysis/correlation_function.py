@@ -2328,6 +2328,7 @@ class ImageSFCSMeasurement:
     fpga_freq_hz: int
     detector_settings: Dict
     tdc_calib: TDCCalibration
+    type: str
 
     def __init__(self):
         self.file_path = None
@@ -2338,17 +2339,24 @@ class ImageSFCSMeasurement:
         self.ci_image_data = None
 
     def read_fpga_data(
-        self, file_path: Path = None, file_dict: Dict = None, len_factor=0.005, **proc_options
+        self,
+        file_path: Path = None,
+        file_dict: Dict = None,
+        len_factor=0.005,
+        is_verbose=True,
+        **proc_options,
     ) -> None:
         """Doc."""
 
         # load file if needed
         if file_path is not None:
+            print("\nLoading image FPGA data from disk -")
+            print(f"File path: '{self.file_path}'")
             self.file_path = file_path
             self._file_dict = load_file_dict(file_path)
 
-        print("\nLoading image FPGA data from disk -")
-        print(f"File path: '{self.file_path}'")
+        # determine type
+        self.type = "sted" if self._file_dict["full_data"]["laser_mode"] == "sted" else "confocal"
 
         # get general properties from file_dict
         self._get_general_properties()
@@ -2365,7 +2373,11 @@ class ImageSFCSMeasurement:
         )
         # Processing data
         p = self.data_processor.process_data(
-            0, self._file_dict["full_data"], len_factor=len_factor, is_verbose=True, **proc_options
+            0,
+            self._file_dict["full_data"],
+            len_factor=len_factor,
+            is_verbose=is_verbose,
+            **proc_options,
         )
         print("Done.\n")
         # Appending data to self
@@ -2538,6 +2550,7 @@ class ImageSFCSMeasurement:
             n_planes=n_planes,
             plane_orientation=self.scan_settings["plane_orientation"],
             dim_order=self.scan_settings["dim_order"],
+            gate_ns=gate_ns,
         )
         return self.tdc_image_data
 
@@ -2565,8 +2578,8 @@ class ImageSFCSMeasurement:
                     "Must supply either a file path or a file dictionary if no data is loaded!"
                 )
 
-        # auto-gating
-        if not gate_ns and auto_gating:
+        # auto-gating STED
+        if (self.type == "sted") and not gate_ns and auto_gating:
             print("Determining gate automatically, according to histogram peak... ", end="")
             # calibrate TDC (if not already calibrated)
             if not hasattr(self, "tdc_calib"):
@@ -2683,6 +2696,8 @@ class ImageSFCSMeasurement:
             n_planes=n_planes,
             plane_orientation=self.scan_settings["plane_orientation"],
             dim_order=self.scan_settings["dim_order"],
+            gate_ns=gate_ns,
+            is_lifetime_img=True,
         )
         return self.lifetime_image_data
 

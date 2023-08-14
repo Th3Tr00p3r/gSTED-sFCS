@@ -268,10 +268,16 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", False),
     sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", False),
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
+    # image scan processing
+    auto_gating=("ImgAutoGating", "QCheckBox", "options", False),
+    auto_gate_width_ns=("ImgGateWidth", "QSpinBox", "options", False),
+    is_multiscan=("ImgMultiScan", "QCheckBox", "options", False),
+    # angular scan processing
     fix_shift=("fixShift", "QCheckBox", "options", False),
     median_factor=("medFac", "QDoubleSpinBox", "options", False),
     should_auto_roi=("autoRoi", "QCheckBox", "options", False),
     should_alleviate_bright_pixels=("alleviateBrightPixels", "QCheckBox", "options", False),
+    # general processing
     should_subtract_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
     should_ignore_hard_gate=("ignoreHardGate", "QCheckBox", "options", False),
     should_parallel_process=("useMultiProcessing", "QCheckBox", "options", False),

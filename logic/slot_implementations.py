@@ -1622,7 +1622,6 @@ class MainWin:
                     meas = ImageSFCSMeasurement()
                     img_data = meas.generate_lifetime_image_stack_data(
                         file_path=curr_dir / current_template,
-                        is_multiscan=True,  # TODO - move to options_dict (GUI)
                         **options_dict,
                     )
 
@@ -1767,7 +1766,11 @@ class MainWin:
         else:
             loading_options["file_selection"] = "Use All"
 
-        # TODO: make this dynamic (so I don't have to add/remove rows for each new option)
+        # TODO: make this dynamic (so I don't have to add/remove rows for each new option) - start by making the keys the same in all (see "roi_selection")
+        loading_options["auto_gating"] = import_wdgts["auto_gating"]
+        loading_options["auto_gate_width_ns"] = import_wdgts["auto_gate_width_ns"]
+        loading_options["is_multiscan"] = import_wdgts["is_multiscan"]
+
         loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
         loading_options["median_factor"] = import_wdgts["median_factor"]
         loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"

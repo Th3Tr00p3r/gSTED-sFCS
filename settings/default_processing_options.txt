@@ -1,3 +1,5 @@
+minPhotons,5
+ImgGateWidth,15
 medFac,1.5
 afterpulsingRemovalMethod,filter
 useDefaultSysInfo,False
@@ -8,3 +10,5 @@ shouldUniteStartTimes,False
 fixShift,True
 autoRoi,True
 alleviateBrightPixels,False
+ImgAutoGating,True
+ImgMultiScan,True

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>201</width>
-    <height>427</height>
+    <width>362</width>
+    <height>432</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -121,9 +121,9 @@ Background</string>
        </widget>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,10">
+       <layout class="QHBoxLayout" name="horizontalLayout_5">
         <property name="spacing">
-         <number>0</number>
+         <number>2</number>
         </property>
         <item>
          <widget class="QGroupBox" name="groupBox_3">
@@ -210,17 +210,71 @@ Background</string>
          </widget>
         </item>
         <item>
-         <spacer name="horizontalSpacer_3">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+         <widget class="QGroupBox" name="groupBox_4">
+          <property name="title">
+           <string>Image Scan</string>
           </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
+          <layout class="QVBoxLayout" name="verticalLayout_6">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <property name="spacing">
+              <number>2</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="ImgAutoGating">
+               <property name="toolTip">
+                <string>Auto-gating of STED images</string>
+               </property>
+               <property name="text">
+                <string>Auto Gating</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_2">
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="label_3">
+                 <property name="text">
+                  <string>Gate Width</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="ImgGateWidth">
+                 <property name="toolTip">
+                  <string>If auto-gating (STED), this determines the gate width.
+The lower gate is the pulse delay.</string>
+                 </property>
+                 <property name="buttonSymbols">
+                  <enum>QAbstractSpinBox::NoButtons</enum>
+                 </property>
+                 <property name="maximum">
+                  <number>999</number>
+                 </property>
+                 <property name="value">
+                  <number>15</number>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="ImgMultiScan">
+             <property name="toolTip">
+              <string>Treat each plane as a re-scan.</string>
+             </property>
+             <property name="text">
+              <string>Multiscan</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </item>
        </layout>
       </item>

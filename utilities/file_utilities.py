@@ -45,7 +45,6 @@ PDM_SPAD_AP = (
 
 # TODO: this should be defined elsewhere (devices? app?)
 default_system_info: Dict[str, Any] = {
-    "setup": "STED with galvos",
     "afterpulse_params": FAST_GATED_SPAD_AP,  # PDM_SPAD_AP
     "ai_scaling_xyz": (1.243, 1.239, 1),
     "xyz_um_to_v": (70.81, 82.74, 10.0),
@@ -53,7 +52,6 @@ default_system_info: Dict[str, Any] = {
 
 legacy_matlab_trans_dict = {
     # Solution Scan
-    "Setup": "setup",
     "AfterPulseParam": "afterpulse_params",
     "AI_ScalingXYZ": "ai_scaling_xyz",
     "XYZ_um_to_V": "xyz_um_to_v",

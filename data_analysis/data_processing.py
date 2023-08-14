@@ -4,7 +4,7 @@ import multiprocessing as mp
 from collections import deque
 from contextlib import suppress
 from copy import copy
-from dataclasses import InitVar, dataclass
+from dataclasses import InitVar, dataclass, field
 from functools import partial
 from itertools import count as infinite_range
 from pathlib import Path
@@ -2249,6 +2249,8 @@ class ImageStackData:
     n_planes: int
     plane_orientation: str
     dim_order: Tuple[int, int, int]
+    gate_ns: Gate = field(default_factory=Gate)
+    is_lifetime_img: bool = False
     image_stack_forward: np.ndarray = None
     norm_stack_forward: np.ndarray = None
     image_stack_backward: np.ndarray = None
@@ -2331,5 +2333,9 @@ class ImageStackData:
             img = (p1 + p2) / (norm1 + norm2)
         else:
             raise ValueError(f"'{method}' is not a valid counts image construction method.")
+
+        # subtract the lower gate in case of a lifetime image - this is so the pixel values will represent the actual delay times (not including the pulse delay)
+        if self.is_lifetime_img:
+            img -= self.gate_ns.lower
 
         return img
