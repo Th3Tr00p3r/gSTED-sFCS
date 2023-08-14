@@ -2560,7 +2560,7 @@ class ImageSFCSMeasurement:
         file_dict: Dict = None,
         gate_ns: Gate = Gate(),
         min_n_photons: int = None,
-        median_factor=1.5,
+        img_median_factor=1.5,
         is_multiscan=False,
         auto_gating=True,
         auto_gate_width_ns=15,
@@ -2591,7 +2591,7 @@ class ImageSFCSMeasurement:
         # auto-determination of 'min_n_photons' if not given
         if min_n_photons is None:
             print(
-                f"Auto-determining 'min_n_photons' according to {median_factor:.1f} times median number of photons-per-pixel... ",
+                f"Auto-determining 'min_n_photons' according to {img_median_factor:.1f} times median number of photons-per-pixel... ",
                 end="",
             )
             # get TDC counts data (use existing or make new)
@@ -2605,7 +2605,7 @@ class ImageSFCSMeasurement:
             # use the median of the photon-containing pixels as the minimum
             valid_counts = counts_stack.image_stack_forward[counts_stack.image_stack_forward > 0]
             # assume equal contribution for each plane (median of entire stack)
-            if (min_n_photons := round(np.median(valid_counts) * median_factor)) < 5:
+            if (min_n_photons := round(np.median(valid_counts) * img_median_factor)) < 5:
                 min_n_photons = 5
                 print(f"Warning: min_n_photons < {min_n_photons}. Using 5...")
             else:

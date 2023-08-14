@@ -1770,9 +1770,10 @@ class MainWin:
         loading_options["auto_gating"] = import_wdgts["auto_gating"]
         loading_options["auto_gate_width_ns"] = import_wdgts["auto_gate_width_ns"]
         loading_options["is_multiscan"] = import_wdgts["is_multiscan"]
+        loading_options["is_multiscan"] = import_wdgts["is_multiscan"]
 
         loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
-        loading_options["median_factor"] = import_wdgts["median_factor"]
+        loading_options["img_median_factor"] = import_wdgts["img_median_factor"]
         loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"
         loading_options["should_alleviate_bright_pixels"] = import_wdgts[
             "should_alleviate_bright_pixels"

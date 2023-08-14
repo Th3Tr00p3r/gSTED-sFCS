@@ -272,6 +272,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     auto_gating=("ImgAutoGating", "QCheckBox", "options", False),
     auto_gate_width_ns=("ImgGateWidth", "QSpinBox", "options", False),
     is_multiscan=("ImgMultiScan", "QCheckBox", "options", False),
+    img_median_factor=("ImgMedFac", "QDoubleSpinBox", "options", False),
     # angular scan processing
     fix_shift=("fixShift", "QCheckBox", "options", False),
     median_factor=("medFac", "QDoubleSpinBox", "options", False),

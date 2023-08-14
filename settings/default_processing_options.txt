@@ -1,6 +1,6 @@
-minPhotons,5
 ImgGateWidth,15
 medFac,1.5
+ImgMedFac,1.0
 afterpulsingRemovalMethod,filter
 useDefaultSysInfo,False
 subtractBgCorr,True
