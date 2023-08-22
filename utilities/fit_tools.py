@@ -50,10 +50,9 @@ class FitParams:
             self.sigma = 1
         self.fitted_y = self.fit_func(self.x, *self.beta.values())
 
-    def plot(self, color=None, fit_label="Fit", **kwargs):
+    def plot(self, super_title="Curve Fit", **kwargs):
         """Doc."""
 
-        kwargs["super_title"] = kwargs.get("super_title", f"Curve Fit ({self.fit_func.__name__})")
         with Plotter(
             xlim=(min(self.x), max(self.x)),
             ylim=(min(self.y), max(self.y)),
@@ -63,10 +62,10 @@ class FitParams:
                 self.xs,
                 self.ys,
                 ".",
-                label="_Data",
+                label="Data",
                 zorder=1,
                 markersize=2,
-                color=color if color is not None else "k",
+                color="k",
             )
             if not (self.sigma == 1).all():
                 ax.errorbar(
@@ -77,15 +76,15 @@ class FitParams:
                     label="_Error",
                     elinewidth=0.5,
                     zorder=2,
-                    color=color if color is not None else "k",
+                    color="k",
                 )
             ax.plot(
                 self.x,
                 self.fit_func(self.x, *self.beta.values()),
                 "--",
-                label=fit_label,
+                label=self.fit_func.__name__,
                 zorder=3,
-                color=color if color is not None else "r",
+                color="r",
             )
             ax.legend()
 

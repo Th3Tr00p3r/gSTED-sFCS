@@ -3,7 +3,7 @@
 import multiprocessing as mp
 import re
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from itertools import cycle
 from pathlib import Path
 from types import SimpleNamespace
@@ -50,33 +50,6 @@ from utilities.helper import (
 
 
 @dataclass
-class StructureFactor:
-    """Holds structure factor data"""
-
-    q: np.ndarray
-    sq: np.ndarray
-    sq_error: np.ndarray = None
-
-    def plot(self, interp_type: str, label_prefix="", **kwargs):
-        """
-        Plot a single structure factor. Meant to be used for hierarchical plotting
-        directly from a measurement of indirectly from an experiment.
-        """
-
-        with Plotter(
-            super_title="Structure Factors",
-            y_scale="log",
-            **kwargs,
-        ) as ax:
-            ax.plot(self.q, self.sq / self.sq[0], label=label_prefix)
-            ax.set_xscale("log")
-            ax.set_ylim(1e-4, 2)
-            ax.set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
-            ax.set_ylabel("$S(q)$")
-            ax.legend()
-
-
-@dataclass
 class HankelTransform:
     """Holds results of Hankel transform"""
 
@@ -107,6 +80,36 @@ class HankelTransform:
             axes[1].set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
             axes[1].set_ylabel("$F(q)$")
             axes[1].legend(loc="lower left")
+
+
+@dataclass
+class StructureFactor:
+    """Holds structure factor data"""
+
+    HT: InitVar[HankelTransform]
+    cal_HT: InitVar[HankelTransform]
+
+    def __post_init__(self, HT, cal_HT):
+        self.q = HT.q
+        self.sq = HT.fq / cal_HT.fq
+
+    def plot(self, interp_type: str, label_prefix="", **kwargs):
+        """
+        Plot a single structure factor. Built to be used for hierarchical plotting
+        from a measurement or an experiment.
+        """
+
+        with Plotter(
+            super_title="Structure Factors",
+            y_scale="log",
+            **kwargs,
+        ) as ax:
+            ax.plot(self.q, self.sq / self.sq[0], label=label_prefix)
+            ax.set_xscale("log")
+            ax.set_ylim(1e-4, 2)
+            ax.set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
+            ax.set_ylabel("$S(q)$")
+            ax.legend()
 
 
 @dataclass
@@ -701,7 +704,7 @@ class CorrFunc:
         for interp_type in interp_types:
             HT = self.hankel_transforms[interp_type]
             cal_HT = cal_cf.hankel_transforms[interp_type]
-            self.structure_factors[interp_type] = StructureFactor(HT.q, HT.fq / cal_HT.fq)
+            self.structure_factors[interp_type] = StructureFactor(HT, cal_HT)
 
         if is_verbose:
             print("Done.")
@@ -1644,6 +1647,7 @@ class SolutionSFCSExperiment:
         self.name = name
         self.confocal: SolutionSFCSMeasurement
         self.sted: SolutionSFCSMeasurement
+        self.lifetime_params: LifeTimeParams = None
 
     @property
     def cf_dict(self):
@@ -1904,7 +1908,7 @@ class SolutionSFCSExperiment:
         beta0 = (h_max, 4, h_max * 1e-3)
 
         if fit_range is None:
-            fit_range = Limits(t_max, 40)
+            fit_range = Limits(t_max + 3, 40)
 
         if param_estimates is None:
             param_estimates = beta0
@@ -1914,7 +1918,7 @@ class SolutionSFCSExperiment:
         )
         lifetime_ns = conf_params.beta["tau"]
         if should_plot:
-            conf_params.plot(super_title="Lifetime Fit")
+            conf_params.plot(super_title="Lifetime Fit", y_scale="log")
 
         if sted.is_loaded:
             # remove background
