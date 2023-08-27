@@ -767,7 +767,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     g0, tau = self.cf.g0, 0.1
                     self.g0_wdgt.set(g0)
                     self.tau_wdgt.set(0)
-                    self.plot_wdgt.obj.plot_acfs((self.cf.lag, "lag"), self.cf.avg_cf_cr, g0)
+                    self.plot_wdgt.obj.plot_acfs(self.cf.lag, self.cf.avg_cf_cr, g0)
                 else:
                     # fit succeeded
                     self.fit_led.set(self.icon_dict["led_off"])
@@ -775,7 +775,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     fit_func = fp.fit_func
                     self.g0_wdgt.set(g0)
                     self.tau_wdgt.set(tau * 1e3)
-                    self.plot_wdgt.obj.plot_acfs((self.cf.lag, "lag"), self.cf.avg_cf_cr, g0)
+                    self.plot_wdgt.obj.plot_acfs(self.cf.lag, self.cf.avg_cf_cr, g0)
                     y_fit = fit_func(self.cf.lag, *fp.beta.values())
                     self.plot_wdgt.obj.plot(self.cf.lag, y_fit, "-.r")
                     logging.info(
@@ -786,7 +786,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 g0, tau = self.cf.g0, 0.1
                 self.g0_wdgt.set(g0)
                 self.tau_wdgt.set(0)
-                self.plot_wdgt.obj.plot_acfs((self.cf.lag, "lag"), self.cf.avg_cf_cr, g0)
+                self.plot_wdgt.obj.plot_acfs(self.cf.lag, self.cf.avg_cf_cr, g0)
 
     async def run(self, should_save=True):  # NOQA C901
         """Doc."""

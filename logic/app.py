@@ -71,6 +71,7 @@ class App:
             assigned_to_experiment=dict(),
             loaded_experiments=dict(),
         )
+        self.are_ai_ci_paused = False
 
         # get icons
         self.icon_dict = gui.gui.get_icon_paths()
@@ -193,6 +194,7 @@ class App:
         with suppress(DeviceError):
             self.devices.scanners.stop_tasks("ai")
             self.devices.photon_counter.stop_tasks("ci")
+            self.are_ai_ci_paused = True
 
         try:
             yield
@@ -205,6 +207,7 @@ class App:
                 self.devices.scanners.start_tasks("ai")
                 self.devices.photon_counter.init_ci_buffer()
                 self.devices.photon_counter.start_tasks("ci")
+                self.are_ai_ci_paused = False
 
     async def clean_up_app(self, should_clear_dump_path: bool):
         """Doc."""

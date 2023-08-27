@@ -24,7 +24,7 @@ from data_analysis.data_processing import (
 )
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from data_analysis.workers import N_CPU_CORES, data_processing_worker, io_worker
-from utilities.display import Plotter, default_colors
+from utilities.display import Plotter, default_colors, plot_acfs
 from utilities.file_utilities import (
     DUMP_PATH,
     default_system_info,
@@ -122,6 +122,13 @@ class LifeTimeParams:
 
     def __repr__(self):
         return f"LifeTimeParams(lifetime_ns={self.lifetime_ns:.2f}, sigma_sted={self.sigma_sted:.2f}, laser_pulse_delay_ns={self.laser_pulse_delay_ns:.2f})"
+
+    def __equiv__(self, other):
+        return (
+            (self.lifetime_ns == other.lifetime_ns)
+            and (self.sigma_sted == other.sigma_sted)
+            and (self.laser_pulse_delay_ns == other.laser_pulse_delay_ns)
+        )
 
 
 class CorrFunc:
@@ -354,6 +361,7 @@ class CorrFunc:
                 # ext. afterpulse might be shorter/longer
                 self.cf_cr[idx] -= unify_length(self.subtracted_afterpulsing, (lag_len,))
 
+        # countrates
         try:  # xcorr
             self.countrate_a = np.mean(
                 [countrate_pair.a for countrate_pair in corr_output.countrate_list]
@@ -466,6 +474,38 @@ class CorrFunc:
             error_cf_cr = np.sqrt((weights**2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
 
         return avg_cf_cr, error_cf_cr
+
+    def remove_background(self):
+        """Manually select the background range and remove it from all averages. Re-average to return to original state."""
+
+        # manually select the background range
+        plot_acfs(
+            self.vt_um,
+            avg_cf_cr=self.avg_cf_cr,
+            cf_cr=self.cf_cr,
+            # plot kwargs
+            super_title=f"{self.name}: Use the mouse to place 2 markers\nmarking the ACF background range:",
+            selection_limits=(bg_range := Limits()),
+        )
+
+        # get the indices from the range
+        bg_lag_idxs = bg_range.valid_indices(self.vt_um)
+
+        avg_cf_cr_bg = self.avg_cf_cr[bg_lag_idxs].mean()
+
+        # remove the mean background using the range indices from each average quantity
+        self.average_all_cf_cr -= self.average_all_cf_cr[bg_lag_idxs].mean()
+        self.median_all_cf_cr -= self.median_all_cf_cr[bg_lag_idxs].mean()
+        self.g0 -= avg_cf_cr_bg
+        self.avg_cf_cr -= avg_cf_cr_bg
+        self.error_cf_cr -= self.error_cf_cr[bg_lag_idxs].mean()
+        self.avg_corrfunc -= self.avg_corrfunc[bg_lag_idxs].mean()
+        self.error_corrfunc -= self.error_corrfunc[bg_lag_idxs].mean()
+
+        self.normalized = self.avg_cf_cr / self.g0
+        self.error_normalized = self.error_cf_cr / self.g0
+
+        print(f"Found and removed a background constant of {avg_cf_cr_bg:.2f} (from 'avg_cf_cr').")
 
     def plot_correlation_function(
         self,
@@ -655,7 +695,7 @@ class CorrFunc:
         if kwargs.get("is_verbose"):
             print("Done.")
 
-    def plot_hankel_transform(self, **kwargs):
+    def plot_hankel_transforms(self, **kwargs):
         """Doc."""
 
         # get interpolations types
@@ -664,10 +704,10 @@ class CorrFunc:
 
         with Plotter(subplots=(n_interps, 2), **kwargs) as axes:
             kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
-            for hnkl_trans, ax_row in zip(
+            for HT, ax_row in zip(
                 self.hankel_transforms.values(), axes if n_interps > 1 else [axes]
             ):
-                hnkl_trans.plot(parent_ax=ax_row, label_prefix=f"{self.name}: ", **kwargs)
+                HT.plot(parent_ax=ax_row, label_prefix=f"{self.name}: ", **kwargs)
 
     def calculate_structure_factor(
         self,
@@ -746,6 +786,7 @@ class SolutionSFCSMeasurement:
         self.data = TDCPhotonMeasurementData()
         self.corr_input_list: List[np.ndarray] = None
         self.afterpulsing_filter: AfterpulsingFilter = None
+        self.lifetime_params: LifeTimeParams = None
 
     @property
     def avg_cnt_rate_khz(self):
@@ -1360,6 +1401,12 @@ class SolutionSFCSMeasurement:
 
         return CF_dict
 
+    def remove_backgrounds(self):
+        """Remove mean ACF backgrounds from all CorrFunc objects"""
+
+        for cf in self.cf.values():
+            cf.remove_background()
+
     def display_scan_images(self) -> None:
         """Doc."""
 
@@ -1515,7 +1562,7 @@ class SolutionSFCSMeasurement:
         ) as axes:
             kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
             for cf in self.cf.values():
-                cf.plot_hankel_transform(parent_ax=axes, **kwargs)
+                cf.plot_hankel_transforms(parent_ax=axes, **kwargs)
 
     def calculate_structure_factors(
         self,
@@ -1547,12 +1594,13 @@ class SolutionSFCSMeasurement:
         )
         for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
             if not CF.structure_factors or should_force:
-                try:  # TESTESTEST - avoid losing everything because of a single bad limit choice/noisy gate
+                try:
                     CF.calculate_structure_factor(
                         cal_CF, interp_types, is_verbose=is_verbose, **kwargs
                     )
                 except RuntimeError:
-                    # exponent overflow
+                    # RuntimeError - exponent overflow
+                    # avoid losing everything because of a single bad limit choice/noisy gate
                     continue
             elif is_verbose:
                 print("Using existing... Done.")
@@ -1647,7 +1695,6 @@ class SolutionSFCSExperiment:
         self.name = name
         self.confocal: SolutionSFCSMeasurement
         self.sted: SolutionSFCSMeasurement
-        self.lifetime_params: LifeTimeParams = None
 
     @property
     def cf_dict(self):
@@ -1656,6 +1703,17 @@ class SolutionSFCSExperiment:
         return {
             cf_label: cf for meas in [self.confocal, self.sted] for cf_label, cf in meas.cf.items()
         }
+
+    @property
+    def lifetime_params(self):
+        """Returns the LifeTimeParams property of the confocal/STED measurements if both exist and are the same."""
+
+        if (
+            (getattr(self.confocal, "lifetime_params", None) is not None)
+            and (getattr(self.sted, "lifetime_params", None) is not None)
+            and (self.confocal.lifetime_params == self.sted.lifetime_params)
+        ):
+            return self.confocal.lifetime_params
 
     def load_experiment(
         self,
@@ -1809,6 +1867,12 @@ class SolutionSFCSExperiment:
 
         return measurement
 
+    def remove_backgrounds(self):
+        """Remove mean ACF backgrounds from all CorrFunc objects"""
+
+        for cf in self.cf_dict.values():
+            cf.remove_background()
+
     def renormalize_all(self, norm_range: Tuple[float, float], **kwargs):
         """Doc."""
 
@@ -1940,9 +2004,11 @@ class SolutionSFCSExperiment:
 
                 # Using inner Plotter for manual selection
                 title = "Use the mouse to place 2 markers\nlimiting the linear range:"
-                linear_range = Limits()
                 with Plotter(
-                    parent_ax=ax, super_title=title, selection_limits=linear_range, **kwargs
+                    parent_ax=ax,
+                    super_title=title,
+                    selection_limits=(linear_range := Limits()),
+                    **kwargs,
                 ) as ax:
                     ax.plot(t, hist_ratio, label="hist_ratio")
                     ax.legend()
@@ -1991,8 +2057,9 @@ class SolutionSFCSExperiment:
             sigma_sted = 0
             laser_pulse_delay_ns = float(t_max)
 
-        self.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
-        return self.lifetime_params
+        conf.lifetime_params = LifeTimeParams(lifetime_ns, sigma_sted, laser_pulse_delay_ns)
+        sted.lifetime_params = conf.lifetime_params
+        return conf.lifetime_params
 
     def compare_lifetimes(
         self,
@@ -2114,9 +2181,9 @@ class SolutionSFCSExperiment:
                 should_add_exp_name=should_add_exp_name,
             )
 
-    def plot_correlation_functions(
+    def plot_correlation_functions(  # NOQA C901
         self,
-        xlim=(5e-5, 1),
+        xlim=None,
         ylim=None,
         x_field=None,
         y_field=None,
@@ -2146,6 +2213,16 @@ class SolutionSFCSExperiment:
         elif x_field == "lag" and not x_scale:
             x_scale = "log"
 
+        # auto xlim determination
+        if xlim is None:
+            if x_field == "vt_um":
+                if x_scale == "log":
+                    xlim = Limits(1e-3, 10)
+                else:
+                    xlim = Limits(0, 2)
+            else:
+                xlim = Limits(1e-4, 1)
+
         # auto y_field/y_scale determination
         if y_field is None:
             y_field = "normalized"
@@ -2163,7 +2240,7 @@ class SolutionSFCSExperiment:
                 else:
                     ylim = (0, 1)
             elif y_field in {"average_all_cf_cr", "avg_cf_cr"}:
-                # TODO: perhaps cf attricute should be a list and not a dict? all I'm really ever interested in is either showing the first or all together (names are in each CF anyway)
+                # TODO: perhaps cf attribute should be a list and not a dict? all I'm really ever interested in is either showing the first or all together (names are in each CF anyway)
                 first_cf = list(ref_meas.cf.values())[0]
                 ylim = Limits(-1e3, first_cf.g0 * 1.2)
 

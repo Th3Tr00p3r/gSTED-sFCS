@@ -1965,14 +1965,15 @@ class MainWin:
                         f"Infered data_type ({data_type}) is not a key of CorrFunc dictionary (probably a detector-gated measurement). Using first CorrFunc"
                     )
                     cf = list(meas.cf.values())[0]
+
                 cf.average_correlation()
 
                 # setting values and plotting
                 if sol_data_analysis_wdgts["plot_spatial"]:
-                    x = (cf.vt_um, "disp")
+                    x = cf.vt_um
                     x_label = r"disp. ($um^2$)"
                 else:
-                    x = (cf.lag, "lag")
+                    x = cf.lag
                     x_label = "lag (ms)"
 
                 sol_data_analysis_wdgts["mean_g0"].set(cf.g0 / 1e3)  # shown in thousands
@@ -2018,10 +2019,10 @@ class MainWin:
                     cf.average_correlation(**avg_corr_kwargs)
 
                     if sol_data_analysis_wdgts["plot_spatial"]:
-                        x = (cf.vt_um, "disp")
+                        x = cf.vt_um
                         x_label = r"squared displacement ($um^2$)"
                     else:
-                        x = (cf.lag, "lag")
+                        x = cf.lag
                         x_label = "lag (ms)"
 
                     sol_data_analysis_wdgts["row_acf_disp"].obj.plot_acfs(
@@ -2063,7 +2064,7 @@ class MainWin:
                     sol_data_analysis_wdgts["mean_tau"].set(0)
                     sol_data_analysis_wdgts["row_acf_disp"].obj.clear()
                     sol_data_analysis_wdgts["row_acf_disp"].obj.plot_acfs(
-                        (cf.lag, "lag"),
+                        cf.lag,
                         cf.avg_cf_cr,
                         cf.g0,
                     )
@@ -2075,7 +2076,7 @@ class MainWin:
                     y_fit = fit_func(cf.lag, *fp.beta.values())
                     sol_data_analysis_wdgts["row_acf_disp"].obj.clear()
                     sol_data_analysis_wdgts["row_acf_disp"].obj.plot_acfs(
-                        (cf.lag, "lag"),
+                        cf.lag,
                         cf.avg_cf_cr,
                         cf.g0,
                     )

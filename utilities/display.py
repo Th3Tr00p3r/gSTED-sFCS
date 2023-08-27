@@ -465,36 +465,36 @@ def get_gradient_colormap(n_lines, color_list=["magenta", "lime", "cyan"]) -> np
 
 # TODO: I think this should be eventually a method of CorrFunc!
 def plot_acfs(
-    x: Tuple[np.ndarray, str],
-    avg_cf_cr: np.ndarray,
-    g0: float,
+    x: np.ndarray,
+    avg_cf_cr: np.ndarray = None,
+    g0: float = None,
     cf_cr: np.ndarray = None,
-    n_lines=14,
+    n_lines=1000,  # was 14
     **kwargs,
 ):
     """Doc."""
 
-    x_arr, x_type = x
-
-    if x_type == "lag":
-        kwargs["x_scale"] = "log"
-        kwargs["xlim"] = (1e-3, 1e1)
-        if 0 < g0 < np.inf:
-            kwargs["ylim"] = (-g0 / 2, g0 * 2)
+    if g0 is None:
+        if avg_cf_cr is not None:
+            g0 = avg_cf_cr[(x > 2e-3) & (x < 3e-3)].mean()
+        elif cf_cr is not None:
+            g0 = cf_cr.mean(axis=0)[(x > 2e-3) & (x < 3e-3)].mean()
         else:
-            kwargs["ylim"] = (-1e4, 1e4)
+            raise ValueError("Either 'avg_cf_cr' or 'cf_cr' must be supplied!")
 
-    elif x_type == "disp":
-        kwargs["y_scale"] = "log"
-        x_arr = x_arr**2
-        kwargs["xlim"] = (0, 0.6)
-        kwargs["ylim"] = (g0 * 1.5e-3, g0 * 1.1)
+    kwargs["x_scale"] = "log"
+    kwargs["xlim"] = (1e-3, 1e1)
+    if 0 < g0 < np.inf:
+        kwargs["ylim"] = (-g0 / 2, g0 * 2)
+    else:
+        kwargs["ylim"] = (-1e4, 1e4)
 
     with Plotter(**kwargs) as ax:
         if cf_cr is not None:
             cf_cr = helper.batch_mean_rows(cf_cr, n_lines)
             cmap = get_gradient_colormap(cf_cr.shape[0])
             ax.set_prop_cycle(color=cmap)
-            ax.plot(x_arr, cf_cr.T, lw=0.4)
-        ax.set_prop_cycle(color="k")
-        ax.plot(x_arr, avg_cf_cr, lw=1.4)
+            ax.plot(x, cf_cr.T, lw=0.4)
+        if avg_cf_cr is not None:
+            ax.set_prop_cycle(color="k")
+            ax.plot(x, avg_cf_cr, lw=1.4)
