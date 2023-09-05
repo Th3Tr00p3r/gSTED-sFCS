@@ -44,6 +44,7 @@ from utilities.helper import (
     Gate,
     InterpExtrap1D,
     Limits,
+    dbscan_noise_thresholding,
     extrapolate_over_noise,
     unify_length,
 )
@@ -377,18 +378,16 @@ class CorrFunc:
 
     def average_correlation(
         self,
+        should_use_clustering=False,
         rejection=2,
         reject_n_worst=None,
         norm_range=(1e-3, 2e-3),
-        delete_list=[],
-        plot_kwargs={},
         **kwargs,
     ) -> None:
         """Doc."""
 
         self.rejection = rejection
         self.norm_range = Limits(norm_range)
-        self.delete_list = delete_list
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
         self.median_all_cf_cr = np.median(self.cf_cr, axis=0)
         jj = Limits(self.norm_range.upper, np.inf).valid_indices(
@@ -414,7 +413,10 @@ class CorrFunc:
 
         total_n_rows, _ = self.cf_cr.shape
 
-        if reject_n_worst not in {None, 0}:
+        if should_use_clustering:
+            delete_idxs = dbscan_noise_thresholding(self.cf_cr, **kwargs)
+            delete_list = np.nonzero(delete_idxs)[0]
+        elif reject_n_worst:
             delete_list = np.argsort(self.score)[-reject_n_worst:]
         elif rejection is not None:
             delete_list = np.where(self.score >= self.rejection)[0]
@@ -422,6 +424,8 @@ class CorrFunc:
                 raise RuntimeError(
                     "All rows are in 'delete_list'! Increase the rejection limit. Ignoring."
                 )
+        else:
+            delete_list = []
 
         # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list. If no delete list is supplied, use all rows.
         self.j_bad = delete_list
@@ -452,9 +456,6 @@ class CorrFunc:
         self.normalized = self.avg_cf_cr / self.g0
         self.error_normalized = self.error_cf_cr / self.g0
 
-        if kwargs.get("should_plot"):
-            self.plot_correlation_function(plot_kwargs=plot_kwargs)
-
     def _calculate_weighted_avg(
         self, cf_cr: np.ndarray, weights: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -482,10 +483,10 @@ class CorrFunc:
         plot_acfs(
             self.vt_um,
             avg_cf_cr=self.avg_cf_cr,
-            cf_cr=self.cf_cr,
             # plot kwargs
             super_title=f"{self.name}: Use the mouse to place 2 markers\nmarking the ACF background range:",
             selection_limits=(bg_range := Limits()),
+            should_close_after_selection=True,
         )
 
         # get the indices from the range
@@ -1217,7 +1218,15 @@ class SolutionSFCSMeasurement:
                 print("Preparing input splits... ", end="")
         final_corr_input_list = []
         final_filter_input_list = []
-        for dt_prt_split in self.corr_input_list:
+        for split_idx, dt_prt_split in enumerate(self.corr_input_list):
+            # skipping empty splits
+            if not dt_prt_split.size:
+                if corr_options.get("is_verbose"):
+                    print(f"Empty split encountered! Skipping split {split_idx}... ", end="")
+                # drop matching backgorund corr too
+                if should_subtract_bg_corr:
+                    self.bg_line_corr_list.pop(split_idx)
+                continue
             if gate_ns:
                 valid_idxs = gate_ns.valid_indices(dt_prt_split[0])
                 ts = np.hstack(([0], np.diff(dt_prt_split[1][valid_idxs])))
@@ -1876,8 +1885,13 @@ class SolutionSFCSExperiment:
     def renormalize_all(self, norm_range: Tuple[float, float], **kwargs):
         """Doc."""
 
+        self.re_average_all(norm_range=norm_range, **kwargs)
+
+    def re_average_all(self, **kwargs):
+        """Doc."""
+
         for cf in self.cf_dict.values():
-            cf.average_correlation(norm_range=norm_range, **kwargs)
+            cf.average_correlation(**kwargs)
 
     def save_processed_measurements(self, meas_types=["confocal", "sted"], **kwargs):
         """Doc."""
@@ -2082,11 +2096,14 @@ class SolutionSFCSExperiment:
         self,
         tdc_gate_ns: Tuple[float, float] | Gate,
         meas_type: str,
+        noise_thresh=0.01,
         should_re_correlate=False,
         is_verbose=True,
         **kwargs,
     ) -> None:
-        """Doc."""
+        """
+        A high-level method for correlating a measurement (usually STED) while imposing a TDC (post measurement) gate.
+        """
 
         kwargs["is_verbose"] = is_verbose
 
@@ -2098,10 +2115,12 @@ class SolutionSFCSExperiment:
 
         if meas_type == "confocal":
             self.confocal.correlate_and_average(
-                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, **kwargs
+                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, noise_thresh=noise_thresh, **kwargs
             )
         elif self.sted.is_loaded:
-            self.sted.correlate_and_average(tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, **kwargs)
+            self.sted.correlate_and_average(
+                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, noise_thresh=noise_thresh, **kwargs
+            )
         else:
             # STED measurement not loaded
             print("Cannot add STED gate if there's no STED measurement loaded to the experiment!")

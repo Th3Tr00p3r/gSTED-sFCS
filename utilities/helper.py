@@ -8,6 +8,7 @@ import math
 import os
 import sys
 import time
+from collections import Counter
 from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ from typing import Any, Callable, Hashable, List, Tuple, TypeVar
 import numpy as np
 import scipy
 from sklearn import linear_model
+from sklearn.cluster import DBSCAN
+from sklearn.decomposition import PCA
 
 import utilities.display as display
 
@@ -486,6 +489,48 @@ class InterpExtrap1D:
             ax.axvline(x=self.x_lims.lower, color=color, lw=1, ls="--")
             ax.axvline(x=self.x_lims.upper, color=color, lw=1, ls="--")
             ax.legend()
+
+
+def most_common(list_):
+    data = Counter(list_)
+    try:
+        return data.most_common(1)[0][0]
+    except IndexError:
+        # list was empty
+        return None
+
+
+def dbscan_noise_thresholding(X, noise_thresh=0.25, eps0=0.5, eps_inc=0.1, max_tries=200, **kwargs):
+    """Doc."""
+
+    # Standardize the data
+    X_std = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+
+    eps = eps0
+    for _ in range(max_tries):
+        clustering = DBSCAN(eps=eps, min_samples=5)
+        y_clusters = clustering.fit_predict(X_std)
+        # get the largest cluster label. the rest of the clusters will be considered part of the "noise"
+        if (largest_cluster_label := most_common(y_clusters[y_clusters != -1])) is not None:
+            noise_mask = (y_clusters == -1) | (y_clusters != largest_cluster_label)
+        else:
+            noise_mask = y_clusters == -1
+        noise_perc = sum(noise_mask) / len(y_clusters)
+        #        print(f"Percentage of 'noise' points: {noise_perc:.2%}")
+        if noise_perc <= noise_thresh:
+            #         print(f"Selected eps={eps:.2f}")
+            break
+        else:
+            eps += eps_inc
+
+    # do PCA to view results
+    if kwargs.get("should_plot"):
+        pca = PCA(n_components=2)
+        X_std_pca = pca.fit_transform(X_std)
+        # display the PCA (2D) using the cluster labels
+        display.display_dim_reduction(X_std_pca, noise_mask, "PCA", figsize=(8, 6))
+
+    return noise_mask
 
 
 def batch_mean_rows(arr: np.ndarray, n_rows: int):

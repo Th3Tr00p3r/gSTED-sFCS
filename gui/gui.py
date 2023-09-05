@@ -109,6 +109,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.normRows.stateChanged.connect(self.impl.display_angular_scan_image)
 
         self.rowDiscriminationGroup = QtWidgets.QButtonGroup()
+        self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveDbscan)
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveOver)
         self.rowDiscriminationGroup.addButton(self.solAnalysisRemoveWorst)
 

@@ -1997,7 +1997,12 @@ class MainWin:
 
             if meas.scan_type == "angular":
                 row_disc_method = sol_data_analysis_wdgts["row_dicrimination"].objectName()
-                if row_disc_method == "solAnalysisRemoveOver":
+                if row_disc_method == "solAnalysisRemoveDbscan":
+                    avg_corr_kwargs = dict(
+                        should_use_clustering=True,
+                        noise_thresh=sol_data_analysis_wdgts["dbscan_noise_thresh"],
+                    )
+                elif row_disc_method == "solAnalysisRemoveOver":
                     avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts["remove_over"])
                 elif row_disc_method == "solAnalysisRemoveWorst":
                     avg_corr_kwargs = dict(

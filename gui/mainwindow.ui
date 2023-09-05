@@ -6200,7 +6200,7 @@ Measurement</string>
                             <bool>true</bool>
                            </property>
                            <property name="currentIndex">
-                            <number>2</number>
+                            <number>1</number>
                            </property>
                            <widget class="QWidget" name="tab_11">
                             <attribute name="title">
@@ -6366,12 +6366,68 @@ Rows</string>
                                            <number>0</number>
                                           </property>
                                           <item>
+                                           <layout class="QHBoxLayout" name="horizontalLayout_82" stretch="0,0,100">
+                                            <item>
+                                             <widget class="QRadioButton" name="solAnalysisRemoveDbscan">
+                                              <property name="minimumSize">
+                                               <size>
+                                                <width>0</width>
+                                                <height>0</height>
+                                               </size>
+                                              </property>
+                                              <property name="maximumSize">
+                                               <size>
+                                                <width>999</width>
+                                                <height>16777215</height>
+                                               </size>
+                                              </property>
+                                              <property name="text">
+                                               <string>DBSCAN
+noise
+threshold</string>
+                                              </property>
+                                             </widget>
+                                            </item>
+                                            <item>
+                                             <widget class="QDoubleSpinBox" name="solAnalysisRemoveDbscanSpinner">
+                                              <property name="sizePolicy">
+                                               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                                <horstretch>0</horstretch>
+                                                <verstretch>0</verstretch>
+                                               </sizepolicy>
+                                              </property>
+                                              <property name="maximum">
+                                               <double>0.900000000000000</double>
+                                              </property>
+                                              <property name="singleStep">
+                                               <double>0.010000000000000</double>
+                                              </property>
+                                              <property name="value">
+                                               <double>0.250000000000000</double>
+                                              </property>
+                                             </widget>
+                                            </item>
+                                            <item>
+                                             <spacer name="horizontalSpacer_45">
+                                              <property name="orientation">
+                                               <enum>Qt::Horizontal</enum>
+                                              </property>
+                                              <property name="sizeHint" stdset="0">
+                                               <size>
+                                                <width>40</width>
+                                                <height>20</height>
+                                               </size>
+                                              </property>
+                                             </spacer>
+                                            </item>
+                                           </layout>
+                                          </item>
+                                          <item>
                                            <layout class="QHBoxLayout" name="horizontalLayout_77" stretch="1,1,100">
                                             <item>
                                              <widget class="QRadioButton" name="solAnalysisRemoveOver">
                                               <property name="text">
-                                               <string>Remove
-scores
+                                               <string>Scores
 over:</string>
                                               </property>
                                               <property name="checked">
@@ -6445,8 +6501,8 @@ over:</string>
                                                </size>
                                               </property>
                                               <property name="text">
-                                               <string>Remove
-Worst</string>
+                                               <string>Worst
+Scores</string>
                                               </property>
                                              </widget>
                                             </item>

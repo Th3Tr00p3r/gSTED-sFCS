@@ -7,7 +7,7 @@ from typing import List, Tuple
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from matplotlib.colors import to_rgb
+from matplotlib.colors import ListedColormap, to_rgb
 from skimage.exposure import rescale_intensity
 from skimage.filters import threshold_yen
 
@@ -469,6 +469,7 @@ def plot_acfs(
     avg_cf_cr: np.ndarray = None,
     g0: float = None,
     cf_cr: np.ndarray = None,
+    j_good: list = [],
     n_lines=1000,  # was 14
     **kwargs,
 ):
@@ -491,10 +492,47 @@ def plot_acfs(
 
     with Plotter(**kwargs) as ax:
         if cf_cr is not None:
+            if j_good:
+                cf_cr = cf_cr[j_good]
             cf_cr = helper.batch_mean_rows(cf_cr, n_lines)
             cmap = get_gradient_colormap(cf_cr.shape[0])
             ax.set_prop_cycle(color=cmap)
             ax.plot(x, cf_cr.T, lw=0.4)
+            # Add a colorbar (colors only)
+            sm = plt.cm.ScalarMappable(cmap=ListedColormap(cmap))
+            sm.set_array([])
+            ax.get_figure().colorbar(sm, ax=ax, orientation="vertical", format="")
         if avg_cf_cr is not None:
             ax.set_prop_cycle(color="k")
-            ax.plot(x, avg_cf_cr, lw=1.4)
+            ax.plot(x, avg_cf_cr, lw=1.4, label="avg_cf_cr")
+        ax.legend()
+
+
+def display_scatter(arr2d, labels, title="", cmap="viridis", **kwargs):
+    """Expects `arr2d` to be a 2D array-like with samples along the 0th dimension"""
+
+    if arr2d.ndim != 2:
+        raise ValueError("Must supply a 2D array! (sample rows, feature columns)")
+
+    if arr2d.shape[1] not in [2, 3]:
+        raise ValueError("Can only display 2D or 3D data!")
+
+    # prepare 3d projection if needed
+    if arr2d.shape[1] == 3:
+        kwargs["subplot_kw"] = dict(projection="3d")
+
+    with Plotter(**kwargs) as ax:
+        dim_slices = [col for col in arr2d.T]
+        ax.scatter(*dim_slices, c=labels)
+        ax.set_title(title)
+
+
+def display_dim_reduction(arr2d, labels, name: str, **kwargs):
+    """Expects a 2D matrix with 2/3 components (columns)"""
+    components = range(1, arr2d.shape[1] + 1)
+    axes = "xyz"
+    axis_labels_dict = {
+        f"{ax_str}label": f"Principle Component {component_num}"
+        for ax_str, component_num in zip(axes, components)
+    }
+    display_scatter(arr2d, labels, **axis_labels_dict, title=f"{name} Visualization", **kwargs)

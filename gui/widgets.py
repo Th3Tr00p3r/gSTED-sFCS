@@ -293,6 +293,7 @@ SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
     scan_image_disp=("solScanImgDisp", None, "main", True),
     pattern_wdgt=("solScanAnalysisPattern", None, "main", True),
     row_dicrimination=("rowDiscriminationGroup", "QButtonGroup", "main", False),
+    dbscan_noise_thresh=("solAnalysisRemoveDbscanSpinner", "QDoubleSpinBox", "main", False),
     remove_over=("solAnalysisRemoveOverSpinner", "QDoubleSpinBox", "main", False),
     remove_worst=("solAnalysisRemoveWorstSpinner", "QDoubleSpinBox", "main", True),
     plot_spatial=("solAveragingPlotSpatial", "QRadioButton", "main", False),
