@@ -492,6 +492,11 @@ class InterpExtrap1D:
 
 
 def most_common(list_):
+    """
+    Returns the most common element in a list/array.
+    Adapted from: https://stackoverflow.com/questions/1518522/find-the-most-common-element-in-a-list
+    """
+
     data = Counter(list_)
     try:
         return data.most_common(1)[0][0]
