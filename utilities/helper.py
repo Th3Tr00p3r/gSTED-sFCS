@@ -515,18 +515,22 @@ def dbscan_noise_thresholding(X, noise_thresh=0.25, eps0=0.5, eps_inc=0.1, max_t
     for _ in range(max_tries):
         clustering = DBSCAN(eps=eps, min_samples=5)
         y_clusters = clustering.fit_predict(X_std)
-        # get the largest cluster label. the rest of the clusters will be considered part of the "noise"
-        if (largest_cluster_label := most_common(y_clusters[y_clusters != -1])) is not None:
-            noise_mask = (y_clusters == -1) | (y_clusters != largest_cluster_label)
-        else:
-            noise_mask = y_clusters == -1
-        noise_perc = sum(noise_mask) / len(y_clusters)
+        dbscan_noise_mask = y_clusters == -1
+        largest_cluster_label = most_common(y_clusters[y_clusters != -1])
+        # calculate the noise percentage out of the largest cluster
+        noise_perc = sum(dbscan_noise_mask) / sum(
+            dbscan_noise_mask | (y_clusters == largest_cluster_label)
+        )
         #        print(f"Percentage of 'noise' points: {noise_perc:.2%}")
         if noise_perc <= noise_thresh:
             #         print(f"Selected eps={eps:.2f}")
             break
         else:
             eps += eps_inc
+
+    # get the largest cluster label. the rest of the clusters will be considered part of the "noise"
+    largest_cluster_label = most_common(y_clusters[y_clusters != -1])
+    noise_mask = (y_clusters == -1) | (y_clusters != largest_cluster_label)
 
     # do PCA to view results
     if kwargs.get("should_plot"):

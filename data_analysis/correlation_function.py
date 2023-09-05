@@ -2096,7 +2096,6 @@ class SolutionSFCSExperiment:
         self,
         tdc_gate_ns: Tuple[float, float] | Gate,
         meas_type: str,
-        noise_thresh=0.01,
         should_re_correlate=False,
         is_verbose=True,
         **kwargs,
@@ -2115,12 +2114,10 @@ class SolutionSFCSExperiment:
 
         if meas_type == "confocal":
             self.confocal.correlate_and_average(
-                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, noise_thresh=noise_thresh, **kwargs
+                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, **kwargs
             )
         elif self.sted.is_loaded:
-            self.sted.correlate_and_average(
-                tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, noise_thresh=noise_thresh, **kwargs
-            )
+            self.sted.correlate_and_average(tdc_gate_ns=tdc_gate_ns, cf_name=meas_type, **kwargs)
         else:
             # STED measurement not loaded
             print("Cannot add STED gate if there's no STED measurement loaded to the experiment!")

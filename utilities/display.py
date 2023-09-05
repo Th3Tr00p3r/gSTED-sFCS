@@ -505,6 +505,8 @@ def plot_acfs(
         if avg_cf_cr is not None:
             ax.set_prop_cycle(color="k")
             ax.plot(x, avg_cf_cr, lw=1.4, label="avg_cf_cr")
+        # add horizontal line at y=0
+        ax.axhline(y=0, color="k", lw=0.3, ls="--")
         ax.legend()
 
 
