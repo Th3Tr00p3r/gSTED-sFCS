@@ -2288,8 +2288,7 @@ class ImageStackData:
     def construct_plane_image(self, method: str, plane_idx: int = None, **kwargs) -> np.ndarray:
         """Doc."""
 
-        if plane_idx is None:
-            plane_idx = self.image_stack_forward.shape[2] // 2
+        plane_idx = plane_idx or self.image_stack_forward.shape[2] // 2
 
         if method == "forward":
             img = self.image_stack_forward[:, :, plane_idx]

@@ -334,7 +334,7 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
     async def set_gate_width(self, gate_width_ns=None):
         """Doc."""
 
-        if gate_width_ns is None:  # Manually set from GUI (needed?)
+        if gate_width_ns is None:  # Manually set from GUI # TODO: is this needed?
             gate_width_ps = round(self.set_gate_width_wdgt.get() * 1e3)
         else:
             gate_width_ps = round(gate_width_ns * 1e3)
@@ -464,8 +464,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         (See the 'Laser Propagation Time Calibration' Jupyter Notebook)
         """
 
-        if lower_gate_ns is None:
-            lower_gate_ns = self.set_delay_wdgt.get()
+        lower_gate_ns = lower_gate_ns or self.set_delay_wdgt.get()
 
         try:
             # add the synchronized delay time
@@ -881,9 +880,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             self.last_ao_int = self.ao_int
 
         if type == "circular":
-            if size is None:
-                size = self.AI_BUFFER_SIZE
-            self.ai_buffer = deque([], maxlen=size)
+            self.ai_buffer = deque([], maxlen=size or self.AI_BUFFER_SIZE)
         elif type == "inf":
             self.ai_buffer = []
         else:
@@ -1104,8 +1101,7 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
     def average_counts(self, interval_s: float, rate=None) -> None:
         """Doc."""
 
-        if rate is None:
-            rate = self.tasks.ci[-1].timing.samp_clk_rate
+        rate = rate or self.tasks.ci[-1].timing.samp_clk_rate
 
         n_reads = int(np.ceil(interval_s * rate))
 
@@ -1131,9 +1127,7 @@ class PhotonCounter(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
         self.ci_buffer: Union[list, deque]
 
         if type == "circular":
-            if size is None:
-                size = self.CI_BUFFER_SIZE
-            self.ci_buffer = deque([], maxlen=size)
+            self.ci_buffer = deque([], maxlen=size or self.CI_BUFFER_SIZE)
         elif type == "inf":
             self.ci_buffer = []
         else:
@@ -1626,8 +1620,8 @@ class BaseCamera:
     def set_parameters(self, param_dict: dict = None) -> None:
         """Set pixel_clock, framerate and exposure"""
 
-        if param_dict is None:  # fallback to default
-            param_dict = self.DEFAULT_PARAM_DICT
+        # fallback to default
+        param_dict = param_dict or self.DEFAULT_PARAM_DICT
 
         for name, value in param_dict.items():
             self.set_parameter(name, value)

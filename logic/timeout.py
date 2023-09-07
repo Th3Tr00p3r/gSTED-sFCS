@@ -193,6 +193,9 @@ class Timeout:
 
                 # get time of operation of laser head (once)
                 if dep_dvc.time_of_operation_hr is None:
+                    await asyncio.sleep(
+                        1
+                    )  # TODO: ensure that this prevents depletion error on startup
                     dep_dvc.time_of_operation_hr = dep_dvc.get_prop("on_time")
                     dep_dvc.hours_of_operation_widget.set(dep_dvc.time_of_operation_hr)
 

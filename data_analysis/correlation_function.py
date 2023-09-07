@@ -570,8 +570,7 @@ class CorrFunc:
                 y_field = "avg_cf_cr"
                 y_scale = "linear"
                 y_error_field = "error_cf_cr"
-                if fit_range is None:
-                    fit_range = (1e-3, 10)
+                fit_range = fit_range or (1e-3, 10)
 
             elif fit_name == "zero_centered_zero_bg_normalized_gaussian_1d_fit":
                 fit_param_estimate = (0.1,)
@@ -584,8 +583,7 @@ class CorrFunc:
                 y_field = "normalized"
                 y_scale = "linear"
                 y_error_field = "error_normalized"
-                if fit_range is None:
-                    fit_range = (1e-2, 100)
+                fit_range = fit_range(1e-2, 100)
 
         elif fit_range is None:
             fit_range = (np.NINF, np.inf)
@@ -1856,11 +1854,9 @@ class SolutionSFCSExperiment:
 
         if kwargs.get("should_plot_meas"):
 
-            if (x_field := kwargs.get("x_field")) is None:
-                if measurement.scan_type == "static":
-                    x_field = "lag"
-                else:  # angular or circular scan
-                    x_field = "vt_um"
+            x_field = (
+                kwargs.get("x_field") or "lag" if measurement.scan_type == "static" else "vt_um"
+            )
 
             with Plotter(
                 super_title=f"'{self.name.capitalize()}' Experiment\n'{measurement.type.capitalize()}' Measurement - ACFs",
@@ -1993,11 +1989,8 @@ class SolutionSFCSExperiment:
 
         beta0 = (h_max, 4, h_max * 1e-3)
 
-        if fit_range is None:
-            fit_range = Limits(t_max + 3, 40)
-
-        if param_estimates is None:
-            param_estimates = beta0
+        fit_range = fit_range or Limits(t_max + 3, 40)
+        param_estimates = param_estimates or beta0
 
         conf_params = conf.tdc_calib.fit_lifetime_hist(
             fit_range=fit_range, fit_param_estimate=beta0
@@ -2240,29 +2233,19 @@ class SolutionSFCSExperiment:
         # auto xlim determination
         if xlim is None:
             if x_field == "vt_um":
-                if x_scale == "log":
-                    xlim = Limits(1e-3, 10)
-                else:
-                    xlim = Limits(0, 2)
+                xlim = Limits(1e-3, 10) if x_scale == "log" else Limits(0, 2)
             else:
                 xlim = Limits(1e-4, 1)
 
         # auto y_field/y_scale determination
         if y_field is None:
             y_field = "normalized"
-            if y_scale is None:
-                if x_field == "vt_um":
-                    y_scale = "log"
-                else:
-                    y_scale = "linear"
+            y_scale = y_scale or "log" if x_field == "vt_um" else "linear"
 
         # auto ylim determination
         if ylim is None:
             if y_field == "normalized":
-                if y_scale == "log":
-                    ylim = (1e-3, 1)
-                else:
-                    ylim = (0, 1)
+                ylim = Limits(1e-3, 1) if y_scale == "log" else Limits(0, 1)
             elif y_field in {"average_all_cf_cr", "avg_cf_cr"}:
                 # TODO: perhaps cf attribute should be a list and not a dict? all I'm really ever interested in is either showing the first or all together (names are in each CF anyway)
                 first_cf = list(ref_meas.cf.values())[0]
