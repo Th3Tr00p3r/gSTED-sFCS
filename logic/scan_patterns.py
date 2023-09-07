@@ -68,7 +68,7 @@ class ScanPatternAO:
         self,
         pattern: str,
         um_v_ratio: Tuple[float, float, float],
-        origin_ao_v: tuple,
+        origin_ao_v: tuple[float, float, float],
         scan_params,
     ):
         self.pattern = pattern

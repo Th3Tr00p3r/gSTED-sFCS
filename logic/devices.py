@@ -688,6 +688,35 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         return tuple(getattr(self, f"{ax}_um2v_const").get() for ax in "xyz")
 
+    @property
+    def ai(self) -> Tuple:
+        """Return current XYZ voltages (analogue input) as a 3-tuple"""
+
+        return tuple(self.ai_buffer[-1][:3])
+
+    @property
+    def ao_int(self) -> Tuple:
+        """Return current XYZ voltages (internal analogue output) as a 3-tuple"""
+
+        try:
+            return tuple(self.ai_buffer[-1][3:])
+        except IndexError:
+            # if buffer has yet to be filled, use GUI values
+            return tuple(getattr(self._app_gui.main, f"{ax}AOVint").value() for ax in "xyz")
+
+    @property
+    def origin_disp_um(self) -> Tuple:
+        """Return current displacement from origin in um as a 3-tuple"""
+
+        return tuple(
+            (axis_vltg - axis_org) * axis_ratio
+            for axis_vltg, axis_ratio, axis_org in zip(
+                self.ao_int,
+                self.um_v_ratio,
+                self.origin,
+            )
+        )
+
     def close(self):
         """Doc."""
 
@@ -750,9 +779,9 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
             """
 
             try:
-                init_pos = self.ai_buffer[-1][3:][self.AXIS_INDEX[axis]]
+                init_pos = self.ao_int[self.AXIS_INDEX[axis]]
             except IndexError:
-                init_pos = self.last_int_ao[self.AXIS_INDEX[axis]]
+                init_pos = self.last_ao_int[self.AXIS_INDEX[axis]]
 
             total_dist = abs(final_pos - init_pos)
             n_steps = int(np.ceil(total_dist / step_sz))
@@ -849,7 +878,7 @@ class Scanners(BaseDevice, NIDAQmx, metaclass=DeviceCheckerMetaClass):
 
         with suppress(AttributeError, IndexError):
             # case ai_buffer not created yet, or just created and not populated yet
-            self.last_int_ao = self.ai_buffer[-1][3:]
+            self.last_ao_int = self.ao_int
 
         if type == "circular":
             if size is None:

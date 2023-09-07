@@ -198,9 +198,10 @@ class MainWin:
 
         scanners_dvc = self._app.devices.scanners
 
-        if destination is None:
-            # if no destination is specified, use the AO from the GUI
-            destination = tuple(getattr(self.main_gui, f"{ax}AOV").value() for ax in "xyz")
+        # if no destination is specified, use the AO from the GUI
+        destination = destination or tuple(
+            getattr(self.main_gui, f"{ax}AOV").value() for ax in "xyz"
+        )
 
         data = []
         type_str = ""
@@ -244,7 +245,7 @@ class MainWin:
             scanners_dvc = self._app.devices.scanners
             axis = self.main_gui.posAxis.currentText()
             try:
-                current_vltg = scanners_dvc.ai_buffer[-1][3:][scanners_dvc.AXIS_INDEX[axis]]
+                current_vltg = scanners_dvc.ao_int[scanners_dvc.AXIS_INDEX[axis]]
             except IndexError:
                 # buffer was initialized? # TESTESTEST
                 logging.warning("buffer was initialized? # TESTESTEST")
@@ -563,7 +564,6 @@ class MainWin:
         else:  # current_type == meas.type
             # adjust GUI
             if meas.type == "SFCSSolution":
-                self.main_gui.impl.go_to_origin()
                 self.main_gui.solScanMaxFileSize.setEnabled(True)
                 self.main_gui.solScanDur.setEnabled(True)
                 self.main_gui.solScanDurUnits.setEnabled(True)
@@ -619,11 +619,10 @@ class MainWin:
             else:
                 with suppress(ZeroDivisionError, ValueError):
                     # ZeroDivisionError - loadout has bad values
-                    curr_ao_v = tuple(getattr(self.main_gui, f"{ax}AOVint").value() for ax in "xyz")
                     ao, scan_params = ScanPatternAO(
                         pattern,
                         um_v_ratio,
-                        curr_ao_v,
+                        self._app.devices.scanners.ao_int,
                         scan_params,
                     ).calculate_pattern()
                     x_data, y_data = ao[0, :], ao[1, :]
@@ -2000,7 +1999,7 @@ class MainWin:
                 if row_disc_method == "solAnalysisRemoveDbscan":
                     avg_corr_kwargs = dict(
                         should_use_clustering=True,
-                        noise_thresh=sol_data_analysis_wdgts["dbscan_noise_thresh"],
+                        min_noise_thresh=sol_data_analysis_wdgts["dbscan_noise_thresh"],
                     )
                 elif row_disc_method == "solAnalysisRemoveOver":
                     avg_corr_kwargs = dict(rejection=sol_data_analysis_wdgts["remove_over"])

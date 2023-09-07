@@ -75,32 +75,18 @@ class Timeout:
             with suppress(IndexError, AttributeError):
                 # IndexError - AI buffer has just been initialized
                 # AttributeError - Scanners failed to initialize
-                (
-                    x_ai,
-                    y_ai,
-                    z_ai,
-                    x_ao_int,
-                    y_ao_int,
-                    z_ao_int,
-                ) = app.devices.scanners.ai_buffer[-1]
 
-                (x_um, y_um, z_um) = tuple(
-                    (axis_vltg - axis_org) * axis_ratio
-                    for axis_vltg, axis_ratio, axis_org in zip(
-                        (x_ao_int, y_ao_int, z_ao_int),
-                        app.devices.scanners.um_v_ratio,
-                        app.devices.scanners.origin,
-                    )
-                )
-
+                x_ai, y_ai, z_ai = app.devices.scanners.ai
                 app.gui.main.xAIV.setValue(x_ai)
                 app.gui.main.yAIV.setValue(y_ai)
                 app.gui.main.zAIV.setValue(z_ai)
 
+                x_ao_int, y_ao_int, z_ao_int = app.devices.scanners.ao_int
                 app.gui.main.xAOVint.setValue(x_ao_int)
                 app.gui.main.yAOVint.setValue(y_ao_int)
                 app.gui.main.zAOVint.setValue(z_ao_int)
 
+                x_um, y_um, z_um = app.devices.scanners.origin_disp_um
                 app.gui.main.xAOum.setValue(x_um)
                 app.gui.main.yAOum.setValue(y_um)
                 app.gui.main.zAOum.setValue(z_um)

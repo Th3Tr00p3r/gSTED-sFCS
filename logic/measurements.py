@@ -53,6 +53,8 @@ class MeasurementProcedure:
         )
         self.stage_dvc = app.devices.stage
 
+        # keep initial positions (scanners and stage)
+        scan_params["initial_ao"] = self.scanners_dvc.ao_int
         self.initial_stage_pos_steps: helper.Vector = self.stage_dvc.curr_pos
 
         self._app = app
@@ -109,21 +111,8 @@ class MeasurementProcedure:
             if self.scanning:
                 self.return_to_regular_tasks()
                 self._app.gui.main.impl.device_toggle("pixel_clock", leave_off=True)
-
-                if self.type == "SFCSSolution":
-                    self._app.gui.main.impl.go_to_origin()
-                    type_ = "solution"
-                elif self.type == "SFCSImage":
-                    self._app.gui.main.impl.move_scanners(
-                        destination=self.scan_params["initial_ao"]
-                    )
-                    type_ = "image"
-
-            # TODO: make this more readable - the idea is that static measurements are also of type_ "solution"
-            # An option is to change the type of measurement from "SFCSSolution" to "solution" ("SFCSImage" -> "image")
-            # or the other way around.
-            elif self.type == "SFCSSolution":
-                type_ = "solution"
+                self._app.gui.main.impl.move_scanners(destination=self.scan_params["initial_ao"])
+            type_ = "image" if self.type == "SFCSImage" else "solution"
 
         self.is_running = False
         await self._app.gui.main.impl.toggle_meas(self)
@@ -476,9 +465,6 @@ class ImageMeasurementProcedure(MeasurementProcedure):
         self.image_method = kwargs["image_method"]
         self.scan_type = "image"
         self.scanning = True
-        self.scan_params["initial_ao"] = tuple(
-            getattr(self._app.gui.main, f"{ax}AOVint").value() for ax in "xyz"
-        )
 
     def build_filename(self) -> str:
         return f"{self.file_template}_{self.laser_mode}_{self.scan_params['plane_orientation']}{(f'_{self.dep_power_mw}mW' if self.dep_power_mw is not None else '')}_{dt.now().strftime('%H%M%S')}"
@@ -650,7 +636,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
         self.scanning = not (self.scan_params["pattern"] == "static")
-        self._app.gui.main.impl.go_to_origin("XY")
 
     def build_filename(self, file_no: int) -> str:
         """Doc."""
@@ -692,11 +677,10 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params["ao_sampling_freq_hz"]) - 2
             )
         # create ao_buffer
-        curr_ao_v = tuple(getattr(self._app.gui.main, f"{ax}AOVint").value() for ax in "xyz")
         self.ao_buffer, self.scan_params = ScanPatternAO(
             self.scan_params["pattern"],
             self.scanners_dvc.um_v_ratio,
-            curr_ao_v,
+            self.scanners_dvc.ao_int,
             self.scan_params,
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]

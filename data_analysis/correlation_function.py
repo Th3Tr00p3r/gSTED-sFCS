@@ -380,6 +380,7 @@ class CorrFunc:
         self,
         should_use_clustering=False,
         rejection=2,
+        min_noise_thresh=0.25,
         reject_n_worst=None,
         norm_range=(1e-3, 2e-3),
         **kwargs,
@@ -408,14 +409,22 @@ class CorrFunc:
                 / len(jj)
             ).sum(axis=1)
             print(
-                f"Division by zero avoided by adding EPSILON={EPS:.2f}. Why does this happen (zero in variance)?"
+                f"Division by zero avoided by adding EPSILON={EPS:.2e}. Why does this happen (zero in variance)?"
             )
 
         total_n_rows, _ = self.cf_cr.shape
 
         if should_use_clustering:
-            delete_idxs = dbscan_noise_thresholding(self.cf_cr, **kwargs)
+            delete_idxs = dbscan_noise_thresholding(
+                self.cf_cr, label=self.name, min_noise_thresh=min_noise_thresh, **kwargs
+            )
             delete_list = np.nonzero(delete_idxs)[0]
+        #            # fallback in case too many points are considered noise
+        #            if len(delete_list)/total_n_rows > 0.9:
+        #                print(
+        #                    f"Clustering discrimination: {len(delete_list)/total_n_rows:.2%} of rows are in 'delete_list'! Using score insted."
+        #                )
+        #                delete_list = np.where(self.score >= self.rejection)[0]
         elif reject_n_worst:
             delete_list = np.argsort(self.score)[-reject_n_worst:]
         elif rejection is not None:
@@ -450,7 +459,7 @@ class CorrFunc:
                 1 / (self.error_cf_cr[j_t] + EPS) ** 2
             ).sum()
             print(
-                f"Division by zero avoided by adding EPSILON={EPS:.2f}. Why does this happen (zero in variance)?"
+                f"Division by zero avoided by adding EPSILON={EPS:.2e}. Why does this happen (zero in variance)?"
             )
 
         self.normalized = self.avg_cf_cr / self.g0
@@ -469,7 +478,7 @@ class CorrFunc:
             tot_weights += EPS
             avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
             print(
-                f"Division by zero avoided by adding epsilon={EPS:.2f}. Why does this happen (zero total weight)?"
+                f"Division by zero avoided by adding epsilon={EPS:.2e}. Why does this happen (zero total weight)?"
             )
         finally:
             error_cf_cr = np.sqrt((weights**2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
@@ -522,8 +531,7 @@ class CorrFunc:
         if x_scale == "log":  # remove zero point data
             x, y = x[1:], y[1:]
 
-        if kwargs.get("label") is None:
-            label = self.name
+        label = kwargs.get("label") or self.name
 
         with Plotter(
             x_scale=x_scale,
