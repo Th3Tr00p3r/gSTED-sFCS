@@ -761,13 +761,12 @@ class MainWin:
         with suppress(IndexError):
             # IndexError - No last_image_scans appended yet
             image_tdc = ImageSFCSMeasurement()
-            image_data = image_tdc.generate_ci_image_stack_data(
-                file_dict=self._app.last_image_scans[img_idx]
+            image = image_tdc.preview(
+                file_dict=self._app.last_image_scans[img_idx],
+                method=method_dict[disp_mthd],
+                plane_idx=plane_idx,
+                should_plot=False,
             )
-            if plane_idx is None:
-                # use center plane if not supplied
-                plane_idx = int(image_data.n_planes / 2)
-            image = image_data.construct_plane_image(method_dict[disp_mthd], plane_idx)
             self._app.curr_img_idx = img_idx
             self._app.curr_img = image
             img_meas_wdgts["image_wdgt"].obj.display_image(
@@ -1568,18 +1567,19 @@ class MainWin:
             # import the data
             try:
                 image_tdc = ImageSFCSMeasurement()
-                ci_image_data = image_tdc.generate_ci_image_stack_data(
-                    file_path=self.current_date_type_dir_path() / template
+                image = image_tdc.preview(
+                    file_path=self.current_date_type_dir_path() / template,
+                    should_plot=False,
                 )
             except FileNotFoundError:
                 self.switch_data_type()
                 return
-            # get the center plane image, in "forward"
-            image = ci_image_data.construct_plane_image("forward normalized")
-            # plot it (below)
-            data_import_wdgts["img_preview_disp"].obj.display_image(
-                image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False
-            )
+
+            else:
+                # plot it (below)
+                data_import_wdgts["img_preview_disp"].obj.display_image(
+                    image, imshow_kwargs=dict(cmap="bone"), scroll_zoom=False
+                )
 
     def import_image_data(self, should_load_processed=False) -> None:
         """Doc."""

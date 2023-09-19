@@ -669,52 +669,60 @@ class AfterpulsingFilter:
         with Plotter(
             parent_ax=parent_ax,
             subplots=(1, 2),
+            xlabel="time (ns)",
             **plot_kwargs,
         ) as axes:
             axes[0].set_title("Filter Ingredients")
             axes[0].set_yscale("log")
+            #            axes[0].plot(
+            #                self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
+            #            )
             axes[0].plot(
-                self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
+                self.t_hist[valid_idxs],
+                self.I_j / self.norm_factor,
+                label="Normalized $I_j$ (raw histogram)",
             )
-            axes[0].plot(self.t_hist[valid_idxs], self.I_j / self.norm_factor, label="norm. I_j")
             axes[0].plot(
                 self.t_hist[valid_idxs],
                 self.baseline / self.norm_factor * np.ones(self.t_hist[valid_idxs].shape),
-                label="norm. baseline",
+                label="Normalized baseline",
             )
             axes[0].plot(
                 self.t_hist[valid_idxs],
                 self.M.T[0],
-                label="M_j1 (ideal fluorescence decay curve)",
+                label="$M_{j1}$ (ideal fluorescence decay curve)",
             )
             axes[0].plot(
                 self.t_hist[valid_idxs],
                 self.M.T[1],
-                label="M_j2 (ideal afterpulsing 'decay' curve)",
+                label="$M_{j2}$ (ideal afterpulsing 'decay' curve)",
             )
-            axes[0].legend()
+            axes[0].set_ylabel("Normmalized Photon Count")
             axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
+            axes[0].legend()
 
             axes[1].set_title("Filter")
             try:  # TODO: fix this at the filter-building level!
                 axes[1].plot(
-                    self.t_hist, self.filter.T, label=["F_1j (signal)", "F_2j (afterpulsing)"]
+                    self.t_hist,
+                    self.filter.T,
+                    label=["$F_{1j}$ (signal)", "$F_{2j}$ (afterpulsing)"],
                 )
-                axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="F.sum(axis=0)")
+                axes[1].plot(self.t_hist, self.filter.sum(axis=0), label="$F_{1j}+F_{2j}=1$")
             except ValueError as exc:
                 print(exc)
                 print("^ unifying lengh of filter to t_hist...")
                 axes[1].plot(
                     self.t_hist,
                     unify_length(self.filter.T, (self.t_hist.size, 2)),
-                    label=["F_1j (signal)", "F_2j (afterpulsing)"],
+                    label=["$F_{1j}$ (signal)", "$F_{2j}$ (afterpulsing)"],
                 )
                 axes[1].plot(
                     self.t_hist,
                     unify_length(self.filter.sum(axis=0), self.t_hist.shape),
-                    label="F.sum(axis=0)",
+                    label="$F_{1j}+F_{2j}=1$",
                 )
-
+            axes[1].set_ylabel("Filter Value")
             axes[1].legend()
 
             # focus on valid limits
@@ -1070,7 +1078,7 @@ class TDCCalibration:
         try:
             x_all = self.x_all
             h_all = self.h_all
-            coase_bins = self.coarse_bins
+            coarse_bins = self.coarse_bins
             h = self.h
             coarse_calib_bins = self.coarse_calib_bins
             t_calib = self.t_calib
@@ -1084,23 +1092,30 @@ class TDCCalibration:
             **kwargs,
         ) as axes:
             axes[0, 0].semilogy(x_all, h_all, "-o", label="All Hist")
-            axes[0, 0].semilogy(coase_bins, h, "o", label="Valid Bins")
+            axes[0, 0].semilogy(coarse_bins, h, "o", label="Valid Bins")
             axes[0, 0].semilogy(
-                coase_bins[np.isin(coase_bins, coarse_calib_bins)],
-                h[np.isin(coase_bins, coarse_calib_bins)],
+                coarse_bins[np.isin(coarse_bins, coarse_calib_bins)],
+                h[np.isin(coarse_bins, coarse_calib_bins)],
                 "o",
                 markersize=4,
                 label="Calibration Bins",
             )
+            axes[0, 0].set_xlabel("Coarse Bin")
+            axes[0, 0].set_ylabel("Photons")
             axes[0, 0].legend()
 
             axes[0, 1].plot(self.h_tdc_calib, "-o", label="Calibration Photon Histogram")
+            axes[0, 1].set_xlabel("TDC Bin (Adder)")
+            axes[0, 1].set_ylabel("Photons")
             axes[0, 1].legend()
 
             axes[1, 0].semilogy(t_hist, all_hist_norm, "-o", label="Photon Lifetime Histogram")
+            axes[1, 0].set_xlabel("Time (ns)")
+            axes[1, 0].set_ylabel("Photons (Normalized)")
             axes[1, 0].legend()
 
             axes[1, 1].plot(t_calib, "-o", label="TDC Calibration")
+            axes[1, 1].set_xlabel("TDC Bin (Adder)")
             axes[1, 1].set_ylabel("Time (ns)")
             axes[1, 1].legend()
 

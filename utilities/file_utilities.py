@@ -7,6 +7,7 @@ import gzip
 import logging
 import pickle
 import re
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Tuple, Union
@@ -148,6 +149,39 @@ legacy_python_trans_dict = {
 }
 
 
+def search_database(data_root: Path, str_list: List[str]) -> None:
+    """
+    Search the database for templates containing all strings in `str_list`
+    and print them along with their dates.
+    """
+
+    # get all unique templates by using their .log files from all directories in DATA_ROOT. filter using the SEARCH_LIST.
+    template_date_dict = {
+        path_.stem[:-2]: datetime.strptime(path_.parent.parent.name, "%d_%m_%Y").date()
+        for path_ in data_root.rglob("*_1.*")
+        if all([str_.lower() in str(path_).lower() for str_ in str_list])
+    }
+
+    # sort by date in reverse order (newest first)
+    template_date_dict = dict(
+        sorted(template_date_dict.items(), key=lambda item: item[1], reverse=True)
+    )
+
+    # print the findings (date first, though the key is the template)
+    if template_date_dict:
+        print(f"Found {len(template_date_dict)} matching templates:\n")
+        print(
+            "\n".join(
+                [
+                    f"{date.strftime('%d_%m_%Y')}: {template}_"
+                    for template, date in template_date_dict.items()
+                ]
+            )
+        )
+    else:
+        print("No matches found!")
+
+
 def _chunks(list_: list, n: int):
     """
     Generate n-sized chunks from list_.
@@ -234,21 +268,23 @@ def save_object(
     dir_path = file_path.parent
     Path.mkdir(dir_path, parents=True, exist_ok=True)
 
-    # split iterables to chunks if possible
-    MAX_CHUNK_MB = 500
-    if element_size_estimate_mb is not None:
-        n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
-        chunked_obj = list(_chunks(obj, n_elem_per_chunk))
+    # split iterables to chunks if possible/relevant
+    if isinstance(obj, np.ndarray):
+        chunked_obj = [obj]
     else:
-        try:  # attempt to estimate using the first object
-            element_size_estimate_mb = estimate_bytes(obj[0])
+        MAX_CHUNK_MB = 500
+        if element_size_estimate_mb is not None:
             n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
             chunked_obj = list(_chunks(obj, n_elem_per_chunk))
-        except (TypeError, KeyError):  # obj isn't iterable - treat as a single chunk
-            chunked_obj = [obj]
+        else:
+            try:  # attempt to estimate using the first object
+                element_size_estimate_mb = estimate_bytes(obj[0])
+                n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
+                chunked_obj = list(_chunks(obj, n_elem_per_chunk))
+            except (TypeError, KeyError):  # obj isn't iterable - treat as a single chunk
+                chunked_obj = [obj]
 
-    should_track_progress = should_track_progress and len(chunked_obj) > 1
-    if should_track_progress:
+    if should_track_progress := should_track_progress and len(chunked_obj) > 1:
         print(
             f"Saving '{file_path.name}' in {len(chunked_obj)} chunks ({compression_method}): ",
             end="",
@@ -299,6 +335,10 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
     if should_track_progress:
         print(f"Loading '{file_path.name}': ", end="")
         compression_method = "no"
+
+    # load pure numpy arrays
+    if file_path.suffix == "npy":
+        return np.load(file_path)
 
     try:
         try:  # gzip decompression

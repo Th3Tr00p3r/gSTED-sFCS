@@ -154,6 +154,8 @@ class Plotter:
         self.ylim: Tuple[float, float] = kwargs.get("ylim")
         self.x_scale: str = kwargs.get("x_scale")
         self.y_scale: str = kwargs.get("y_scale")
+        self.sharex: bool = kwargs.get("sharex", False)
+        self.sharey: bool = kwargs.get("sharey", False)
         self.should_autoscale = kwargs.get("should_autoscale", False)
         self.selection_limits: helper.Limits = kwargs.get("selection_limits")
         self.should_close_after_selection = kwargs.get("should_close_after_selection", False)
@@ -174,7 +176,9 @@ class Plotter:
             self.fig = self.gui_display.figure
             if self.gui_options.clear:  # clear and create new axes
                 self.gui_display.figure.clear()
-                self.axes = self.gui_display.figure.subplots(*self.subplots)
+                self.axes = self.gui_display.figure.subplots(
+                    *self.subplots, sharex=self.sharex, sharey=self.sharey
+                )
                 if not hasattr(self.axes, "size"):  # if self.axes is not an ndarray
                     self.axes = np.array([self.axes])
             else:  # use exising axes
@@ -189,7 +193,12 @@ class Plotter:
                     ax_width, ax_height = self.AX_SIZE
                     self.figsize = (n_cols * ax_width, n_rows * ax_height)
                 self.fig = plt.figure(figsize=self.figsize, constrained_layout=True)
-                self.axes = self.fig.subplots(*self.subplots, subplot_kw=self.subplot_kw)
+                self.axes = self.fig.subplots(
+                    *self.subplots,
+                    sharex=self.sharex,
+                    sharey=self.sharey,
+                    subplot_kw=self.subplot_kw,
+                )
                 if not hasattr(self.axes, "size"):  # if self.axes is not an ndarray
                     self.axes = np.array([self.axes])
             else:  # using given figure
@@ -439,11 +448,13 @@ def force_aspect(ax, aspect=1) -> None:
         ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
 
 
-def get_gradient_colormap(n_lines, color_list=["magenta", "lime", "cyan"]) -> np.ndarray:
-    """Create a multicolor gradient colormap"""
+def get_gradient_colormap(
+    n_lines, color_list: List[str | Tuple[int | float]] = ["magenta", "lime", "cyan"]
+) -> np.ndarray:
+    """Create a multicolor gradient colormap."""
 
     # get a list of RGB colors from the list of colors provided (i.e. (1.0, 0.0, 1.0) for "magenta")
-    rgb_color_list = [to_rgb(color) for color in color_list]
+    rgb_color_list = [to_rgb(color) if isinstance(color, str) else color for color in color_list]
     n_colors = len(rgb_color_list)
 
     # split gradient switch points evenly across the number of lines, and build the gradients

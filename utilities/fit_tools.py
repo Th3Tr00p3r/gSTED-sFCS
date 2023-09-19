@@ -192,6 +192,7 @@ def _fit_and_get_param_dict(
     y = ys[valid_idxs]
     try:
         sigma = ys_errors[valid_idxs]
+        ys_errors[~valid_idxs] = 0
     except TypeError:
         sigma = 1
 

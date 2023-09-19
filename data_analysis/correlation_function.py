@@ -583,7 +583,7 @@ class CorrFunc:
                 y_field = "normalized"
                 y_scale = "linear"
                 y_error_field = "error_normalized"
-                fit_range = fit_range(1e-2, 100)
+                fit_range = fit_range or (1e-2, 100)
 
         elif fit_range is None:
             fit_range = (np.NINF, np.inf)
@@ -1486,8 +1486,11 @@ class SolutionSFCSMeasurement:
         """
         Perform Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions in the measurement
         in order to estimate the resolution improvement. This is relevant only for calibration experiments (i.e. 300 bp samples).
-        Returns the legend labels for suse with higher-level Plotter instance in SolutionSFCSExperiment.
+        Returns the legend labels for use with higher-level Plotter instance in SolutionSFCSExperiment.
         """
+        # TODO: this should be a higher-level function which delegates the fitting and plotting to the individual CorrFunc objects, and only plots hierarchically.
+        #             This would allow better control, e.g. in case only certain gates are needed for a plot.
+        #             Take a look at "plot_correlation_functions" or "plot_structure_factors", for examples on how to implement.
 
         HWHM_FACTOR = np.sqrt(2 * np.log(2))
 
@@ -1512,7 +1515,7 @@ class SolutionSFCSMeasurement:
                 kwargs.pop("parent_ax", None)  # TODO: consider including this in Plotter __exit__
                 hwhm = list(FP.beta.values())[0] * 1e3 * HWHM_FACTOR
                 hwhm_error = list(FP.beta_error.values())[0] * 1e3 * HWHM_FACTOR
-                fit_label = f"{CF.name}: ${hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.0f}$)"
+                fit_label = f"{CF.name}: ${hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.1e}$)"
                 FP.plot(parent_ax=ax, color=color, fit_label=fit_label, **kwargs)
             ax.set_xlabel("vt_um")
             ax.set_ylabel("normalized ACF")
@@ -1886,11 +1889,6 @@ class SolutionSFCSExperiment:
         for cf in self.cf_dict.values():
             cf.remove_background()
 
-    def renormalize_all(self, norm_range: Tuple[float, float], **kwargs):
-        """Doc."""
-
-        self.re_average_all(norm_range=norm_range, **kwargs)
-
     def re_average_all(self, **kwargs):
         """Doc."""
 
@@ -2238,9 +2236,8 @@ class SolutionSFCSExperiment:
                 xlim = Limits(1e-4, 1)
 
         # auto y_field/y_scale determination
-        if y_field is None:
-            y_field = "normalized"
-            y_scale = y_scale or "log" if x_field == "vt_um" else "linear"
+        y_field = y_field or "normalized"
+        y_scale = y_scale or ("log" if x_field == "vt_um" else "linear")
 
         # auto ylim determination
         if ylim is None:
@@ -2438,8 +2435,9 @@ class ImageSFCSMeasurement:
 
         # load file if needed
         if file_path is not None:
-            print("\nLoading image FPGA data from disk -")
-            print(f"File path: '{self.file_path}'")
+            if is_verbose:
+                print("\nLoading image FPGA data from disk -")
+                print(f"File path: '{self.file_path}'")
             self.file_path = file_path
             self._file_dict = load_file_dict(file_path)
 
@@ -2455,10 +2453,11 @@ class ImageSFCSMeasurement:
             self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
         )
         # actual plane data processing
-        print(
-            f"Loading and processing total data ({self.scan_settings['n_planes']} planes): '{self.file_path.stem}'...",
-            end=" ",
-        )
+        if is_verbose:
+            print(
+                f"Loading and processing total data ({self.scan_settings['n_planes']} planes): '{self.file_path.stem}'...",
+                end=" ",
+            )
         # Processing data
         p = self.data_processor.process_data(
             0,
@@ -2467,7 +2466,8 @@ class ImageSFCSMeasurement:
             is_verbose=is_verbose,
             **proc_options,
         )
-        print("Done.\n")
+        if is_verbose:
+            print("Done.\n")
         # Appending data to self
         if p is not None:
             self.data.append(p)
@@ -2486,7 +2486,8 @@ class ImageSFCSMeasurement:
                 self.std_cnt_rate_khz = 0.0
 
         # done with loading
-        print("Finished loading FPGA data.\n")
+        if is_verbose:
+            print("Finished loading FPGA data.\n")
 
     def _get_general_properties(
         self,
@@ -2515,7 +2516,9 @@ class ImageSFCSMeasurement:
         if self.detector_settings.get("gate_ns") is not None and (
             not self.detector_settings["gate_ns"] and self.detector_settings["mode"] == "external"
         ):
-            print("This should not happen (missing detector gate) - move this to legacy handeling!")
+            print(
+                "This should not happen (missing detector gate) - move this to legacy file handeling!"
+            )
             self.detector_settings["gate_ns"] = Gate(
                 hard_gate=(
                     98 - self.detector_settings["gate_width_ns"],
@@ -2865,6 +2868,16 @@ class ImageSFCSMeasurement:
         line_ticks_v = dim1_min + np.arange(pxls_per_line) * pxl_size_v
         return eff_idxs, pxls_per_line, line_ticks_v
 
+    def preview(self, method="forward normalized", should_plot=True, **kwargs) -> np.ndarray:
+        """Generate and show the CI image"""
+
+        self.generate_ci_image_stack_data(**kwargs)
+        img = self.ci_image_data.construct_plane_image(method, **kwargs)
+        if should_plot:
+            with Plotter(**kwargs) as ax:
+                ax.imshow(img)
+        return img
+
     def estimate_spatial_resolution(self, should_plot=True, **kwargs) -> FitParams:
         """Fit a 2D Gaussian to image in order to estimate the resolution (e.g. for fluorescent beads)"""
 
@@ -2920,7 +2933,7 @@ class ImageSFCSMeasurement:
             )
             ellipse.set_facecolor((0, 0, 0, 0))
             ellipse.set_edgecolor("red")
-            annotation = f"$1/e^2$: \n{dim1_char}: {diameter_x_nm:.0f} +/- {diameter_x_nm_err:.0f} nm\n{dim2_char}: {diameter_y_nm:.0f} +/- {diameter_y_nm_err:.0f} nm\n$\\chi^2$={fp.chi_sq_norm:.2f}"
+            annotation = f"$1/e^2$: \n{dim1_char}: {diameter_x_nm:.0f} +/- {diameter_x_nm_err:.0f} nm\n{dim2_char}: {diameter_y_nm:.0f} +/- {diameter_y_nm_err:.0f} nm\n$\\chi^2$={fp.chi_sq_norm:.2e}"
             with Plotter(**kwargs) as ax:
                 ax.imshow(img)
                 ax.add_artist(ellipse)
