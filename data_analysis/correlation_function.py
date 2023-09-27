@@ -1655,7 +1655,9 @@ class SolutionSFCSMeasurement:
             **kwargs,
         )
 
-    def save_processed(self, should_save_data=True, should_force=False, **kwargs) -> bool:
+    def save_processed(
+        self, should_save_data=True, should_force=False, is_verbose=False, **kwargs
+    ) -> bool:
         """
         Save a processed measurement, including the '.data' attribute.
         The template may then be loaded much more quickly.
@@ -1677,15 +1679,19 @@ class SolutionSFCSMeasurement:
             self.filter_input_list = None
 
             # save the measurement object
-            if kwargs.get("is_verbose"):
+            if is_verbose:
                 print("Saving SolutionSFCSMeasurement object... ", end="")
             save_object(
-                self, meas_file_path, compression_method="blosc", obj_name="processed measurement"
+                self,
+                meas_file_path,
+                compression_method="blosc",
+                obj_name="processed measurement",
+                should_track_progress=is_verbose,
             )
             # restore correlator inputs
             self.corr_input_list = corr_input_list
 
-            if kwargs.get("is_verbose"):
+            if is_verbose:
                 print("Done.")
 
             was_saved = True
