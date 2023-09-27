@@ -430,7 +430,6 @@ class MainWin:
             # IndexError: no measurements in queue...
             meas_idx = (queue_widget := self._gui.main.measQueue).currentRow()
             if 0 <= (meas_idx + idx) <= queue_widget.count() - 1:
-                print("OK!")  # TESTEST
                 list_item = queue_widget.takeItem(meas_idx)
                 queue_widget.insertItem(meas_idx + idx, list_item)
                 queue_widget.setCurrentRow(meas_idx + idx)
