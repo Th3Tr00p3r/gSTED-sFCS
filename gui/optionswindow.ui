@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>362</width>
+    <width>407</width>
     <height>491</height>
    </rect>
   </property>
@@ -249,14 +249,35 @@ Correlator Splits</string>
             </layout>
            </item>
            <item>
-            <widget class="QCheckBox" name="autoRoi">
-             <property name="toolTip">
-              <string>Automatically locate the scan area (the default - currently no alternative).</string>
+            <layout class="QHBoxLayout" name="horizontalLayout_7">
+             <property name="spacing">
+              <number>6</number>
              </property>
-             <property name="text">
-              <string>Auto ROI</string>
-             </property>
-            </widget>
+             <item>
+              <widget class="QLabel" name="label_6">
+               <property name="text">
+                <string>ROI Selection</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="roiSelection">
+               <property name="toolTip">
+                <string>How to deal with detector afterpulsing</string>
+               </property>
+               <item>
+                <property name="text">
+                 <string>auto</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>all</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+            </layout>
            </item>
            <item>
             <widget class="QCheckBox" name="alleviateBrightPixels">

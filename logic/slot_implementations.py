@@ -428,12 +428,14 @@ class MainWin:
 
         with suppress(IndexError):
             # IndexError: no measurements in queue...
-            meas_idx = self._gui.main.measQueue.currentRow()
-            meas_str = self._gui.main.measQueue.takeItem(meas_idx)
-            self._gui.main.measQueue.insertItem(meas_idx + idx, meas_str)
-            self._gui.main.measQueue.setCurrentRow(meas_idx + idx)
-            meas = self._app.meas_queue.pop(meas_idx)
-            self._app.meas_queue.insert(meas_idx + idx, meas)
+            meas_idx = (queue_widget := self._gui.main.measQueue).currentRow()
+            if 0 <= (meas_idx + idx) <= queue_widget.count() - 1:
+                print("OK!")  # TESTEST
+                list_item = queue_widget.takeItem(meas_idx)
+                queue_widget.insertItem(meas_idx + idx, list_item)
+                queue_widget.setCurrentRow(meas_idx + idx)
+                meas = self._app.meas_queue.pop(meas_idx)
+                self._app.meas_queue.insert(meas_idx + idx, meas)
 
     def remove_meas_from_queue(self):
         """Doc."""
@@ -1754,34 +1756,16 @@ class MainWin:
     def get_processing_options_as_dict(self) -> dict:
         """Doc."""
 
-        loading_options = dict()
-        import_wdgts = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
+        loading_options = wdgts.PROC_OPTIONS_COLL.gui_to_dict(self._gui)
 
-        # file selection
-        if import_wdgts["sol_file_dicrimination"].objectName() == "solImportUse":
+        # update loading_options with file selection # TODO: this should also move to 'PROC_OPTIONS_COLL'
+        import_collection = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
+        if import_collection["sol_file_dicrimination"].objectName() == "solImportUse":
             loading_options[
                 "file_selection"
-            ] = f"{import_wdgts['sol_file_use_or_dont']} {import_wdgts['sol_file_selection']}"
+            ] = f"{import_collection['sol_file_use_or_dont']} {import_collection['sol_file_selection']}"
         else:
             loading_options["file_selection"] = "Use All"
-
-        # TODO: make this dynamic (so I don't have to add/remove rows for each new option) - start by making the keys the same in all (see "roi_selection")
-        loading_options["auto_gating"] = import_wdgts["auto_gating"]
-        loading_options["auto_gate_width_ns"] = import_wdgts["auto_gate_width_ns"]
-        loading_options["is_multiscan"] = import_wdgts["is_multiscan"]
-        loading_options["n_splits_requested"] = import_wdgts["n_splits_requested"]
-        loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
-        loading_options["img_median_factor"] = import_wdgts["img_median_factor"]
-        loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"
-        loading_options["should_alleviate_bright_pixels"] = import_wdgts[
-            "should_alleviate_bright_pixels"
-        ]
-        loading_options["afterpulsing_method"] = import_wdgts["afterpulsing_method"]
-        loading_options["should_subtract_bg_corr"] = import_wdgts["should_subtract_bg_corr"]
-        loading_options["override_system_info"] = import_wdgts["override_system_info"]
-        loading_options["should_ignore_hard_gate"] = import_wdgts["should_ignore_hard_gate"]
-        loading_options["should_parallel_process"] = import_wdgts["should_parallel_process"]
-        loading_options["should_unite_start_times"] = import_wdgts["should_unite_start_times"]
 
         return loading_options
 

@@ -268,6 +268,11 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", False),
     sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", False),
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
+    should_re_correlate=("solImportReCorrelate", "QCheckBox", "main", False),
+    auto_load_processed=("solImportAutoLoadProcessed", "QCheckBox", "main", False),
+)
+
+PROC_OPTIONS_COLL = QtWidgetCollection(
     # continuous scan processing
     n_splits_requested=("nCorrSplitsContScan", "QSpinBox", "options", False),
     # image scan processing
@@ -276,9 +281,9 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     is_multiscan=("ImgMultiScan", "QCheckBox", "options", False),
     img_median_factor=("ImgMedFac", "QDoubleSpinBox", "options", False),
     # angular scan processing
-    fix_shift=("fixShift", "QCheckBox", "options", False),
+    should_fix_shift=("fixShift", "QCheckBox", "options", False),
     median_factor=("medFac", "QDoubleSpinBox", "options", False),
-    should_auto_roi=("autoRoi", "QCheckBox", "options", False),
+    roi_selection=("roiSelection", "QComboBox", "options", False),
     should_alleviate_bright_pixels=("alleviateBrightPixels", "QCheckBox", "options", False),
     # general processing
     should_subtract_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
@@ -287,8 +292,6 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     should_unite_start_times=("shouldUniteStartTimes", "QCheckBox", "options", False),
     afterpulsing_method=("afterpulsingRemovalMethod", "QComboBox", "options", False),
     override_system_info=("useDefaultSysInfo", "QCheckBox", "options", False),
-    should_re_correlate=("solImportReCorrelate", "QCheckBox", "main", False),
-    auto_load_processed=("solImportAutoLoadProcessed", "QCheckBox", "main", False),
 )
 
 SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(
