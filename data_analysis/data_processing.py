@@ -1030,7 +1030,6 @@ class TDCPhotonMeasurementData(list):
 
         # serial (regular) processing
         else:
-            #            print() # TESTESTEST
             file_xcorr_input_dict_list = [
                 p.get_xcorr_input_dict(xcorr_types, **kwargs) for p in self
             ]

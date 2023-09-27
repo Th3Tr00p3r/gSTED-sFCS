@@ -268,6 +268,8 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_dicrimination=("fileSelectionGroup", "QButtonGroup", "main", False),
     sol_file_use_or_dont=("solImportUseDontUse", "QComboBox", "main", False),
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
+    # continuous scan processing
+    n_splits_requested=("nCorrSplitsContScan", "QSpinBox", "options", False),
     # image scan processing
     auto_gating=("ImgAutoGating", "QCheckBox", "options", False),
     auto_gate_width_ns=("ImgGateWidth", "QSpinBox", "options", False),

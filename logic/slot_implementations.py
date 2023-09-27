@@ -1415,14 +1415,14 @@ class MainWin:
             basic_header.append("-" * 40)
             basic_header.append("Measurement Log File")
             basic_header.append("-" * 40)
-            basic_header.append("Excitation Power: 12 uW @ BFP")
+            basic_header.append("Excitation Power: 20 uW @ BFP")
             basic_header.append("Depletion Power: 200 mW @ BFP (set to 260 mW)")
             if g0 is not None:
                 basic_header.append(
-                    f"Free Atto FCS @ 12 uW: G0 = {g0/1e3:.2f} k/ tau = {tau*1e3:.2f} us"
+                    f"Free Atto FCS @ 13.5 uW: G0 = {g0/1e3:.2f} k/ tau = {tau*1e3:.2f} us"
                 )
             else:
-                basic_header.append("Free Atto FCS @ 12 uW: Not Available")
+                basic_header.append("Free Atto FCS @ 13.5 uW: Not Available")
             basic_header.append("-" * 40)
             basic_header.append("EDIT_HERE")
 
@@ -1769,8 +1769,7 @@ class MainWin:
         loading_options["auto_gating"] = import_wdgts["auto_gating"]
         loading_options["auto_gate_width_ns"] = import_wdgts["auto_gate_width_ns"]
         loading_options["is_multiscan"] = import_wdgts["is_multiscan"]
-        loading_options["is_multiscan"] = import_wdgts["is_multiscan"]
-
+        loading_options["n_splits_requested"] = import_wdgts["n_splits_requested"]
         loading_options["should_fix_shift"] = import_wdgts["fix_shift"]
         loading_options["img_median_factor"] = import_wdgts["img_median_factor"]
         loading_options["roi_selection"] = "auto" if import_wdgts["should_auto_roi"] else "all"

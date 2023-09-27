@@ -1,3 +1,4 @@
+nCorrSplitsContScan,1000
 ImgGateWidth,15
 medFac,1.5
 ImgMedFac,1.0

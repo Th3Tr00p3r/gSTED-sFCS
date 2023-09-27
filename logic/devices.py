@@ -1372,9 +1372,6 @@ class Shutter(SimpleDODevice):
 class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
     """Control stepper stage through Arduino chip using PyVISA."""
 
-    # TODO: add support for saving all movements done since init
-    # and add button to move back to origin. also save to file and rewrite only when moving after app opens again
-
     attrs = DeviceAttrs(
         log_ref="Stage",
         param_widgets=QtWidgetCollection(
@@ -1395,7 +1392,8 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
 
     _x_pos: QtWidgetAccess
     _y_pos: QtWidgetAccess
-    LIMITS = Limits(-5000, 5000)
+    # TODO: LIMITS should be in (stage) settings. Also, the distance in steps (radial), not x/y, should be limited.
+    LIMITS = Limits(-6000, 6000)
     LAST_POS_FILEPATH = Path("last_stage_position.pkl")
 
     def __init__(self, app):
