@@ -854,10 +854,9 @@ class TDCPhotonFileData:
     ):
         """Continuous scan/static measurement - splits are arbitrarily cut along the measurement"""
 
-        dt = self.raw.delay_time
-
         # TODO: split duration (in bytes! not time) should be decided upon according to how well the correlator performs with said split size.
         # Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
+        # split duration should never approach (from above, obviously) the relevant time scale of sample dynamics
         split_duration = self.general.duration_s / n_splits_requested
         for se_idx, (se_start, se_end) in enumerate(self.general.all_section_edges):
             # split into sections of approx time of run_duration
@@ -866,7 +865,7 @@ class TDCPhotonFileData:
             ) / self.general.laser_freq_hz
 
             section_pulse_runtime = self.raw.pulse_runtime[se_start : se_end + 1]
-            section_delay_time = dt[se_start : se_end + 1]
+            section_delay_time = self.raw.delay_time[se_start : se_end + 1]
 
             # split the data into parts A/B according to gates
             if "A" in "".join(xcorr_types):

@@ -288,7 +288,7 @@ XCF_AB, XCF_BA = meas1.cross_correlate_data(
     corr_names=corr_names,
     gate1_ns=gate1_ns,
     gate2_ns=gate2_ns,
-    should_subtract_bg_corr=True,
+    subtract_spatial_bg_corr=True,
     should_subtract_afterpulse=False,
 )
 
@@ -307,7 +307,7 @@ for gate_B in gate_B_list:
         cf_name="fl_vs_wn",
         gate1_ns=gate_A,
         gate2_ns=gate_B,
-        should_subtract_bg_corr=True,
+        subtract_spatial_bg_corr=True,
         should_subtract_afterpulse=False,
         should_dump_data=False,
     )

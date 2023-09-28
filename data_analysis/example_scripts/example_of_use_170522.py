@@ -77,7 +77,7 @@ CF_AB_4_6_40_80, *_ = Sang.sted.cross_correlate_data(
     gate1_ns=Limits(4, 6),
     gate2_ns=Limits(40, 80),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 CF_AB_4_6_40_80.average_correlation()
@@ -90,7 +90,7 @@ CF_AB, *_ = Sang.sted.cross_correlate_data(
     gate1_ns=Limits(2, 10),
     gate2_ns=Limits(40, 80),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 CF_AB.average_correlation()
@@ -105,7 +105,7 @@ CF_AB, *_ = Sang.sted.cross_correlate_data(
     gate1_ns=Limits(2, 10),
     gate2_ns=Limits(60, 80),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 CF_AB.average_correlation()
@@ -120,7 +120,7 @@ CF_AB, *_ = Sang.confocal.cross_correlate_data(
     gate1_ns=Limits(2, 10),
     gate2_ns=Limits(60, 80),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 CF_AB.average_correlation()
@@ -135,7 +135,7 @@ CF_AB, *_ = Sang.confocal.cross_correlate_data(
     gate1_ns=Limits(40, 90),
     gate2_ns=Limits(40, 90),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 
@@ -151,7 +151,7 @@ CF_AB, *_ = Sang.confocal.cross_correlate_data(
     gate1_ns=Limits(40, 75),
     gate2_ns=Limits(40, 75),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 
@@ -206,7 +206,7 @@ CFlist = Sang.sted.cross_correlate_data(
     gate1_ns=Limits(4, 6),
     gate2_ns=Limits(4, 6),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 for CF in CFlist:
@@ -235,7 +235,7 @@ CFlist = Sang.sted.cross_correlate_data(
     gate1_ns=Limits(4, 6),
     gate2_ns=Limits(40, 80),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 for CF in CFlist:
@@ -265,7 +265,7 @@ CFlist = Sang.sted.cross_correlate_data(
     gate1_ns=Limits(4, 6),
     gate2_ns=Limits(40, 80),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 for CF in CFlist:
@@ -280,7 +280,7 @@ CFlist = Sang.sted.cross_correlate_data(
     gate1_ns=Limits(2, 4),
     gate2_ns=Limits(75, 80),
     should_subtract_afterpulse=False,
-    # should_subtract_bg_corr=False,
+    # subtract_spatial_bg_corr=False,
     # should_rotate_data=False,  # abort data rotation decorator
 )
 for CF in CFlist:
