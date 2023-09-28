@@ -857,76 +857,81 @@ class TDCPhotonFileData:
         # TODO: split duration (in bytes! not time) should be decided upon according to how well the correlator performs with said split size.
         # Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
         # split duration should never approach (from above, obviously) the relevant time scale of sample dynamics
-        split_duration = self.general.duration_s / n_splits_requested
+
+        # Unite all sections # TESTESTEST
+        total_duration = 0
+        section_pulse_runtimes = []
+        section_delay_times = []
         for se_idx, (se_start, se_end) in enumerate(self.general.all_section_edges):
-            # split into sections of approx time of run_duration
-            section_time = (
+            total_duration += (
                 self.raw.pulse_runtime[se_end] - self.raw.pulse_runtime[se_start]
             ) / self.general.laser_freq_hz
+            section_pulse_runtimes.append(self.raw.pulse_runtime[se_start : se_end + 1])
+            section_delay_times.append(self.raw.delay_time[se_start : se_end + 1])
 
-            section_pulse_runtime = self.raw.pulse_runtime[se_start : se_end + 1]
-            section_delay_time = self.raw.delay_time[se_start : se_end + 1]
+        pulse_runtime = np.hstack(section_pulse_runtimes)
+        delay_time = np.hstack(section_delay_times)
 
-            # split the data into parts A/B according to gates
-            if "A" in "".join(xcorr_types):
-                gate1_idxs = gate1_ns.valid_indices(section_delay_time)
-                section_prt1 = section_pulse_runtime[gate1_idxs]
-                section_dt1 = section_delay_time[gate1_idxs]
-                section_dt_prt1 = np.vstack((section_dt1, section_prt1))
+        # split the data into parts A/B according to gates
+        if "A" in "".join(xcorr_types):
+            gate1_idxs = gate1_ns.valid_indices(delay_time)
+            prt1 = pulse_runtime[gate1_idxs]
+            dt1 = delay_time[gate1_idxs]
+            dt_prt1 = np.vstack((dt1, prt1))
 
-            if "B" in "".join(xcorr_types):
-                gate2_idxs = gate2_ns.valid_indices(section_delay_time)
-                section_prt2 = section_pulse_runtime[gate2_idxs]
-                section_dt2 = section_delay_time[gate2_idxs]
-                section_dt_prt2 = np.vstack((section_dt2, section_prt2))
-            if "AB" in xcorr_types or "BA" in xcorr_types:
-                section_prt12 = section_pulse_runtime
-                section_dt_prt12 = np.vstack(
-                    (section_delay_time, section_prt12, gate2_idxs, gate1_idxs)
-                )[:, gate1_idxs | gate2_idxs]
+        if "B" in "".join(xcorr_types):
+            gate2_idxs = gate2_ns.valid_indices(delay_time)
+            prt2 = pulse_runtime[gate2_idxs]
+            dt2 = delay_time[gate2_idxs]
+            dt_prt2 = np.vstack((dt2, prt2))
+        if "AB" in xcorr_types or "BA" in xcorr_types:
+            prt12 = pulse_runtime
+            dt_prt12 = np.vstack((delay_time, prt12, gate2_idxs, gate1_idxs))[
+                :, gate1_idxs | gate2_idxs
+            ]
 
-            xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
-            for split_idx in range(n_splits := int(np.ceil(section_time / split_duration))):
-                for xx in xcorr_types:
-                    if xx == "AA":
-                        xcorr_input_dict[xx].append(
-                            self._split_continuous_section(
-                                section_dt_prt1,
-                                split_idx,
-                                n_splits,
-                                **kwargs,
-                            )
-                        )
-                    if xx == "BB":
-                        xcorr_input_dict[xx].append(
-                            self._split_continuous_section(
-                                section_dt_prt2,
-                                split_idx,
-                                n_splits,
-                                **kwargs,
-                            )
-                        )
-                    if xx == "AB":
-                        xcorr_input_AB = self._split_continuous_section(
-                            section_dt_prt12,
+        xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
+        for split_idx in range(n_splits_requested):
+            for xx in xcorr_types:
+                if xx == "AA":
+                    xcorr_input_dict[xx].append(
+                        self._split_continuous_section(
+                            dt_prt1,
                             split_idx,
-                            n_splits,
+                            n_splits_requested,
                             **kwargs,
                         )
-                        xcorr_input_dict[xx].append(xcorr_input_AB)
-                    if xx == "BA":
-                        if "AB" in xcorr_types:
-                            xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1], :])
-                        else:
-                            section_dt_prt21 = section_dt_prt12[[0, 2, 1], :]
-                            xcorr_input_dict[xx].append(
-                                self._split_continuous_section(
-                                    section_dt_prt21,
-                                    split_idx,
-                                    n_splits,
-                                    **kwargs,
-                                )
+                    )
+                if xx == "BB":
+                    xcorr_input_dict[xx].append(
+                        self._split_continuous_section(
+                            dt_prt2,
+                            split_idx,
+                            n_splits_requested,
+                            **kwargs,
+                        )
+                    )
+                if xx == "AB":
+                    xcorr_input_AB = self._split_continuous_section(
+                        dt_prt12,
+                        split_idx,
+                        n_splits_requested,
+                        **kwargs,
+                    )
+                    xcorr_input_dict[xx].append(xcorr_input_AB)
+                if xx == "BA":
+                    if "AB" in xcorr_types:
+                        xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1], :])
+                    else:
+                        dt_prt21 = dt_prt12[[0, 2, 1], :]
+                        xcorr_input_dict[xx].append(
+                            self._split_continuous_section(
+                                dt_prt21,
+                                split_idx,
+                                n_splits_requested,
+                                **kwargs,
                             )
+                        )
 
         print(".", end="")  # TESTESTEST
         return xcorr_input_dict
