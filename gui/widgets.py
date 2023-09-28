@@ -286,7 +286,7 @@ PROC_OPTIONS_COLL = QtWidgetCollection(
     roi_selection=("roiSelection", "QComboBox", "options", False),
     should_alleviate_bright_pixels=("alleviateBrightPixels", "QCheckBox", "options", False),
     # general processing
-    should_subtract_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
+    subtract_spatial_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
     should_ignore_hard_gate=("ignoreHardGate", "QCheckBox", "options", False),
     should_parallel_process=("useMultiProcessing", "QCheckBox", "options", False),
     should_unite_start_times=("shouldUniteStartTimes", "QCheckBox", "options", False),

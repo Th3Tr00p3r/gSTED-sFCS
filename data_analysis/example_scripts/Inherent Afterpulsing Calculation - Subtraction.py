@@ -139,7 +139,7 @@ CF_list = meas.cross_correlate_data(
     corr_names=corr_names,
     gate1_ns=gate1_ns,
     gate2_ns=gate2_ns,
-    should_subtract_bg_corr=True,
+    subtract_spatial_bg_corr=True,
     should_subtract_afterpulse=False,
 )
 

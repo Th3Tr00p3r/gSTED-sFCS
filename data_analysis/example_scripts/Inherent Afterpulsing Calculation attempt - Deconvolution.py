@@ -352,7 +352,7 @@ XCF_AB, XCF_BA = meas1.cross_correlate_data(
     corr_names=corr_names,
     gate1_ns=gate1_ns,
     gate2_ns=gate2_ns,
-    should_subtract_bg_corr=True,
+    subtract_spatial_bg_corr=True,
     should_subtract_afterpulse=False,
 )
 
@@ -564,8 +564,8 @@ XCF_AB, XCF_BA = meas3.cross_correlate_data(
     corr_names=corr_names,
     gate1_ns=gate1_ns,
     gate2_ns=gate2_ns,
-    should_subtract_bg_corr=True,
-    #     should_subtract_bg_corr=False,
+    subtract_spatial_bg_corr=True,
+    #     subtract_spatial_bg_corr=False,
     should_subtract_afterpulse=False,
 )
 
@@ -737,7 +737,7 @@ XCF_AB, XCF_BA, XCF_BB = meas.cross_correlate_data(
     corr_names=("AB", "BA", "BB"),
     gate1_ns=gate1_ns,
     gate2_ns=gate2_ns,
-    should_subtract_bg_corr=True,  # TEST ME!
+    subtract_spatial_bg_corr=True,  # TEST ME!
     should_subtract_afterpulse=False,
 )
 

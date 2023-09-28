@@ -1141,7 +1141,8 @@ class SolutionSFCSMeasurement:
         external_afterpulse_params=None,
         external_afterpulsing=None,
         get_afterpulsing=False,
-        should_subtract_bg_corr=True,
+        subtract_spatial_bg_corr=True,
+        detrend_photobleaching=True,
         **corr_options,
     ) -> CorrFunc:
         """
@@ -1230,7 +1231,7 @@ class SolutionSFCSMeasurement:
                 if corr_options.get("is_verbose"):
                     print(f"Empty split encountered! Skipping split {split_idx}... ", end="")
                 # drop matching backgorund corr too
-                if should_subtract_bg_corr:
+                if subtract_spatial_bg_corr:
                     self.bg_line_corr_list.pop(split_idx)
                 continue
             if gate_ns:
@@ -1283,7 +1284,7 @@ class SolutionSFCSMeasurement:
             external_afterpulse_params
             if external_afterpulse_params is not None
             else self.afterpulse_params,
-            getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
+            getattr(self, "bg_line_corr_list", []) if subtract_spatial_bg_corr else [],
             external_afterpulsing=external_afterpulsing,
             corr_filter_list=final_filter_input_list if is_filtered else None,
             should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
@@ -1312,7 +1313,7 @@ class SolutionSFCSMeasurement:
         gate1_ns=Gate(),
         gate2_ns=Gate(),
         afterpulse_params=None,
-        should_subtract_bg_corr=True,
+        subtract_spatial_bg_corr=True,
         is_verbose=False,
         should_add_to_xcf_dict=True,
         **kwargs,
@@ -1397,7 +1398,7 @@ class SolutionSFCSMeasurement:
             CF.correlate_measurement(
                 corr_input_dict[xx],
                 afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
-                getattr(self, "bg_line_corr_list", []) if should_subtract_bg_corr else [],
+                getattr(self, "bg_line_corr_list", []) if subtract_spatial_bg_corr else [],
                 **kwargs,
             )
 
