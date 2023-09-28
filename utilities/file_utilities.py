@@ -149,37 +149,40 @@ legacy_python_trans_dict = {
 }
 
 
-def search_database(data_root: Path, str_list: List[str]) -> None:
+def search_database(data_root: Path, str_list: List[str]) -> str:
     """
     Search the database for templates containing all strings in `str_list`
     and print them along with their dates.
     """
 
     # get all unique templates by using their .log files from all directories in DATA_ROOT. filter using the SEARCH_LIST.
-    template_date_dict = {
-        path_.stem[:-2]: datetime.strptime(path_.parent.parent.name, "%d_%m_%Y").date()
-        for path_ in data_root.rglob("*_1.*")
-        if all([str_.lower() in str(path_).lower() for str_ in str_list])
-    }
+    try:
+        template_date_dict = {
+            path_.stem[:-2]: datetime.strptime(path_.parent.parent.name, "%d_%m_%Y").date()
+            for path_ in data_root.rglob("*_1.*")
+            if all([str_.lower() in str(path_).lower() for str_ in str_list])
+            and path_.parent.name != "data"
+        }
+    except ValueError:
+        # Issue with date format
+        return "Issue with date format..."
 
     # sort by date in reverse order (newest first)
     template_date_dict = dict(
         sorted(template_date_dict.items(), key=lambda item: item[1], reverse=True)
     )
 
-    # print the findings (date first, though the key is the template)
+    # return the findings (date first, though the key is the template)
     if template_date_dict:
-        print(f"Found {len(template_date_dict)} matching templates:\n")
-        print(
-            "\n".join(
-                [
-                    f"{date.strftime('%d_%m_%Y')}: {template}_"
-                    for template, date in template_date_dict.items()
-                ]
-            )
+        text = f"Found {len(template_date_dict)} matching templates:\n" + "\n".join(
+            [
+                f"{date.strftime('%d_%m_%Y')}: {template}_"
+                for template, date in template_date_dict.items()
+            ]
         )
+        return text
     else:
-        print("No matches found!")
+        return "No matches found!"
 
 
 def _chunks(list_: list, n: int):

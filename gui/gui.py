@@ -102,6 +102,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.solImportLoadProcessed.released.connect(
             lambda: self.impl.import_sol_data(should_load_processed=True)
         )
+        self.searchDatabase.released.connect(self.impl.search_database)
 
         # scan image
         self.scanImgFileNum.valueChanged.connect(self.impl.display_angular_scan_image)

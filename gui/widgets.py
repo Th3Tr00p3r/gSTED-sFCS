@@ -270,6 +270,8 @@ DATA_IMPORT_COLL = QtWidgetCollection(
     sol_file_selection=("solImportFileSelectionPattern", "QLineEdit", "main", False),
     should_re_correlate=("solImportReCorrelate", "QCheckBox", "main", False),
     auto_load_processed=("solImportAutoLoadProcessed", "QCheckBox", "main", False),
+    database_search_query=("searchQuery", "QLineEdit", "main", False),
+    database_search_results=("searchResults", "QPlainTextEdit", "main", True),
 )
 
 PROC_OPTIONS_COLL = QtWidgetCollection(

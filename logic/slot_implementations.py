@@ -1361,6 +1361,19 @@ class MainWin:
             helper.list_to_file(file_path, text_lines)
             self.update_dir_log_wdgt(curr_template)
 
+    def search_database(self) -> None:
+        """Doc."""
+
+        read_wdgts = {
+            **wdgts.SOL_MEAS_COLL.gui_to_dict(self._gui),
+            **wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui),
+        }
+        query_str_list = read_wdgts["database_search_query"].split()
+        if query_str_list:
+            data_root = Path(read_wdgts["save_path"])
+            result_text = file_utilities.search_database(data_root, query_str_list)
+            wdgts.DATA_IMPORT_COLL.database_search_results.set(result_text)
+
     def get_daily_alignment(self):
         """Doc."""
 

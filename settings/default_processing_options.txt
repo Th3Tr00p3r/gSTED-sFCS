@@ -3,13 +3,13 @@ ImgGateWidth,15
 medFac,1.5
 ImgMedFac,1.0
 afterpulsingRemovalMethod,filter
+roiSelection,auto
 useDefaultSysInfo,False
 subtractBgCorr,True
 ignoreHardGate,False
 useMultiProcessing,False
 shouldUniteStartTimes,False
 fixShift,True
-autoRoi,True
 alleviateBrightPixels,False
 ImgAutoGating,True
 ImgMultiScan,True
