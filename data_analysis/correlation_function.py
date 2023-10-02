@@ -615,7 +615,7 @@ class CorrFunc:
         self,
         interp_types,
         **kwargs,
-    ) -> None:
+    ) -> Dict[str, HankelTransform]:
         """Doc."""
 
         def hankel_transform(
@@ -701,6 +701,8 @@ class CorrFunc:
 
         if kwargs.get("is_verbose"):
             print("Done.")
+
+        return self.hankel_transforms
 
     def plot_hankel_transforms(self, **kwargs):
         """Doc."""
