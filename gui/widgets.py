@@ -289,6 +289,7 @@ PROC_OPTIONS_COLL = QtWidgetCollection(
     should_alleviate_bright_pixels=("alleviateBrightPixels", "QCheckBox", "options", False),
     # general processing
     subtract_spatial_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
+    subtract_temporal_bg_corr=("subtractTemporalBgCorr", "QCheckBox", "options", False),
     should_ignore_hard_gate=("ignoreHardGate", "QCheckBox", "options", False),
     should_parallel_process=("useMultiProcessing", "QCheckBox", "options", False),
     should_unite_start_times=("shouldUniteStartTimes", "QCheckBox", "options", False),

@@ -491,6 +491,23 @@ class InterpExtrap1D:
             ax.legend()
 
 
+def moving_average(arr, window_size):
+    """
+    Calculate the moving average of a 1D NumPy array.
+
+    Parameters:
+        arr (numpy.ndarray): The input array.
+        window_size (int): The size of the moving window.
+
+    Returns:
+        numpy.ndarray: The moving average of the input array with the same size.
+    """
+
+    cumsum = np.cumsum(arr)
+    cumsum[window_size:] = cumsum[window_size:] - cumsum[:-window_size]
+    return cumsum[window_size - 1 :] / window_size
+
+
 def most_common(list_):
     """
     Returns the most common element in a list/array.
@@ -1029,7 +1046,7 @@ def unify_length(arr: np.ndarray, req_shape: Tuple[int, ...]) -> np.ndarray:
 def xcorr(a, b):
     """Does correlation similar to Matlab xcorr, cuts positive lags, normalizes properly"""
 
-    c = np.correlate(a, b, mode="full")
+    c = scipy.signal.correlate(a, b)  # Uses FFT for large arrays - much faster!
     c = c[c.size // 2 :]
     c = c / np.arange(c.size, 0, -1)
     lags = np.arange(c.size, dtype=np.uint16)

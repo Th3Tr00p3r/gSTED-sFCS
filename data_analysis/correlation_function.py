@@ -36,8 +36,12 @@ from utilities.file_utilities import (
 from utilities.fit_tools import (
     FitParams,
     curve_fit_lims,
+    diffusion_3d_fit,
     fit_2d_gaussian_to_image,
+    linear_fit,
     multi_exponent_fit,
+    ratio_of_lifetime_histograms_fit,
+    zero_centered_zero_bg_normalized_gaussian_1d_fit,
 )
 from utilities.helper import (
     EPS,
@@ -46,7 +50,9 @@ from utilities.helper import (
     Limits,
     dbscan_noise_thresholding,
     extrapolate_over_noise,
+    moving_average,
     unify_length,
+    xcorr,
 )
 
 
@@ -318,13 +324,14 @@ class CorrFunc:
         corr_output,
         afterpulse_params,
         bg_corr_list,
+        temporal_bg_corr_list: List = None,
         should_subtract_afterpulsing: bool = False,
         external_afterpulsing: np.ndarray = None,
         **kwargs,
     ) -> None:
         """Doc."""
 
-        # subtract background correlation
+        # subtract background correlations
         for idx, bg_corr_dict in enumerate(bg_corr_list):
             bg_corr = np.interp(
                 corr_output.lag_list[idx],
@@ -333,6 +340,17 @@ class CorrFunc:
                 right=0,
             )
             corr_output.corrfunc_list[idx] -= bg_corr
+
+        # subtract temporal background correlations
+        if temporal_bg_corr_list:
+            for idx, temporal_corr_dict in enumerate(temporal_bg_corr_list):
+                temporal_corr = np.interp(
+                    corr_output.lag_list[idx],
+                    temporal_corr_dict["lag"],
+                    temporal_corr_dict["corrfunc"],
+                    right=0,
+                )
+                corr_output.corrfunc_list[idx] -= temporal_corr
 
         # subtract afterpulsing
         if should_subtract_afterpulsing:
@@ -539,13 +557,13 @@ class CorrFunc:
             should_autoscale=True,
             **kwargs,
         ) as ax:
-            ax.set_xlabel(x_field)
-            ax.set_ylabel(y_field)
+            ax.set_xlabel(x_field.capitalize())
+            ax.set_ylabel(y_field.capitalize())
             ax.plot(x, y, "-", label=label, **kwargs.get("plot_kwargs", {}))
 
     def fit_correlation_function(
         self,
-        fit_name="diffusion_3d_fit",
+        fit_func=diffusion_3d_fit,
         x_field=None,
         y_field=None,
         y_error_field=None,
@@ -559,7 +577,7 @@ class CorrFunc:
     ) -> FitParams:
 
         if fit_param_estimate is None:
-            if fit_name == "diffusion_3d_fit":
+            if fit_func == diffusion_3d_fit:
                 fit_param_estimate = (self.g0, 0.035, 30.0)
                 bounds = (  # a, tau, w_sq
                     [0, 0, 0],
@@ -572,7 +590,7 @@ class CorrFunc:
                 y_error_field = "error_cf_cr"
                 fit_range = fit_range or (1e-3, 10)
 
-            elif fit_name == "zero_centered_zero_bg_normalized_gaussian_1d_fit":
+            elif fit_func == zero_centered_zero_bg_normalized_gaussian_1d_fit:
                 fit_param_estimate = (0.1,)
                 bounds = (  # sigma
                     [0],
@@ -597,7 +615,7 @@ class CorrFunc:
             error_y = error_y[1:]
 
         self.fit_params = curve_fit_lims(
-            fit_name,
+            fit_func,
             fit_param_estimate,
             x,
             y,
@@ -1051,8 +1069,8 @@ class SolutionSFCSMeasurement:
             self.scan_type = scan_settings["pattern"]
             self.scan_settings = scan_settings
             self.v_um_ms = self.scan_settings["speed_um_s"] * 1e-3
+            self.ao_sampling_freq_hz = self.scan_settings.get("ao_sampling_freq_hz", int(1e4))
             if self.scan_type == "circle":  # Circular sFCS
-                self.ao_sampling_freq_hz = self.scan_settings.get("ao_sampling_freq_hz", int(1e4))
                 self.diameter_um = self.scan_settings.get("diameter_um", 50)
 
         # FCS
@@ -1105,6 +1123,8 @@ class SolutionSFCSMeasurement:
                 self.detector_settings["gate_ns"],
             )
 
+        # TODO: all relevant properties from 'file_dict' should have been imported to the 'SolutionSFCSMeasurement' object at this point.
+        # It makes no sense to send the 'file_dict' as an argument - send what's relevant.
         return self.data_processor.process_data(idx, file_dict["full_data"], **proc_options)
 
     def calibrate_tdc(self, force_processing=True, **kwargs) -> None:
@@ -1144,7 +1164,7 @@ class SolutionSFCSMeasurement:
         external_afterpulsing=None,
         get_afterpulsing=False,
         subtract_spatial_bg_corr=True,
-        detrend_photobleaching=True,
+        subtract_temporal_bg_corr=False,
         **corr_options,
     ) -> CorrFunc:
         """
@@ -1159,7 +1179,7 @@ class SolutionSFCSMeasurement:
                 end=" ",
             )
 
-        # keep afterpulsing method for consistency with future gating
+        # maintain afterpulsing method for consistency with future gating
         if not hasattr(self, "afterpulsing_method"):
             self.afterpulsing_method = (
                 "filter" if afterpulsing_method is None else afterpulsing_method
@@ -1181,9 +1201,11 @@ class SolutionSFCSMeasurement:
             # TODO: cf_name should not contain any description other than gate and "afterpulsing" yes/no (description is in self.type)
             cf_name = f"gated {cf_name} {gate_ns}{f' ({gate_ns.hard_gate} hard)' if gate_ns.hard_gate else ''}"
 
-        # the following conditions require TDC calibration prior to creating splits
+        # ensure proper valid afterpulsing method
         if afterpulsing_method not in {"subtract calibrated", "filter", "none"}:
             raise ValueError(f"Invalid afterpulsing_method chosen: {afterpulsing_method}.")
+
+        # pre-calibrate TDC (prior to creating splits) in case using afterpulsing filtering (FLCS)
         elif (is_filtered := afterpulsing_method == "filter") or gate_ns:
             if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
                 if corr_options.get("is_verbose"):
@@ -1222,11 +1244,12 @@ class SolutionSFCSMeasurement:
         # Gating, diffing (prt to ts) and filtering
         if corr_options.get("is_verbose"):
             if gate_ns:
-                print(f"Gating input splits ({gate_ns})... ", end="")
+                print(f"Gating {len(self.corr_input_list)} input splits ({gate_ns})... ", end="")
             else:
-                print("Preparing input splits... ", end="")
+                print(f"Preparing {len(self.corr_input_list)} input splits... ", end="")
         final_corr_input_list = []
         final_filter_input_list = []
+        self.temporal_bg_corr_list = []
         for split_idx, dt_prt_split in enumerate(self.corr_input_list):
             # skipping empty splits
             if not dt_prt_split.size:
@@ -1253,6 +1276,37 @@ class SolutionSFCSMeasurement:
                     dt_prt_split[0][valid_idxs], get_afterpulsing
                 )
                 final_filter_input_list.append(split_filter)
+
+            # temporal background correlations
+            if subtract_temporal_bg_corr:
+                # convert timestamps from laser pulses to seconds
+                ts_s = ts / self.laser_freq_hz
+                # smooth using moving average with 10% window size.
+                # this helps avoid the rare zero values in ts, helps to visualize, and fit faster (probably)
+                win_size = int(ts_s.size / 10)
+                # get the split time array (smoothed). add the last time of the last split (for fit)
+                t_s = moving_average(np.cumsum(ts), win_size)
+                print(f"split duration: {ts_s[-1]} seconds")
+                # get the split countrate array (smoothed)
+                split_cr = 1 / (moving_average(ts_s, win_size))
+                # fit a line through each split
+                m0 = (split_cr[-1] - split_cr[0]) / (t_s[-1] - t_s[0])
+                n0 = split_cr[0] - m0 * t_s[0]
+                # use weighting to 'force' fit to go through first point
+                y_weights = np.full(len(split_cr), 10.0)
+                y_weights[0] = 0.1
+                FP = curve_fit_lims(
+                    linear_fit,
+                    (m0, n0),
+                    t_s,
+                    split_cr,
+                    ys_errors=y_weights,
+                )
+                # get ACF of fit and add to list (to be interpolated upon and subtracted in Corrfunc.correlate_measurement)
+                c, _ = xcorr(FP.fitted_y, FP.fitted_y)
+                c = c / FP.fitted_y.mean() ** 2 - 1
+                c[0] -= 1 / FP.fitted_y.mean()  # subtracting shot noise, small stuff really
+                self.temporal_bg_corr_list.append({"lag": t_s, "corrfunc": c})
 
         if corr_options.get("is_verbose"):
             print("Done.")
@@ -1287,6 +1341,7 @@ class SolutionSFCSMeasurement:
             if external_afterpulse_params is not None
             else self.afterpulse_params,
             getattr(self, "bg_line_corr_list", []) if subtract_spatial_bg_corr else [],
+            temporal_bg_corr_list=self.temporal_bg_corr_list if subtract_temporal_bg_corr else None,
             external_afterpulsing=external_afterpulsing,
             corr_filter_list=final_filter_input_list if is_filtered else None,
             should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
@@ -1499,7 +1554,7 @@ class SolutionSFCSMeasurement:
 
         for CF in self.cf.values():
             CF.fit_correlation_function(
-                fit_name="zero_centered_zero_bg_normalized_gaussian_1d_fit",
+                fit_func=zero_centered_zero_bg_normalized_gaussian_1d_fit,
                 fit_range=fit_range,
             )
 
@@ -2060,7 +2115,7 @@ class SolutionSFCSExperiment:
 
                 elif sted_field == "paraboloid":
                     fit_params = curve_fit_lims(
-                        "ratio_of_lifetime_histograms_fit",
+                        ratio_of_lifetime_histograms_fit,
                         param_estimates=(2, 1, 1),
                         xs=t[j_selected],
                         ys=hist_ratio[j_selected],
