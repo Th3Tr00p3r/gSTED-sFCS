@@ -621,6 +621,8 @@ class GeneralFileData:
 
     # continuous scan
     all_section_edges: np.ndarray = None
+    split_duration_s: float = None
+    # TODO: 'split_duration_s' should be an attribute of the measurement, not a specific data file - it is uniform anyway
 
     # angular scan
     valid_lines: np.ndarray = None
@@ -851,17 +853,12 @@ class TDCPhotonFileData:
     def _get_continuous_xcorr_input_dict(
         self,
         xcorr_types: List[str],
-        gate1_ns,
-        gate2_ns,
+        gate1_ns: Gate,
+        gate2_ns: Gate,
         *args,
-        n_splits_requested=10,
         **kwargs,
     ):
         """Continuous scan/static measurement - splits are arbitrarily cut along the measurement"""
-
-        # TODO: split duration (in bytes! not time) should be decided upon according to how well the correlator performs with said split size.
-        # Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
-        # split duration should never approach (from above, obviously) the relevant time scale of sample dynamics
 
         # Unite all sections
         total_duration = 0
@@ -876,8 +873,6 @@ class TDCPhotonFileData:
 
         pulse_runtime = np.hstack(section_pulse_runtimes)
         delay_time = np.hstack(section_delay_times)
-        # split_time = total_duration / n_splits_requested # TODO: figure out how to keep this. It's important to know, since too short splits can interfere with correlation
-        # (if their temporal interval approaches the sample dynamics)
 
         # split the data into parts A/B according to gates
         if "A" in "".join(xcorr_types):
@@ -897,63 +892,68 @@ class TDCPhotonFileData:
                 :, gate1_idxs | gate2_idxs
             ]
 
+        # add all splits for each requested xcorr type
         xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
-        for split_idx in range(n_splits_requested):
-            for xx in xcorr_types:
-                if xx == "AA":
-                    xcorr_input_dict[xx].append(
-                        self._split_continuous_section(
-                            dt_prt1,
-                            split_idx,
-                            n_splits_requested,
-                            **kwargs,
-                        )
+        for xx in xcorr_types:
+            if xx == "AA":
+                xcorr_input_dict[xx].extend(
+                    self._split_continuous_section(
+                        dt_prt1,
                     )
-                if xx == "BB":
-                    xcorr_input_dict[xx].append(
-                        self._split_continuous_section(
-                            dt_prt2,
-                            split_idx,
-                            n_splits_requested,
-                            **kwargs,
-                        )
+                )
+            elif xx == "BB":
+                xcorr_input_dict[xx].extend(
+                    self._split_continuous_section(
+                        dt_prt2,
                     )
-                if xx == "AB":
-                    xcorr_input_AB = self._split_continuous_section(
-                        dt_prt12,
-                        split_idx,
-                        n_splits_requested,
-                        **kwargs,
-                    )
-                    xcorr_input_dict[xx].append(xcorr_input_AB)
-                if xx == "BA":
-                    if "AB" in xcorr_types:
-                        xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1], :])
-                    else:
-                        dt_prt21 = dt_prt12[[0, 2, 1], :]
-                        xcorr_input_dict[xx].append(
-                            self._split_continuous_section(
-                                dt_prt21,
-                                split_idx,
-                                n_splits_requested,
-                                **kwargs,
-                            )
-                        )
+                )
+            elif xx == "AB":
+                xcorr_input_AB = self._split_continuous_section(
+                    dt_prt12,
+                )
+                xcorr_input_dict[xx].extend(xcorr_input_AB)
 
-        print(".", end="")  # TESTESTEST
+            elif xx == "BA":
+                if "AB" in xcorr_types:
+                    xcorr_input_dict[xx].extend(xcorr_input_AB[[0, 2, 1], :])
+                else:
+                    dt_prt21 = dt_prt12[[0, 2, 1], :]
+                    xcorr_input_dict[xx].extend(
+                        self._split_continuous_section(
+                            dt_prt21,
+                        )
+                    )
+
+        # track file progress
+        print(".", end="")
+
         return xcorr_input_dict
 
     def _split_continuous_section(
         self,
-        dt_prt_in,
-        idx,
-        n_splits: int,
-        **kwargs,
+        dt_prt_in: np.ndarray,
     ) -> np.ndarray:
         """Doc."""
 
-        splits = np.linspace(0, dt_prt_in.shape[1], n_splits + 1, dtype=np.int32)
-        return dt_prt_in[:, splits[idx] : splits[idx + 1]]
+        # get photon timings
+        t_photon = dt_prt_in[1] / self.general.laser_freq_hz
+
+        # get split end indices
+        split_end_idxs = (
+            np.nonzero(np.diff(t_photon % self.general.split_duration_s) < 0)[0] + 1
+        ).tolist()
+
+        # get a list of split limits (dropping the last underfilled split)
+        split_edges = [0] + split_end_idxs
+        all_split_edges = np.array([split_edges[:-1], split_edges[1:]]).T
+
+        # return the splits as a generator
+        if all_split_edges.size:
+            return (dt_prt_in[:, start_idx:end_idx] for start_idx, end_idx in all_split_edges)
+        else:
+            raise ValueError(
+                f"File #{self.idx + 1}: Split duration ({self.general.split_duration_s:.2f} s) is longer than the entire section ({t_photon[-1]:.2f} s)..."
+            )
 
     def _add_validity(
         self,
@@ -1016,16 +1016,13 @@ class TDCPhotonMeasurementData(list):
         super().__init__()
 
     def prepare_xcorr_input(
-        self, xcorr_types: List[str], should_parallel_process=False, n_splits_requested=10, **kwargs
+        self, xcorr_types: List[str], should_parallel_process=False, **kwargs
     ) -> Dict[str, List]:
         """
         Prepare SoftwareCorrelator input from complete measurement data.
         Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
         To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
-
-        # distribute the splits among all files
-        kwargs["n_splits_requested"] = round(n_splits_requested / len(self))
 
         # parallel processing
         if should_parallel_process and (N_FILES := len(self)) > 20:
@@ -1296,6 +1293,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         should_use_all_sections=True,
         len_factor=0.01,
         byte_data_slice=None,
+        split_duration_s: float = 1.0,
         **proc_options,
     ) -> TDCPhotonFileData:
         """Doc."""
@@ -1415,6 +1413,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 skipped_duration=skipped_duration,
                 # continuous scan
                 all_section_edges=all_section_edges,
+                split_duration_s=split_duration_s,
             ),
             RawFileData(
                 idx=idx,

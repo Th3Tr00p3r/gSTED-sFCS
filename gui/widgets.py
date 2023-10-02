@@ -276,7 +276,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
 
 PROC_OPTIONS_COLL = QtWidgetCollection(
     # continuous scan processing
-    n_splits_requested=("nCorrSplitsContScan", "QSpinBox", "options", False),
+    split_duration_s=("splitDuration", "QDoubleSpinBox", "options", False),
     # image scan processing
     auto_gating=("ImgAutoGating", "QCheckBox", "options", False),
     auto_gate_width_ns=("ImgGateWidth", "QSpinBox", "options", False),

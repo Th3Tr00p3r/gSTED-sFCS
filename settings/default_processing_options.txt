@@ -1,5 +1,5 @@
-nCorrSplitsContScan,60
 ImgGateWidth,15
+splitDuration,1.0
 medFac,1.5
 ImgMedFac,1.0
 afterpulsingRemovalMethod,filter

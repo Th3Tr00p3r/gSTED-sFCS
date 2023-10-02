@@ -160,29 +160,19 @@ Temporal Background </string>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_6">
            <property name="spacing">
-            <number>2</number>
+            <number>6</number>
            </property>
            <item>
             <widget class="QLabel" name="label_5">
              <property name="text">
-              <string>Number of
-Correlator Splits</string>
+              <string>Split Duration (s)</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="nCorrSplitsContScan">
+            <widget class="QDoubleSpinBox" name="splitDuration">
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>99999</number>
-             </property>
-             <property name="value">
-              <number>10</number>
              </property>
             </widget>
            </item>
