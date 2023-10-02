@@ -1547,8 +1547,8 @@ class SolutionSFCSMeasurement:
         Returns the legend labels for use with higher-level Plotter instance in SolutionSFCSExperiment.
         """
         # TODO: this should be a higher-level function which delegates the fitting and plotting to the individual CorrFunc objects, and only plots hierarchically.
-        #             This would allow better control, e.g. in case only certain gates are needed for a plot.
-        #             Take a look at "plot_correlation_functions" or "plot_structure_factors", for examples on how to implement.
+        #            This would allow better control, e.g. in case only certain gates are needed for a plot.
+        #            Take a look at "plot_correlation_functions" or "plot_structure_factors", for examples on how to implement.
 
         HWHM_FACTOR = np.sqrt(2 * np.log(2))
 
@@ -1556,6 +1556,7 @@ class SolutionSFCSMeasurement:
             CF.fit_correlation_function(
                 fit_func=zero_centered_zero_bg_normalized_gaussian_1d_fit,
                 fit_range=fit_range,
+                **kwargs,
             )
 
         with Plotter(

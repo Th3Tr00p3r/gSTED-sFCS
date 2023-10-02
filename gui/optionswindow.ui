@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>407</width>
-    <height>491</height>
+    <height>516</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -96,6 +96,16 @@ Temporal Background </string>
            </property>
            <property name="text">
             <string>Unite start times</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="weightedFits">
+           <property name="toolTip">
+            <string>Whether to consider y-data uncertainty in fitting.</string>
+           </property>
+           <property name="text">
+            <string>Weighted Fits</string>
            </property>
           </widget>
          </item>

@@ -295,6 +295,7 @@ PROC_OPTIONS_COLL = QtWidgetCollection(
     should_unite_start_times=("shouldUniteStartTimes", "QCheckBox", "options", False),
     afterpulsing_method=("afterpulsingRemovalMethod", "QComboBox", "options", False),
     override_system_info=("useDefaultSysInfo", "QCheckBox", "options", False),
+    should_weight_fits=("weightedFits", "QCheckBox", "options", False),
 )
 
 SOL_MEAS_ANALYSIS_COLL = QtWidgetCollection(

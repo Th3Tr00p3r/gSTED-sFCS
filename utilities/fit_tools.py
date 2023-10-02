@@ -175,7 +175,14 @@ def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
 
 
 def _fit_and_get_param_dict(
-    fit_func, xs, ys, p0, ys_errors=1, valid_idxs=slice(None), **kwargs
+    fit_func,
+    xs,
+    ys,
+    p0,
+    ys_errors=None,
+    valid_idxs=slice(None),
+    should_weight_fits: bool = False,
+    **kwargs,
 ) -> FitParams:
     """Doc."""
 
@@ -186,10 +193,11 @@ def _fit_and_get_param_dict(
     x = xs[valid_idxs]
     y = ys[valid_idxs]
     try:
-        sigma = ys_errors[valid_idxs]
+        # TODO: using weighted fitting ruins my resolution! why is that? what is the legitimate method?
+        sigma = ys_errors[valid_idxs] if should_weight_fits else np.ones(y.shape)
         ys_errors[~valid_idxs] = 0
     except TypeError:
-        sigma = 1
+        sigma = np.ones(y.shape)
 
     try:
         popt, pcov = opt.curve_fit(fit_func, x, y, p0=p0, sigma=sigma, **kwargs)

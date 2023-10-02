@@ -6,10 +6,11 @@ afterpulsingRemovalMethod,filter
 roiSelection,auto
 useDefaultSysInfo,False
 subtractBgCorr,True
-subtractTemporalBgCorr,True
+subtractTemporalBgCorr,False
 ignoreHardGate,False
 useMultiProcessing,False
 shouldUniteStartTimes,False
+weightedFits,False
 fixShift,True
 alleviateBrightPixels,False
 ImgAutoGating,True

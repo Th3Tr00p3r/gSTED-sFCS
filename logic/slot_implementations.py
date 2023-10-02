@@ -2055,7 +2055,10 @@ class MainWin:
                 ]  # TODO: keyerror might result from testing (using confocal as STED)
                 cf.average_correlation()
                 try:
-                    fp = cf.fit_correlation_function()
+                    proc_opt_dict = self.get_processing_options_as_dict()
+                    fp = cf.fit_correlation_function(
+                        should_weight_fits=proc_opt_dict["should_weight_fits"]
+                    )
                 except fit_tools.FitError as exc:
                     # fit failed, use g0 calculated in 'average_correlation()'
                     err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
