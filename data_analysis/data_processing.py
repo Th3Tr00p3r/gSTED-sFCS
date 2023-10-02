@@ -17,7 +17,12 @@ import skimage
 from data_analysis.workers import N_CPU_CORES, get_xcorr_input_dict
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object
-from utilities.fit_tools import FitParams, curve_fit_lims
+from utilities.fit_tools import (
+    FitParams,
+    curve_fit_lims,
+    exponent_with_background_fit,
+    gaussian_1d_fit,
+)
 from utilities.helper import (
     Gate,
     Limits,
@@ -260,7 +265,7 @@ class AngularScanDataMixin:
 
         # fit Gaussian to histogram
         FP = curve_fit_lims(
-            "gaussian_1d_fit",
+            gaussian_1d_fit,
             (
                 scan_hist[bg_part:].max() / 10,
                 np.mean(bin_num[bg_part:]),
@@ -858,7 +863,7 @@ class TDCPhotonFileData:
         # Currently it is arbitrarily decided by 'n_splits_requested' which causes inconsistent processing times for each split
         # split duration should never approach (from above, obviously) the relevant time scale of sample dynamics
 
-        # Unite all sections # TESTESTEST
+        # Unite all sections
         total_duration = 0
         section_pulse_runtimes = []
         section_delay_times = []
@@ -871,6 +876,8 @@ class TDCPhotonFileData:
 
         pulse_runtime = np.hstack(section_pulse_runtimes)
         delay_time = np.hstack(section_delay_times)
+        # split_time = total_duration / n_splits_requested # TODO: figure out how to keep this. It's important to know, since too short splits can interfere with correlation
+        # (if their temporal interval approaches the sample dynamics)
 
         # split the data into parts A/B according to gates
         if "A" in "".join(xcorr_types):
@@ -1009,13 +1016,16 @@ class TDCPhotonMeasurementData(list):
         super().__init__()
 
     def prepare_xcorr_input(
-        self, xcorr_types: List[str], should_parallel_process=False, **kwargs
+        self, xcorr_types: List[str], should_parallel_process=False, n_splits_requested=10, **kwargs
     ) -> Dict[str, List]:
         """
         Prepare SoftwareCorrelator input from complete measurement data.
         Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
         To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
+
+        # distribute the splits among all files
+        kwargs["n_splits_requested"] = round(n_splits_requested / len(self))
 
         # parallel processing
         if should_parallel_process and (N_FILES := len(self)) > 20:
@@ -1138,7 +1148,7 @@ class TDCCalibration:
         is_finite_y = np.isfinite(getattr(self, y_field))
 
         return curve_fit_lims(
-            "exponent_with_background_fit",
+            exponent_with_background_fit,
             fit_param_estimate,
             xs=getattr(self, x_field)[is_finite_y],
             ys=getattr(self, y_field)[is_finite_y],
@@ -1249,17 +1259,11 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # sFCS
         if scan_settings := full_data.get("scan_settings"):
             if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
-                p = self._process_circular_scan_data_file(
-                    idx, full_data, should_dump=should_dump, **proc_options
-                )
+                p = self._process_circular_scan_data_file(idx, full_data, **proc_options)
             elif scan_type == "angular":  # Angular sFCS
-                p = self._process_angular_scan_data_file(
-                    idx, full_data, should_dump=should_dump, **proc_options
-                )
+                p = self._process_angular_scan_data_file(idx, full_data, **proc_options)
             elif scan_type == "image":  # image sFCS
-                p = self._process_image_scan_plane_data(
-                    idx, full_data, should_dump=should_dump, **proc_options
-                )
+                p = self._process_image_scan_plane_data(idx, full_data, **proc_options)
         # FCS
         else:
             scan_type = "static"
@@ -1268,8 +1272,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 is_scan_continuous=True,
                 **proc_options,
             )
-            if should_dump:  # False when multiprocessing
-                p.raw.dump()
+
+        # dumping of raw data to disk
+        # False only if multiprocessing or if manually set to avoid re-dumping many existing identical files
+        if should_dump:
+            if proc_options.get("is_verbose"):
+                print("Dumping raw data file to disk (if needed)...", end=" ")
+            p.raw.dump()
 
         # add general properties
         with suppress(AttributeError):
@@ -1607,7 +1616,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self,
         idx,
         full_data,
-        should_dump=True,
         **kwargs,
     ) -> TDCPhotonFileData:
         """
@@ -1627,9 +1635,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         return p
 
-    def _process_circular_scan_data_file(
-        self, idx, full_data, should_dump=True, **proc_options
-    ) -> TDCPhotonFileData:
+    def _process_circular_scan_data_file(self, idx, full_data, **proc_options) -> TDCPhotonFileData:
         """
         Processes a single circular sFCS data file ('full_data').
         Returns the processed results as a 'TDCPhotonData' object.
@@ -1641,8 +1647,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             is_scan_continuous=True,
             **proc_options,
         )
-        if should_dump:  # False when multiprocessing
-            p.raw.dump()
 
         scan_settings = full_data["scan_settings"]
         ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
@@ -1677,7 +1681,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         idx,
         full_data,
         roi_selection="auto",
-        should_dump=True,
         **kwargs,
     ) -> TDCPhotonFileData:
         """
@@ -1959,12 +1962,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             ),
             **kwargs,
         )
-        if (
-            should_dump
-        ):  # False only if multiprocessing or if manually set to avoid re-dumping many existing identical files
-            if kwargs.get("is_verbose"):
-                print("Dumping raw data file to disk (if needed)...", end=" ")
-            p.raw.dump()
 
         p.general.image_bw_mask = img_bw
         p.general.roi = roi

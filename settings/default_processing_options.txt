@@ -1,4 +1,4 @@
-nCorrSplitsContScan,100
+nCorrSplitsContScan,60
 ImgGateWidth,15
 medFac,1.5
 ImgMedFac,1.0
@@ -6,6 +6,7 @@ afterpulsingRemovalMethod,filter
 roiSelection,auto
 useDefaultSysInfo,False
 subtractBgCorr,True
+subtractTemporalBgCorr,True
 ignoreHardGate,False
 useMultiProcessing,False
 shouldUniteStartTimes,False

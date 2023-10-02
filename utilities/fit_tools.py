@@ -18,9 +18,6 @@ warnings.simplefilter("error", opt.OptimizeWarning)
 warnings.simplefilter("error", RuntimeWarning)
 
 
-FIT_NAME_DICT = globals()
-
-
 class FitError(Exception):
     ...
 
@@ -91,7 +88,7 @@ class FitParams:
 
 
 def curve_fit_lims(
-    fit_name,
+    fit_func: Callable,
     param_estimates,
     xs,
     ys,
@@ -103,8 +100,6 @@ def curve_fit_lims(
     **kwargs,
 ) -> FitParams:
     """Doc."""
-
-    fit_func = FIT_NAME_DICT[fit_name]
 
     if ys_errors is None:
         ys_errors = np.ones(ys.shape)
@@ -152,7 +147,7 @@ def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
 
     if meas_type == "confocal":
         fp = curve_fit_lims(
-            "exponent_with_background_fit",
+            exponent_with_background_fit,
             [ys.max(), 3.5, ys.min() * 10],  # TODO: choose better starting values?
             bounds=([0] * 3, [np.inf, 10, np.inf]),
             xs=xs,
@@ -163,7 +158,7 @@ def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
         )
     elif meas_type == "sted":
         fp = curve_fit_lims(
-            "sted_hist_fit",
+            sted_hist_fit,
             # A, tau, sigma0, sigma, bg
             [ys.max(), 1, 1e-5, 1, ys.min() * 10],  # TODO: choose better starting values?
             bounds=([0] * 5, [np.inf, 10, 1, np.inf, np.inf]),
@@ -197,7 +192,7 @@ def _fit_and_get_param_dict(
         sigma = 1
 
     try:
-        popt, pcov = opt.curve_fit(fit_func, x, y, p0=p0, **kwargs)
+        popt, pcov = opt.curve_fit(fit_func, x, y, p0=p0, sigma=sigma, **kwargs)
     except (RuntimeWarning, RuntimeError, opt.OptimizeWarning, ValueError) as exc:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
 

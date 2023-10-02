@@ -44,15 +44,33 @@ System Info</string>
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="subtractBgCorr">
-           <property name="toolTip">
-            <string>Subtract spatial correlations from the section/file scan.</string>
+          <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <property name="spacing">
+            <number>2</number>
            </property>
-           <property name="text">
-            <string>Subtract
-Background</string>
-           </property>
-          </widget>
+           <item>
+            <widget class="QCheckBox" name="subtractBgCorr">
+             <property name="toolTip">
+              <string>Subtract spatial correlations from the section/file scan.</string>
+             </property>
+             <property name="text">
+              <string>Subtract
+Spatial Background</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="subtractTemporalBgCorr">
+             <property name="toolTip">
+              <string>Subtract spatial correlations from the section/file scan.</string>
+             </property>
+             <property name="text">
+              <string>Subtract
+Temporal Background </string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <widget class="QCheckBox" name="ignoreHardGate">
