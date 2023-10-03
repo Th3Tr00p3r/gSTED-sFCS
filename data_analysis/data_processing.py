@@ -319,15 +319,6 @@ class AngularScanDataMixin:
                 if kwargs.get("is_verbose"):
                     print(f"Correlation of line No.{j} has failed. Skipping.", end=" ")
             else:
-                if not is_doing_xcorr:  # Autocorrelation
-                    c = c / line1.mean() ** 2 - 1
-                    c[0] -= 1 / line1.mean()  # subtracting shot noise, small stuff really
-                else:  # Cross-Correlation
-                    c = c / (line1.mean() * line2.mean()) - 1
-                    c[0] -= 1 / np.sqrt(
-                        line1.mean() * line2.mean()
-                    )  # subtracting shot noise, small stuff really
-
                 line_corr_list.append(
                     {
                         "lag": lags * 1e3 / sampling_freq_Hz,  # in ms
@@ -1664,8 +1655,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # get background correlation
         cnt = cnt.astype(np.float64)
         c, lags = xcorr(cnt, cnt)
-        c = c / cnt.mean() ** 2 - 1
-        c[0] -= 1 / cnt.mean()  # subtracting shot noise, small stuff really
         p.general.bg_line_corr = [
             {
                 "lag": lags * 1e3 / ao_sampling_freq_hz,  # in ms

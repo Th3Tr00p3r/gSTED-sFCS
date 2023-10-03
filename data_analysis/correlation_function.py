@@ -1281,12 +1281,11 @@ class SolutionSFCSMeasurement:
             if subtract_temporal_bg_corr:
                 # convert timestamps from laser pulses to seconds
                 ts_s = ts / self.laser_freq_hz
-                # smooth using moving average with 10% window size.
-                # this helps avoid the rare zero values in ts, helps to visualize, and fit faster (probably)
-                win_size = int(ts_s.size / 10)
+                # smooth using moving average with 50%-size window
+                win_size = int(ts_s.size / 2)
                 # get the split time array (smoothed). add the last time of the last split (for fit)
-                t_s = moving_average(np.cumsum(ts), win_size)
-                print(f"split duration: {ts_s[-1]} seconds")
+                t_s = moving_average(np.cumsum(ts_s), win_size)
+                #                print(f"split duration: {t_s[-1]:.2} seconds") # TESTESTEST
                 # get the split countrate array (smoothed)
                 split_cr = 1 / (moving_average(ts_s, win_size))
                 # fit a line through each split
@@ -1301,11 +1300,11 @@ class SolutionSFCSMeasurement:
                     t_s,
                     split_cr,
                     ys_errors=y_weights,
+                    #                    should_weight_fits=True,
                 )
                 # get ACF of fit and add to list (to be interpolated upon and subtracted in Corrfunc.correlate_measurement)
+                # TODO: I'm I should be correlating a downsampled version of 'FP.fitted_y' - it's a straight line, and it's interpolated later on in CorrFunc
                 c, _ = xcorr(FP.fitted_y, FP.fitted_y)
-                c = c / FP.fitted_y.mean() ** 2 - 1
-                c[0] -= 1 / FP.fitted_y.mean()  # subtracting shot noise, small stuff really
                 self.temporal_bg_corr_list.append({"lag": t_s, "corrfunc": c})
 
         if corr_options.get("is_verbose"):

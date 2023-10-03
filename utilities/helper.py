@@ -491,21 +491,27 @@ class InterpExtrap1D:
             ax.legend()
 
 
-def moving_average(arr, window_size):
+def moving_average(arr, window_size, keep_size=True):
     """
     Calculate the moving average of a 1D NumPy array.
 
     Parameters:
         arr (numpy.ndarray): The input array.
         window_size (int): The size of the moving window.
+        keep_size (bool): If True, return an interpolated version of the averaged array to keep the same size.
 
     Returns:
-        numpy.ndarray: The moving average of the input array with the same size.
+        numpy.ndarray: The moving average of the input array with the same size (or interpolated if keep_size is True).
     """
 
     cumsum = np.cumsum(arr)
     cumsum[window_size:] = cumsum[window_size:] - cumsum[:-window_size]
-    return cumsum[window_size - 1 :] / window_size
+    avg_arr = cumsum[window_size - 1 :] / window_size
+
+    if keep_size:
+        return np.interp(np.arange(len(arr)), np.arange(window_size - 1, len(arr)), avg_arr)
+    else:
+        return avg_arr
 
 
 def most_common(list_):
@@ -1049,7 +1055,17 @@ def xcorr(a, b):
     c = scipy.signal.correlate(a, b)  # Uses FFT for large arrays - much faster!
     c = c[c.size // 2 :]
     c = c / np.arange(c.size, 0, -1)
-    lags = np.arange(c.size, dtype=np.uint16)
+
+    # normalize
+    c = c / (a.mean() * b.mean()) - 1
+
+    # subtract shot noise
+    c[0] -= 1 / np.sqrt(a.mean() * b.mean())
+
+    if c.size <= np.iinfo(np.uint16).max:
+        lags = np.arange(c.size, dtype=np.uint16)
+    else:
+        lags = np.arange(c.size, dtype=np.uint32)
 
     return c, lags
 

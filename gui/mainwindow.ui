@@ -6719,17 +6719,23 @@ Mean ACF</string>
                          </item>
                          <item>
                           <widget class="QGroupBox" name="groupBox_33">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
                            <property name="title">
                             <string>Individual Measurement Properties</string>
                            </property>
-                           <layout class="QGridLayout" name="gridLayout_56">
+                           <layout class="QGridLayout" name="gridLayout_56" rowstretch="0" columnstretch="1,1,10" columnminimumwidth="0,0,0">
                             <property name="spacing">
                              <number>0</number>
                             </property>
                             <item row="0" column="0">
                              <widget class="QGroupBox" name="groupBox_34">
                               <property name="sizePolicy">
-                               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
@@ -6764,7 +6770,7 @@ Mean ACF</string>
                                  <item>
                                   <widget class="QLabel" name="label_78">
                                    <property name="sizePolicy">
-                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
                                      <horstretch>0</horstretch>
                                      <verstretch>0</verstretch>
                                     </sizepolicy>
@@ -6816,7 +6822,7 @@ Mean ACF</string>
                                  <item>
                                   <widget class="QLabel" name="label_108">
                                    <property name="sizePolicy">
-                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
                                      <horstretch>0</horstretch>
                                      <verstretch>0</verstretch>
                                     </sizepolicy>
@@ -6925,6 +6931,12 @@ Mean ACF</string>
                                    </item>
                                    <item>
                                     <widget class="QLabel" name="label_39">
+                                     <property name="sizePolicy">
+                                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                                       <horstretch>0</horstretch>
+                                       <verstretch>0</verstretch>
+                                      </sizepolicy>
+                                     </property>
                                      <property name="text">
                                       <string>+/-</string>
                                      </property>
@@ -7012,7 +7024,7 @@ Mean ACF</string>
                                  <item>
                                   <widget class="QLabel" name="label_69">
                                    <property name="sizePolicy">
-                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
                                      <horstretch>0</horstretch>
                                      <verstretch>0</verstretch>
                                     </sizepolicy>
@@ -7029,6 +7041,12 @@ Mean ACF</string>
                                  </item>
                                  <item>
                                   <widget class="QDoubleSpinBox" name="solAnalysisMeanG0">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
                                    <property name="font">
                                     <font>
                                      <pointsize>8</pointsize>
@@ -7067,7 +7085,7 @@ Mean ACF</string>
                                  <item>
                                   <widget class="QLabel" name="label_83">
                                    <property name="sizePolicy">
-                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
                                      <horstretch>0</horstretch>
                                      <verstretch>0</verstretch>
                                     </sizepolicy>
@@ -7085,6 +7103,12 @@ Time (us)</string>
                                  </item>
                                  <item>
                                   <widget class="QDoubleSpinBox" name="solAnalysisMeanTau">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
                                    <property name="font">
                                     <font>
                                      <pointsize>8</pointsize>
@@ -7123,7 +7147,7 @@ Time (us)</string>
                                  <item>
                                   <widget class="QLabel" name="label_109">
                                    <property name="sizePolicy">
-                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
                                      <horstretch>0</horstretch>
                                      <verstretch>0</verstretch>
                                     </sizepolicy>
@@ -7141,6 +7165,12 @@ Rows</string>
                                  </item>
                                  <item>
                                   <widget class="QSpinBox" name="solAnalysisGoodRows">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
                                    <property name="font">
                                     <font>
                                      <pointsize>8</pointsize>
@@ -7167,7 +7197,7 @@ Rows</string>
                                  <item>
                                   <widget class="QLabel" name="label_110">
                                    <property name="sizePolicy">
-                                    <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
                                      <horstretch>0</horstretch>
                                      <verstretch>0</verstretch>
                                     </sizepolicy>
@@ -7185,6 +7215,12 @@ Rows</string>
                                  </item>
                                  <item>
                                   <widget class="QSpinBox" name="solAnalysisBadRows">
+                                   <property name="sizePolicy">
+                                    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                                     <horstretch>0</horstretch>
+                                     <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                   </property>
                                    <property name="font">
                                     <font>
                                      <pointsize>8</pointsize>
@@ -7247,7 +7283,14 @@ Rows</string>
                                 <number>0</number>
                                </property>
                                <item row="0" column="0">
-                                <widget class="QPlainTextEdit" name="solAnalysisScanSettings"/>
+                                <widget class="QPlainTextEdit" name="solAnalysisScanSettings">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                </widget>
                                </item>
                               </layout>
                              </widget>

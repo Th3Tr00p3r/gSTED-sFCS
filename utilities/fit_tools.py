@@ -29,7 +29,7 @@ class FitParams:
     fit_func: Callable
     beta: Dict[str, float]
     beta_error: Dict[str, float]
-    beta_estimate: Dict[str, float]
+    beta0: Dict[str, float]
     xs: np.ndarray
     ys: np.ndarray
     ys_errors: np.ndarray
@@ -46,6 +46,11 @@ class FitParams:
         except TypeError:
             self.sigma = 1
         self.fitted_y = self.fit_func(self.x, *self.beta.values())
+
+    def interpolate_y(self, x):
+        """Doc."""
+
+        return np.interp(x, self.x, self.fitted_y)
 
     def plot(self, color=None, fit_label="Fit", **kwargs):
         """Doc."""
@@ -214,7 +219,7 @@ def _fit_and_get_param_dict(
         chi_sq_norm = chi_sq_arr.sum() / x[0].size
 
     beta = {name: val for name, val in zip(param_names, popt)}
-    beta_estimate = {name: val for name, val in zip(param_names, p0)}
+    beta0 = {name: val for name, val in zip(param_names, p0)}
     try:
         beta_error = {name: error for name, error in zip(param_names, np.sqrt(np.diag(pcov)))}
     except RuntimeError as exc:
@@ -224,7 +229,7 @@ def _fit_and_get_param_dict(
         fit_func,
         beta,
         beta_error,
-        beta_estimate,
+        beta0,
         xs,
         ys,
         ys_errors,

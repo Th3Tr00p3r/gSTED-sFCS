@@ -6,7 +6,7 @@ afterpulsingRemovalMethod,filter
 roiSelection,auto
 useDefaultSysInfo,False
 subtractBgCorr,True
-subtractTemporalBgCorr,False
+subtractTemporalBgCorr,True
 ignoreHardGate,False
 useMultiProcessing,False
 shouldUniteStartTimes,False
