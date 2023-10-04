@@ -125,7 +125,7 @@ class SoftwareCorrelator:
 
         correlator_output_list = []
         for idx, ts_split in enumerate(list_of_photon_arrays):
-            if ts_split.size != 0:
+            if ts_split.size != 0 and ts_split.shape != ():  # has elements and is not a scalar
                 if corr_filter_list is not None:
                     kwargs["filter_array"] = corr_filter_list[idx]
                 corr_output = self.correlate(ts_split, *args, **kwargs)

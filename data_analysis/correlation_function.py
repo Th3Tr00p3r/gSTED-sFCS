@@ -37,8 +37,8 @@ from utilities.fit_tools import (
     FitParams,
     curve_fit_lims,
     diffusion_3d_fit,
+    exponent_with_background_fit,
     fit_2d_gaussian_to_image,
-    linear_fit,
     multi_exponent_fit,
     ratio_of_lifetime_histograms_fit,
     zero_centered_zero_bg_normalized_gaussian_1d_fit,
@@ -312,6 +312,7 @@ class CorrFunc:
         self.split_durations_s = [
             split[0 if split.ndim != 1 else slice(None)].sum() / self.laser_freq_hz
             for split in time_stamp_split_list
+            if split.shape != ()
         ]
 
         if kwargs.get("is_verbose"):
@@ -325,6 +326,7 @@ class CorrFunc:
         afterpulse_params,
         bg_corr_list,
         temporal_bg_corr_list: List = None,
+        temporal_bg_min_lag_ms=2e-3,
         should_subtract_afterpulsing: bool = False,
         external_afterpulsing: np.ndarray = None,
         **kwargs,
@@ -350,7 +352,8 @@ class CorrFunc:
                     temporal_corr_dict["corrfunc"],
                     right=0,
                 )
-                corr_output.corrfunc_list[idx] -= temporal_corr
+                valid_idxs = corr_output.lag_list[idx] < temporal_bg_min_lag_ms
+                corr_output.corrfunc_list[idx][valid_idxs] -= temporal_corr[valid_idxs]
 
         # subtract afterpulsing
         if should_subtract_afterpulsing:
@@ -1247,9 +1250,9 @@ class SolutionSFCSMeasurement:
                 print(f"Gating {len(self.corr_input_list)} input splits ({gate_ns})... ", end="")
             else:
                 print(f"Preparing {len(self.corr_input_list)} input splits... ", end="")
+
         final_corr_input_list = []
         final_filter_input_list = []
-        self.temporal_bg_corr_list = []
         for split_idx, dt_prt_split in enumerate(self.corr_input_list):
             # skipping empty splits
             if not dt_prt_split.size:
@@ -1277,35 +1280,65 @@ class SolutionSFCSMeasurement:
                 )
                 final_filter_input_list.append(split_filter)
 
-            # temporal background correlations
+            # temporal background correlations - gather split info
             if subtract_temporal_bg_corr:
+
+                # initialize variables
+                if split_idx == 0:
+                    t0 = 0
+                    last_idx = 0
+                    split_countrate_list = []
+                    split_lag_list = []
+                    accum_split_time_list = []
+                    split_idxs_list = []
+                    self.temporal_bg_corr_list = []
+
                 # convert timestamps from laser pulses to seconds
                 ts_s = ts / self.laser_freq_hz
-                # smooth using moving average with 50%-size window
-                win_size = int(ts_s.size / 2)
-                # get the split time array (smoothed). add the last time of the last split (for fit)
-                t_s = moving_average(np.cumsum(ts_s), win_size)
-                #                print(f"split duration: {t_s[-1]:.2} seconds") # TESTESTEST
-                # get the split countrate array (smoothed)
-                split_cr = 1 / (moving_average(ts_s, win_size))
-                # fit a line through each split
-                m0 = (split_cr[-1] - split_cr[0]) / (t_s[-1] - t_s[0])
-                n0 = split_cr[0] - m0 * t_s[0]
-                # use weighting to 'force' fit to go through first point
-                y_weights = np.full(len(split_cr), 10.0)
-                y_weights[0] = 0.1
-                FP = curve_fit_lims(
-                    linear_fit,
-                    (m0, n0),
-                    t_s,
-                    split_cr,
-                    ys_errors=y_weights,
-                    #                    should_weight_fits=True,
-                )
-                # get ACF of fit and add to list (to be interpolated upon and subtracted in Corrfunc.correlate_measurement)
-                # TODO: I'm I should be correlating a downsampled version of 'FP.fitted_y' - it's a straight line, and it's interpolated later on in CorrFunc
-                c, _ = xcorr(FP.fitted_y, FP.fitted_y)
-                self.temporal_bg_corr_list.append({"lag": t_s, "corrfunc": c})
+                t_split_s = np.cumsum(ts_s)
+                t_s = t_split_s + t0
+                t0 = t_s[-1]
+                accum_split_time_list.append(t_s)
+
+                # smooth using moving average with 50%-size window - required since data is extremely noisy
+                split_cr = 1 / (moving_average(ts, ts.size // 2))
+                split_countrate_list.append(split_cr)
+
+                # collect start/stop indices
+                split_idxs_list.append((last_idx, last_idx + dt_prt_split.shape[1]))
+                last_idx += dt_prt_split.shape[1]
+
+                # collect lags
+                split_lag_list.append(t_split_s)
+
+        # temporal background correlations - fit and correlate
+        if subtract_temporal_bg_corr:
+            t_total_s = np.hstack(accum_split_time_list)
+            cr_total = np.hstack(split_countrate_list)
+
+            # fitting exponent with background to measurement countrate curve
+            A0 = cr_total.max()
+            bg0 = cr_total.min()
+            try:
+                tau0 = t_total_s[np.nonzero(cr_total < A0 / np.exp(1))[0][0]]
+            except IndexError:
+                # happens if countrate does not significantly drop during the measurement.
+                # TODO: should do linear fit in this case? or just append a "zero" correlation?
+                tau0 = t_total_s[int(t_total_s.size / 2)]
+            FP = curve_fit_lims(
+                exponent_with_background_fit,
+                (A0, tau0, bg0),
+                t_total_s,
+                cr_total,
+                ys_errors=None,
+            )
+
+            # for each split, get ACF of relevant part of fit and add to list
+            # (to be interpolated upon and subtracted in Corrfunc.correlate_measurement)
+            for (start_idx, stop_idx), split_lag in zip(split_idxs_list, split_lag_list):
+                split_fit = FP.fitted_y[start_idx:stop_idx]
+                c, _ = xcorr(split_fit, split_fit)
+                self.temporal_bg_corr_list.append({"lag": split_lag, "corrfunc": c})
 
         if corr_options.get("is_verbose"):
             print("Done.")
