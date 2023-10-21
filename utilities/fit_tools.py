@@ -2,19 +2,18 @@
 
 import sys
 import warnings
-from contextlib import suppress
 from dataclasses import dataclass, field
 from string import ascii_lowercase
-from typing import Callable, Dict
+from typing import Any, Callable, Dict
 
 import numpy as np
-import scipy.optimize as opt
+import scipy as sp
 
 from utilities.display import Plotter
 from utilities.errors import err_hndlr
 from utilities.helper import Limits
 
-warnings.simplefilter("error", opt.OptimizeWarning)
+warnings.simplefilter("error", sp.optimize.OptimizeWarning)
 warnings.simplefilter("error", RuntimeWarning)
 
 
@@ -52,13 +51,13 @@ class FitParams:
 
         return np.interp(x, self.x, self.fitted_y)
 
-    def plot(self, color=None, fit_label="Fit", **kwargs):
+    def plot(self, color=None, fit_label="Fit", errorbars=True, **kwargs):
         """Doc."""
 
-        kwargs["super_title"] = kwargs.get("super_title", f"Curve Fit ({self.fit_func.__name__})")
         with Plotter(
-            xlim=(min(self.x), max(self.x)),
-            ylim=(min(self.y), max(self.y)),
+            super_title=kwargs.pop("super_title", f"Curve Fit ({self.fit_func.__name__})"),
+            xlim=kwargs.pop("xlim", (min(self.x), max(self.x))),
+            ylim=kwargs.pop("ylim", (min(self.y), max(self.y))),
             **kwargs,
         ) as ax:
             ax.plot(
@@ -70,7 +69,7 @@ class FitParams:
                 markersize=2,
                 color=color if color is not None else "k",
             )
-            if not (self.sigma == 1).all():
+            if not (self.sigma == 1).all() and errorbars:
                 ax.errorbar(
                     self.xs,
                     self.ys,
@@ -187,13 +186,13 @@ def _fit_and_get_param_dict(
     ys_errors=None,
     valid_idxs=slice(None),
     should_weight_fits: bool = False,
+    curve_fit_kwargs: Dict[str, Any] = {},
     **kwargs,
 ) -> FitParams:
     """Doc."""
 
     if "linear" in fit_func.__name__:
-        with suppress(KeyError):
-            kwargs.pop("max_nfev")
+        curve_fit_kwargs.pop("max_nfev", None)
 
     x = xs[valid_idxs]
     y = ys[valid_idxs]
@@ -205,8 +204,8 @@ def _fit_and_get_param_dict(
         sigma = np.ones(y.shape)
 
     try:
-        popt, pcov = opt.curve_fit(fit_func, x, y, p0=p0, sigma=sigma, **kwargs)
-    except (RuntimeWarning, RuntimeError, opt.OptimizeWarning, ValueError) as exc:
+        popt, pcov = sp.optimize.curve_fit(fit_func, x, y, p0=p0, sigma=sigma, **curve_fit_kwargs)
+    except (RuntimeWarning, RuntimeError, sp.optimize.OptimizeWarning, ValueError) as exc:
         raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
 
     param_names = fit_func.__code__.co_varnames[: fit_func.__code__.co_argcount][1:]
@@ -291,6 +290,10 @@ def polynomial_fit(t, *beta):
 
 def diffusion_3d_fit(t, G0, tau, w_sq):
     return G0 / (1 + t / tau) / np.sqrt(1 + t / tau / w_sq)
+
+
+def stretched_diffusion_3d_fit(t, A, tau, n):
+    return A / (1 + (t / tau) ** n)
 
 
 def exponent_with_background_fit(t, A, tau, bg):

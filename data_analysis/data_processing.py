@@ -274,9 +274,11 @@ class AngularScanDataMixin:
             ),
             bin_num[bg_part:],
             scan_hist[bg_part:],
-            bounds=(  # A, mu, sigma, bg
-                [0, 0, 0, -10],
-                [1e4, bin_num.max(), bin_num.max(), 0],
+            curve_fit_kwargs=dict(
+                bounds=(  # A, mu, sigma, bg
+                    [0, 0, 0, -10],
+                    [1e4, bin_num.max(), bin_num.max(), 0],
+                )
             ),
         )
 
@@ -929,6 +931,14 @@ class TDCPhotonFileData:
         # get photon timings
         t_photon = dt_prt_in[1] / self.general.laser_freq_hz
 
+        # trim the split duration to maximum possible (minus 5%), and warn user about it
+        if self.general.split_duration_s > t_photon[-1]:
+            print(
+                f"File #{self.idx + 1}: Split duration ({self.general.split_duration_s:.2f} s) is longer than the entire section ({t_photon[-1]:.2f} s)... reducing split duration... ",
+                end="",
+            )
+            self.general.split_duration_s = t_photon[-1] * 0.95
+
         # get split end indices
         split_end_idxs = (
             np.nonzero(np.diff(t_photon % self.general.split_duration_s) < 0)[0] + 1
@@ -939,12 +949,7 @@ class TDCPhotonFileData:
         all_split_edges = np.array([split_edges[:-1], split_edges[1:]]).T
 
         # return the splits as a generator
-        if all_split_edges.size:
-            return (dt_prt_in[:, start_idx:end_idx] for start_idx, end_idx in all_split_edges)
-        else:
-            raise ValueError(
-                f"File #{self.idx + 1}: Split duration ({self.general.split_duration_s:.2f} s) is longer than the entire section ({t_photon[-1]:.2f} s)..."
-            )
+        return (dt_prt_in[:, start_idx:end_idx] for start_idx, end_idx in all_split_edges)
 
     def _add_validity(
         self,

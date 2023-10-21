@@ -64,6 +64,10 @@ class HankelTransform:
     q: np.ndarray
     fq: np.ndarray
 
+    def __post_init__(self):
+        # normalize to 1
+        self.fq /= self.fq.max()
+
     def plot(self, label_prefix="", **kwargs):
         """Display the transform's results"""
 
@@ -80,7 +84,7 @@ class HankelTransform:
             axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
             axes[0].legend()
 
-            axes[1].plot(self.q, self.fq / self.fq[0], label=f"{label_prefix}Hankel transform")
+            axes[1].plot(self.q, self.fq, label=f"{label_prefix}Hankel transform")
             axes[1].set_xscale("log")
             axes[1].set_ylim(1e-4, 2)
             axes[1].set_title("Hankel Transforms")
@@ -114,7 +118,7 @@ class StructureFactor:
             ax.plot(self.q, self.sq / self.sq[0], label=label_prefix)
             ax.set_xscale("log")
             ax.set_ylim(1e-4, 2)
-            ax.set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
+            ax.set_xlabel("$q\\ \\left(\\mu m^{-1}\\right)$")
             ax.set_ylabel("$S(q)$")
             ax.legend()
 
@@ -418,7 +422,7 @@ class CorrFunc:
 
         try:
             self.score = (
-                (1 / np.var(self.cf_cr[:, jj], 0))
+                (1.0 / np.var(self.cf_cr[:, jj], 0))
                 * (self.cf_cr[:, jj] - self.median_all_cf_cr[jj]) ** 2
                 / len(jj)
             ).sum(axis=1)
@@ -473,7 +477,7 @@ class CorrFunc:
 
         try:
             self.g0 = (self.avg_cf_cr[j_t] / self.error_cf_cr[j_t] ** 2).sum() / (
-                1 / self.error_cf_cr[j_t] ** 2
+                1.0 / self.error_cf_cr[j_t] ** 2
             ).sum()
         except RuntimeWarning:  # division by zero
             self.g0 = (self.avg_cf_cr[j_t] / (self.error_cf_cr[j_t] + EPS) ** 2).sum() / (
@@ -506,37 +510,46 @@ class CorrFunc:
 
         return avg_cf_cr, error_cf_cr
 
-    def remove_background(self):
-        """Manually select the background range and remove it from all averages. Re-average to return to original state."""
+    def remove_background(self, name_prefix: str = "", bg_range: Limits = None) -> Limits:
+        """
+        Manually select the background range and remove it from all averages.
+        Returns the background range indices for passing to further measurements in same experiment.
+        Re-average to return to original state.
+        """
 
         # manually select the background range
         plot_acfs(
             self.vt_um,
             avg_cf_cr=self.avg_cf_cr,
             # plot kwargs
-            super_title=f"{self.name}: Use the mouse to place 2 markers\nmarking the ACF background range:",
-            selection_limits=(bg_range := Limits()),
+            super_title=f"{name_prefix + (', ' if name_prefix else '')}{self.name}: Use the mouse to place 2 markers\nmarking the ACF background range:",
+            selection_limits=None if bg_range is not None else (bg_range := Limits()),
             should_close_after_selection=True,
+            xlabel="vt_um",
+            ylabel="avg_cf_cr",
         )
 
         # get the indices from the range
-        bg_lag_idxs = bg_range.valid_indices(self.vt_um)
+        bg_idxs = bg_range.valid_indices(self.vt_um)
 
-        avg_cf_cr_bg = self.avg_cf_cr[bg_lag_idxs].mean()
+        avg_cf_cr_bg = self.avg_cf_cr[bg_idxs].mean()
 
         # remove the mean background using the range indices from each average quantity
-        self.average_all_cf_cr -= self.average_all_cf_cr[bg_lag_idxs].mean()
-        self.median_all_cf_cr -= self.median_all_cf_cr[bg_lag_idxs].mean()
+        self.average_all_cf_cr -= self.average_all_cf_cr[bg_idxs].mean()
+        self.median_all_cf_cr -= self.median_all_cf_cr[bg_idxs].mean()
         self.g0 -= avg_cf_cr_bg
         self.avg_cf_cr -= avg_cf_cr_bg
-        self.error_cf_cr -= self.error_cf_cr[bg_lag_idxs].mean()
-        self.avg_corrfunc -= self.avg_corrfunc[bg_lag_idxs].mean()
-        self.error_corrfunc -= self.error_corrfunc[bg_lag_idxs].mean()
+        self.error_cf_cr -= self.error_cf_cr[bg_idxs].mean()
+        self.avg_corrfunc -= self.avg_corrfunc[bg_idxs].mean()
+        self.error_corrfunc -= self.error_corrfunc[bg_idxs].mean()
 
         self.normalized = self.avg_cf_cr / self.g0
         self.error_normalized = self.error_cf_cr / self.g0
 
-        print(f"Found and removed a background constant of {avg_cf_cr_bg:.2f} (from 'avg_cf_cr').")
+        print(
+            f"{name_prefix + (', ' if name_prefix else '')}{self.name}: Found and removed a background constant of {avg_cf_cr_bg:.2f} (from 'avg_cf_cr')."
+        )
+        return bg_range
 
     def plot_correlation_function(
         self,
@@ -576,6 +589,7 @@ class CorrFunc:
         y_scale=None,
         bounds=(np.NINF, np.inf),
         max_nfev=int(1e4),
+        plot_kwargs: Dict[str, Any] = {},
         **kwargs,
     ) -> FitParams:
 
@@ -624,9 +638,8 @@ class CorrFunc:
             y,
             error_y,
             x_limits=Limits(fit_range),
-            bounds=bounds,
-            max_nfev=max_nfev,
-            plot_kwargs=dict(x_scale=x_scale, y_scale=y_scale),
+            curve_fit_kwargs=dict(max_nfev=max_nfev, bounds=bounds),
+            plot_kwargs={**plot_kwargs, "x_scale": x_scale, "y_scale": y_scale},
             **kwargs,
         )
 
@@ -1301,7 +1314,7 @@ class SolutionSFCSMeasurement:
                 accum_split_time_list.append(t_s)
 
                 # smooth using moving average with 50%-size window - required since data is extremely noisy
-                split_cr = 1 / (moving_average(ts, ts.size // 2))
+                split_cr = 1.0 / (moving_average(ts, ts.size // 2))
                 split_countrate_list.append(split_cr)
 
                 # collect start/stop indices
@@ -1983,8 +1996,9 @@ class SolutionSFCSExperiment:
     def remove_backgrounds(self):
         """Remove mean ACF backgrounds from all CorrFunc objects"""
 
+        bg_range = None
         for cf in self.cf_dict.values():
-            cf.remove_background()
+            bg_range = cf.remove_background(name_prefix=self.name, bg_range=bg_range)
 
     def re_average_all(self, **kwargs):
         """Doc."""

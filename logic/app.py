@@ -268,7 +268,7 @@ class App:
         try:
             if not self.exiting:
                 pressed = QuestionDialog(
-                    txt=f"Would you like to clear the temprary dump path\n({DUMP_PATH})",
+                    txt=f"Would you like to clear the temprary dump path?\n({DUMP_PATH})",
                     title="Quitting Program",
                     should_include_cancel=True,
                 ).display()
