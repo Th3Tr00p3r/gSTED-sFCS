@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project sfcs_sted",
     "copyright": "Copyright (C) 2023 idomich, ",
-    "saved": "2023-08-31, 12:06:08"
+    "saved": "2023-11-05, 15:24:08"
   },
   "project": {
     "AUTHOR": "idomich",
@@ -410,6 +410,7 @@
       "data_analysis/example_scripts/Testing TDC Gating of Excitation-Only Data.py",
       "data_analysis/example_scripts/example_of_use_170522.py",
       "data_analysis/fida.py",
+      "data_analysis/polymer_physics.py",
       "data_analysis/software_correlator.py",
       "data_analysis/workers.py",
       "gui/__init__.py",

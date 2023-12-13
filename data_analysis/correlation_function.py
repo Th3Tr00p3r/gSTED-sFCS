@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, Iterator, List, Sequence, Tuple, Union, cast
 
 import numpy as np
+from matplotlib.lines import Line2D
 from matplotlib.patches import Ellipse
 from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
@@ -2318,7 +2319,7 @@ class SolutionSFCSExperiment:
         should_add_exp_name=True,
         sted_only=False,
         **kwargs,
-    ):
+    ) -> List[Line2D]:
         """Doc."""
 
         if self.confocal.is_loaded and not sted_only:
@@ -2380,18 +2381,20 @@ class SolutionSFCSExperiment:
                     **kwargs,
                 )
 
+            # keep newly added lines
+            new_lines = [line for line in ax.get_lines() if line not in existing_lines]
+
             # add experiment name to labels if plotted hierarchically (multiple experiments)
             # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
             if parent_ax is not None:
-                for line in ax.get_lines():
-                    if line not in existing_lines:
-                        label = line.get_label()
-                        if "_" not in label:
-                            line.set_label(
-                                f"{self.name}: {label}" if should_add_exp_name else label
-                            )
+                for line in new_lines:
+                    label = line.get_label()
+                    if "_" not in label:
+                        line.set_label(f"{self.name}: {label}" if should_add_exp_name else label)
 
             ax.legend()
+
+        return new_lines
 
     def estimate_spatial_resolution(self, colors=None, sted_only=False, **kwargs) -> Iterator[str]:
         """
