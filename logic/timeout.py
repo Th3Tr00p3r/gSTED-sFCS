@@ -239,11 +239,17 @@ class Timeout:
 
             delayer_dvc = self._app.devices.delayer
 
-            if (not delayer_dvc.error_dict) and (not self._app.meas.is_running):
+            if (
+                (not delayer_dvc.error_dict)
+                and (not self._app.meas.is_running)
+                and (not delayer_dvc.is_queried)
+            ):
                 if delayer_dvc.is_on:
                     with suppress(ValueError, TypeError):
-                        self._app.loop.create_task(delayer_dvc.mpd_command(("RT", None)))
-            #                        self.main_gui.psdTemp.setValue(float(temp)) # TODO: move this within the device
+                        temp, _ = await delayer_dvc.mpd_command(("RT", None))
+                        self.main_gui.psdTemp.setValue(
+                            float(temp)
+                        )  # TODO: move this within the device
 
             await asyncio.sleep(delayer_dvc.update_interval_s)
 
@@ -256,10 +262,15 @@ class Timeout:
             delayer_dvc = self._app.devices.delayer
             exc_dvc = self._app.devices.exc_laser
 
-            if not spad_dvc.error_dict and not spad_dvc.is_paused and not self._app.meas.is_running:
+            if (
+                not spad_dvc.error_dict
+                and not spad_dvc.is_paused
+                and not self._app.meas.is_running
+                and not spad_dvc.is_queried
+            ):
 
                 # display status and mode
-                self._app.loop.create_task(spad_dvc.get_stats())
+                await spad_dvc.get_stats()
 
                 # gating
                 icon_name = "on" if delayer_dvc.is_on and exc_dvc.is_on else "off"

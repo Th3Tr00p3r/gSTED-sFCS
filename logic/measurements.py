@@ -381,6 +381,7 @@ class MeasurementProcedure:
 
         # Gated measurement
         if self.spad_settings["mode"] == "external":
+            # must use asyncio.wait since I/O of delayer and detector can interfere
             await self.delayer_dvc.set_lower_gate(self.spad_settings["gate_ns"].hard_gate.lower)
             await self.spad_dvc.set_gate()
             await self.delayer_dvc.toggle(True)

@@ -1059,13 +1059,17 @@ class SolutionSFCSMeasurement:
         if self.detector_settings.get("gate_ns") is not None and (
             not self.detector_settings["gate_ns"] and self.detector_settings["mode"] == "external"
         ):
-            print("This should not happen (missing detector gate) - move this to legacy handeling!")
-            self.detector_settings["gate_ns"] = Gate(
+            fixed_gate = Gate(
                 hard_gate=(
                     98 - self.detector_settings["gate_width_ns"],
                     self.detector_settings["gate_width_ns"],
                 )
             )
+            if self.detector_settings.get("gate_ns") != fixed_gate:
+                print(
+                    "This should not happen (missing detector gate) - move this to legacy handeling!"
+                )
+                self.detector_settings["gate_ns"] = fixed_gate
         elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
             self.detector_settings["gate_ns"] = Gate()
         elif self.detector_settings[

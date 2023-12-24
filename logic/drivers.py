@@ -48,6 +48,8 @@ class Ftd2xx:
                 self.serial = info_dict["serial"]
                 print(f"(FTDI SN: {self.serial.decode('utf-8')} connection opened)")
 
+        self.is_queried = False
+
     def open_instrument(self):
         """Doc."""
         # TODO: FIX THIS! IT LOOKS TERRIBLE
@@ -99,6 +101,8 @@ class Ftd2xx:
     ) -> Tuple[Union[List[str], str], str]:
         """Doc."""
 
+        self.is_queried = True
+
         # purge buffers before writing
         self.purge(should_purge_write=True)
 
@@ -110,7 +114,8 @@ class Ftd2xx:
         # I/O
         self.write(cmnd_str.encode("utf-8"))
 
-        await asyncio.sleep(0.1)
+        # wait between reading and writing to allow time to generate response
+        await asyncio.sleep(0.3)
 
         try:
             response = self.read().decode("utf-8").split(sep="#")
@@ -118,6 +123,8 @@ class Ftd2xx:
             raise IOError(
                 f"Got a partial byte response for commands: {cmnd_str} - unable to decode..."
             )
+        finally:
+            self.is_queried = False
 
         if len(response) < len(command_list) - 1:
             raise IOError(

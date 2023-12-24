@@ -229,7 +229,6 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
         else:
             self.purge(True)
             self._app_loop.create_task(self.toggle_mode("free running"))
-
             self.lower_gate_ns = 0
             self.gate_ns = Gate()
             self.is_paused = False  # used when ceding control to MPD interface
@@ -304,7 +303,9 @@ class FastGatedSPAD(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                 self.attrs.param_widgets.obj_to_gui(self._app_gui, self.settings)
 
         # Gating
-        self.settings["gate_ns"] = self.gate_ns if self.settings["mode"] == "external" else Gate()
+        self.settings["gate_ns"] = (
+            self.gate_ns if self.settings.get("mode") == "external" else Gate()
+        )
 
         if was_on != self.is_on:
             self.toggle_led_and_switch(self.is_on)
@@ -399,6 +400,7 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
                         ]
                     )
                 )
+
             except ValueError as exc:
                 exc = IOError(f"{self.log_ref} did not respond to initialization commands [{exc}]")
                 err_hndlr(exc, sys._getframe(), locals(), dvc=self)
@@ -447,11 +449,11 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             lower_gate_ns = self.eff_delay_ns - self.sync_delay_ns
             self.set_delay_wdgt.set(lower_gate_ns)
 
-    async def close(self):
+    def close(self):
         """Doc."""
 
-        await self.toggle(False)
-        await self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
+        self.toggle(False)
+        self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
         self.close_instrument()
 
     async def set_lower_gate(self, lower_gate_ns=None):
@@ -476,13 +478,16 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             response, _ = await self.mpd_command(
                 (f"SP{req_pulsewidth_ns}", self.pulsewidth_limits_ns)
             )
-            pulsewidth_ns = int(response)
+            pulsewidth_ns = int(str_to_num(response))
 
             req_psd_delay_ps = round((req_total_delay_ns - pulsewidth_ns) * 1e3)
             response, _ = await self.mpd_command(
                 (f"SD{req_psd_delay_ps}", self.psd_delay_limits_ps)
             )
-            psd_delay_ps = int(response)
+            psd_delay_ps = int(str_to_num(response))
+        except TypeError:
+            # TESTESTEST
+            pass
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
@@ -1503,9 +1508,6 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
         # already in motion
         else:
             logging.info(f"{self.log_ref} is already in motion!")
-
-    #            await asyncio.sleep(1)  # TESTESTEST
-    #            self.is_moving = False # TESTESTEST
 
     def set_origin(self) -> None:
         """Set current position as the new origin"""

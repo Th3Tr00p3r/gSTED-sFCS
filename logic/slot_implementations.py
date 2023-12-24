@@ -320,9 +320,15 @@ class MainWin:
         """Doc."""
 
         if hasattr(self._app, "devices"):
-            with suppress(DeviceError):
+            try:  # DeviceError):
+                self.main_gui.setPsdDelay.setEnabled(False)
+                # the following to calls need to happen in this order, so cannot use asyncio.gather to run them concurrently
                 await self._app.devices.delayer.set_lower_gate()
                 await self._app.devices.spad.set_gate()
+            except DeviceError:
+                pass
+            finally:
+                self.main_gui.setPsdDelay.setEnabled(True)
 
     async def set_spad_gatewidth(self):
         """Doc."""
