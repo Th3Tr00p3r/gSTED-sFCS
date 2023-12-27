@@ -45,23 +45,31 @@ def estimate_resolution_from_measured_field(w_meas_nm: float, Rg_nm: float):
     return np.sqrt(w_meas_nm**2 - 4 / 3 * Rg_nm**2)
 
 
-def debye_structure_factor_fit(q, Rg: float):
+def debye_structure_factor_fit(q, Rg: float) -> np.ndarray:
     """
-    Oleg's notes (from MATLAB version):
-        Sharp Bloomfield, Biopolymers (1968)
-        Getting final expression from Yamakawa (mostly)
+    Static structure factor expression for Gaussian linear polymers.
+    Sharp Bloomfield, Biopolymers (1968)
+    See Yamakawa's book (Helical Worm-Like Chain in Polymer Solutions), Equation 5.30
     """
-
     x = (Rg * q) ** 2
     return 2 / x**2 * (x - 1 + np.exp(-x))
 
 
+def dawson_structure_factor_fit(q, Rg: float) -> np.ndarray:
+    """
+    Static strucure factor expression for Gaussian ring polymers.
+    See Yamakawa's book (Helical Worm-Like Chain in Polymer Solutions), Equation 5.70
+    """
+    x = Rg*q/np.sqrt(2)
+    return 1/x * sp.special.dawsn(x);
+
+
 def wlc_rod_structure_factor_fit(q, L: float):
     """
+    Static structure facor expression for short worm-like chain polymers.
     See Yamakawa's book (Helical Worm-Like Chain in Polymer Solutions), Equation 5.32.
     (Originally derived by Neugebauer, 1943)
     """
-
     x = L * q
     si_x, _ = sp.special.sici(x)
     return 2 / x**2 * (x * si_x + np.cos(x) - 1)
