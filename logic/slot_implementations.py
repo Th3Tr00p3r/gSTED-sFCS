@@ -107,8 +107,10 @@ class MainWin:
                         if is_dvc_on := getattr(dvc, state_attr):
                             logging.debug(f"{dvc.log_ref} toggled ON")
                             if nick == "stage":
+                                # TODO: try to move this inside device (add widgets to device)
                                 self.main_gui.stageButtonsGroup.setEnabled(True)
-                            elif nick == "exc_laser":  # TESTESTEST
+                            elif nick == "exc_laser":
+                                # TODO: try to move this inside device (add widgets to device)
                                 self.main_gui.setPsdDelay.setEnabled(False)
                             was_toggled = True
 
@@ -140,7 +142,8 @@ class MainWin:
                             self.main_gui.depActualCurr.setValue(0)
                             self.main_gui.depActualPow.setValue(0)
 
-                        elif nick == "exc_laser":  # TESTESTEST
+                        elif nick == "exc_laser":
+                            # TODO: try to move this inside device (add widgets to device)
                             self.main_gui.setPsdDelay.setEnabled(True)
 
                         was_toggled = True

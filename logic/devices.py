@@ -1447,7 +1447,7 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             self.is_on = is_being_switched_on
             # write an initial command so that the next one would work (bug in Arduino code, I guess)
             if self.is_on:
-                self.write("mx 1")  # fake move
+                self.write("my 1")  # fake move
                 time.sleep(0.1)  # needed for command to digest correctly
                 self.write("ryx ")  # release
 
@@ -1466,48 +1466,62 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
             else:
                 raise ValueError(f"Can only convert from microns to steps! ({vec.units})")
 
-        if not self.is_moving:
-            if not relative:  # convert absolute to relative
-                vec = vec - self.curr_pos
-            if all(self.LIMITS.valid_indices(self.curr_pos + vec)):
-                # X first
-                if vec.x:
-                    #                    self.is_moving = True
-                    self.write(f"mx {vec.x}")
-                    logging.debug(
-                        f"{self.log_ref} moved {abs(vec.x)} steps {('RIGHT' if vec.x < 0 else 'LEFT')}"
+        attempts_left = 10
+        while attempts_left:
+            if not self.is_moving:
+                self._app_gui.main.stageButtonsGroup.setEnabled(
+                    False
+                )  # TODO: this should be a widget belonging to self
+                if not relative:  # convert absolute to relative
+                    vec = vec - self.curr_pos
+                if all(self.LIMITS.valid_indices(self.curr_pos + vec)):
+                    # X first
+                    if vec.x:
+                        #                    self.is_moving = True
+                        self.write(f"mx {vec.x}")
+                        logging.debug(
+                            f"{self.log_ref} moved {abs(vec.x)} steps {('RIGHT' if vec.x < 0 else 'LEFT')}"
+                        )
+                        # TODO: the sleep factor should go in the settings
+                        await asyncio.sleep(0.2 + abs(vec.x / 750))  # wait while moving
+
+                    # then Y
+                    if vec.y:
+                        self.is_moving = True
+                        self.write(f"my {vec.y}")
+                        logging.debug(
+                            f"{self.log_ref} moved {abs(vec.y)} steps {('DOWN' if vec.x < 0 else 'UP')}"
+                        )
+                        # TODO: the sleep factor should go in the settings
+                        await asyncio.sleep(0.2 + abs(vec.y / 750))  # wait while moving
+
+                    self.write("ryx ")  # release
+                    self.last_pos = self.curr_pos  # keep last position
+                    self.curr_pos += vec  # keep current position
+
+                    # keep last position in file
+                    save_object(self.curr_pos, self.LAST_POS_FILEPATH)
+
+                    self.is_moving = False
+                    self._app_gui.main.stageButtonsGroup.setEnabled(
+                        True
+                    )  # TODO: this should be a widget belonging to self
+                    break
+
+                # out of limits
+                else:
+                    logging.info(
+                        f"{self.log_ref}: new position {self.curr_pos + vec} is off-limits {self.LIMITS}!"
                     )
-                    # TODO: the sleep factor should go in the settings
-                    # sleep and block - don't allow other things while movement hasn't finished (not movement in Y yet)
-                    time.sleep(0.2 + abs(vec.x / 750))  # wait while moving
+                break
 
-                # then Y
-                if vec.y:
-                    #                    self.is_moving = True
-                    self.write(f"my {vec.y}")
-                    logging.debug(
-                        f"{self.log_ref} moved {abs(vec.y)} steps {('DOWN' if vec.x < 0 else 'UP')}"
-                    )
-                    # TODO: the sleep factor should go in the settings
-                    await asyncio.sleep(0.2 + abs(vec.y / 750))  # wait while moving
-
-                self.write("ryx ")  # release
-                self.is_moving = False
-                self.last_pos = self.curr_pos  # keep last position
-                self.curr_pos += vec  # keep current position
-
-                # keep last position in file
-                save_object(self.curr_pos, self.LAST_POS_FILEPATH)
-
-            # out of limits
+            # already in motion - wait a bit before retrying
             else:
-                logging.info(
-                    f"{self.log_ref}: new position {self.curr_pos + vec} is off-limits {self.LIMITS}!"
-                )
+                await asyncio.sleep(0.3)
+                attempts_left -= 1
 
-        # already in motion
-        else:
-            logging.info(f"{self.log_ref} is already in motion!")
+        if not attempts_left:
+            logging.info(f"{self.log_ref} is already in motion! This should not occur!")
 
     def set_origin(self) -> None:
         """Set current position as the new origin"""

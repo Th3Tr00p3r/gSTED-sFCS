@@ -105,7 +105,7 @@ class StructureFactor:
         self.q = HT.q
         self.sq = HT.fq / cal_HT.fq
 
-    def plot(self, interp_type: str, label_prefix="", **kwargs):
+    def plot(self, label_prefix="", **kwargs):
         """
         Plot a single structure factor. Built to be used for hierarchical plotting
         from a measurement or an experiment.
@@ -805,9 +805,7 @@ class CorrFunc:
             for (interp_type, structure_factor), ax in zip(
                 self.structure_factors.items(), (axes if n_interps > 1 else [axes])
             ):
-                structure_factor.plot(
-                    interp_type, parent_ax=ax, label_prefix=f"{self.name}: ", **kwargs
-                )
+                structure_factor.plot(parent_ax=ax, label_prefix=f"{self.name}: ", **kwargs)
 
 
 class SolutionSFCSMeasurement:
@@ -1017,9 +1015,9 @@ class SolutionSFCSMeasurement:
         # serial processing (default)
         else:
             proc_options["is_verbose"] = True
-            for idx, file_path in enumerate(file_paths):
+            for file_path in file_paths:
                 # Processing data
-                p = self.process_data_file(idx, file_path, **proc_options)
+                p = self.process_data_file(file_path, **proc_options)
                 print("Done.\n")
                 # Appending data to self
                 if p is not None:
@@ -1099,7 +1097,7 @@ class SolutionSFCSMeasurement:
             self.scan_type = "static"
 
     def process_data_file(
-        self, idx=0, file_path: Path = None, file_dict: dict = None, **proc_options
+        self, file_path: Path = None, file_dict: dict = None, **proc_options
     ) -> TDCPhotonFileData:
         """Doc."""
 
@@ -1146,7 +1144,7 @@ class SolutionSFCSMeasurement:
 
         # TODO: all relevant properties from 'file_dict' should have been imported to the 'SolutionSFCSMeasurement' object at this point.
         # It makes no sense to send the 'file_dict' as an argument - send what's relevant.
-        return self.data_processor.process_data(idx, file_dict["full_data"], **proc_options)
+        return self.data_processor.process_data(file_idx, file_dict["full_data"], **proc_options)
 
     def calibrate_tdc(self, force_processing=True, **kwargs) -> None:
         """Doc."""

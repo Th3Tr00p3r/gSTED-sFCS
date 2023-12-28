@@ -934,7 +934,7 @@ class TDCPhotonFileData:
         # trim the split duration to maximum possible (minus 5%), and warn user about it
         if self.general.split_duration_s > t_photon[-1]:
             print(
-                f"File #{self.idx + 1}: Split duration ({self.general.split_duration_s:.2f} s) is longer than the entire section ({t_photon[-1]:.2f} s)... reducing split duration... ",
+                f"File #{self.idx}: Split duration ({self.general.split_duration_s:.2f} s) is longer than the entire section ({t_photon[-1]:.2f} s)... reducing split duration... ",
                 end="",
             )
             self.general.split_duration_s = t_photon[-1] * 0.95
@@ -1295,7 +1295,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         """Doc."""
 
         if proc_options.get("is_verbose"):
-            print("Converting raw data to photons...", end=" ")
+            print("Converting raw data to photons... ", end="")
 
         # getting byte data by memory-mapping (unless supplied - alignment measurements and pre-conversion data only)
         if byte_data is None:
@@ -1304,6 +1304,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         # option to use only certain parts of data (for testing)
         if byte_data_slice is not None:
+            print(f"Using slice of data: {byte_data_slice.stop/len(byte_data):.2%} ", end="")
             byte_data = byte_data[byte_data_slice]
 
         section_edges, tot_single_errors = self._find_all_section_edges(byte_data)

@@ -1,24 +1,14 @@
-# unique to measurement system
+# system-specific files and folders (idomich)
 last_stage_position.pkl
-
-# settings choice file
 settings/default_settings_choice
+log/
+pyrcc5.exe # pyrcc binary (needs to be copied to each local repository from local venv)
 
 # Auto-Generated (idomich)
 lextab.py
 yacctab.py
 *_rc.py
 *.qrc
-
-# Specific folders (idomich)
-log/
-delete_me/
-
-# pyrcc binary (needs to be copied to each local repository from local venv)
-pyrcc5.exe
-
-# vim?
-.vim
 
 # pushed by oleg sometimes (idomich)
 .DS_Store

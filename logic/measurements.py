@@ -699,11 +699,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             )
 
             s = SolutionSFCSMeasurement(meas_laser_type_dict[self.laser_mode])
-            # NOTE: using only up to first 10 Mb to avoid blocking measurements for too long
+            # NOTE: using only up to first 1 Mb to avoid blocking measurements for too long
             p = s.process_data_file(
                 file_dict=self._prep_meas_dict(),
                 byte_data=byte_data,
-                byte_data_slice=slice(0, int(10e6)),
+                byte_data_slice=slice(0, int(1e6)),
                 **self.processing_options,
             )
             s.data.append(p)
