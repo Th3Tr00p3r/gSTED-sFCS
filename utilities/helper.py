@@ -491,6 +491,24 @@ class InterpExtrap1D:
             ax.legend()
 
 
+def normalize_scan_img_rows(img: np.ndarray, mask=None):
+    """Normalize an image to the median of the maximum row. Optionally use a supplied mask first."""
+
+    if mask is None:
+        mask = np.full(img.shape, True, dtype=np.bool)
+        mask[-1, :] = False  # last row is always empty
+
+    temp_img = img.copy().astype(np.float64)
+    temp_img[~mask] = 0
+    max_row = np.argmax(temp_img.sum(axis=1))
+    max_row_median = np.median(img[max_row][mask[max_row]])
+    norm_masked_img = img.astype(np.float64)
+    for row_idx in np.unique(norm_masked_img.nonzero()[0]):
+        if mask[row_idx].any():
+            norm_masked_img[row_idx] *= max_row_median / np.median(img[row_idx][mask[row_idx]])
+    return norm_masked_img
+
+
 def moving_average(arr, window_size, keep_size=True):
     """
     Calculate the moving average of a 1D NumPy array.

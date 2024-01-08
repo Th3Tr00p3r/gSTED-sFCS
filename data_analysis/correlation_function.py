@@ -6,7 +6,6 @@ from contextlib import suppress
 from dataclasses import InitVar, dataclass
 from itertools import cycle
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Dict, Iterator, List, Sequence, Tuple, Union, cast
 
 import numpy as np
@@ -38,7 +37,6 @@ from utilities.fit_tools import (
     FitParams,
     curve_fit_lims,
     diffusion_3d_fit,
-    exponent_with_background_fit,
     fit_2d_gaussian_to_image,
     multi_exponent_fit,
     ratio_of_lifetime_histograms_fit,
@@ -51,9 +49,7 @@ from utilities.helper import (
     Limits,
     dbscan_noise_thresholding,
     extrapolate_over_noise,
-    moving_average,
     unify_length,
-    xcorr,
 )
 
 
@@ -330,7 +326,6 @@ class CorrFunc:
         corr_output,
         afterpulse_params,
         bg_corr_list,
-        temporal_bg_corr_list: List = None,
         temporal_bg_min_lag_ms=2e-3,
         should_subtract_afterpulsing: bool = False,
         external_afterpulsing: np.ndarray = None,
@@ -347,18 +342,6 @@ class CorrFunc:
                 right=0,
             )
             corr_output.corrfunc_list[idx] -= bg_corr
-
-        # subtract temporal background correlations
-        if temporal_bg_corr_list:
-            for idx, temporal_corr_dict in enumerate(temporal_bg_corr_list):
-                temporal_corr = np.interp(
-                    corr_output.lag_list[idx],
-                    temporal_corr_dict["lag"],
-                    temporal_corr_dict["corrfunc"],
-                    right=0,
-                )
-                valid_idxs = corr_output.lag_list[idx] < temporal_bg_min_lag_ms
-                corr_output.corrfunc_list[idx][valid_idxs] -= temporal_corr[valid_idxs]
 
         # subtract afterpulsing
         if should_subtract_afterpulsing:
@@ -826,7 +809,7 @@ class SolutionSFCSMeasurement:
         self.is_loaded = False
         self.was_processed_data_loaded = False
         self.data = TDCPhotonMeasurementData()
-        self.corr_input_list: List[np.ndarray] = None
+        self.corr_section_input_list: List[np.ndarray] = None
         self.afterpulsing_filter: AfterpulsingFilter = None
         self.lifetime_params: LifeTimeParams = None
 
@@ -891,6 +874,7 @@ class SolutionSFCSMeasurement:
             # aggregate images and ROIs for angular sFCS
             self.scan_images_dstack = np.dstack(tuple(p.general.image for p in self.data))
             self.roi_list = [p.general.roi for p in self.data]
+            # aggregate line background corrfuncs - each line in each section of each file has one background corrfunc
             self.bg_line_corr_list = [
                 bg_line_corr
                 for bg_file_corr in [p.general.bg_line_corr for p in self.data]
@@ -1183,7 +1167,6 @@ class SolutionSFCSMeasurement:
         external_afterpulsing=None,
         get_afterpulsing=False,
         subtract_spatial_bg_corr=True,
-        subtract_temporal_bg_corr=False,
         **corr_options,
     ) -> CorrFunc:
         """
@@ -1248,10 +1231,10 @@ class SolutionSFCSMeasurement:
                     print(f"Using existing {self.type} afterpulsing filter.")
 
         # build correlator input - create list of split data for correlator.
-        if self.corr_input_list is None:
+        if self.corr_section_input_list is None:
             if corr_options.get("is_verbose"):
-                print("Building correlator input splits: ", end="")
-            self.corr_input_list = self.data.prepare_xcorr_input(["AA"], **corr_options)["AA"]
+                print("Building correlator section input splits: ", end="")
+            self.corr_section_input_list = self.data.prepare_corr_split_list(**corr_options)
             if corr_options.get("is_verbose"):
                 print(" Done.")
 
@@ -1263,13 +1246,16 @@ class SolutionSFCSMeasurement:
         # Gating, diffing (prt to ts) and filtering
         if corr_options.get("is_verbose"):
             if gate_ns:
-                print(f"Gating {len(self.corr_input_list)} input splits ({gate_ns})... ", end="")
+                print(
+                    f"Gating {len(self.corr_section_input_list)} input splits ({gate_ns})... ",
+                    end="",
+                )
             else:
-                print(f"Preparing {len(self.corr_input_list)} input splits... ", end="")
+                print(f"Preparing {len(self.corr_section_input_list)} input splits... ", end="")
 
-        final_corr_input_list = []
+        final_corr_section_input_list = []
         final_filter_input_list = []
-        for split_idx, dt_prt_split in enumerate(self.corr_input_list):
+        for split_idx, dt_prt_split in enumerate(self.corr_section_input_list):
             # skipping empty splits
             if not dt_prt_split.size:
                 if corr_options.get("is_verbose"):
@@ -1282,11 +1268,11 @@ class SolutionSFCSMeasurement:
                 valid_idxs = gate_ns.valid_indices(dt_prt_split[0])
                 ts = np.hstack(([0], np.diff(dt_prt_split[1][valid_idxs])))
                 final_split = np.vstack((ts, dt_prt_split[2:][:, valid_idxs]))
-                final_corr_input_list.append(np.squeeze(final_split.astype(np.int32)))
+                final_corr_section_input_list.append(np.squeeze(final_split.astype(np.int32)))
             else:
                 ts = np.hstack(([0], np.diff(dt_prt_split[1])))
                 final_split = np.vstack((ts, dt_prt_split[2:]))
-                final_corr_input_list.append(np.squeeze(final_split.astype(np.int32)))
+                final_corr_section_input_list.append(np.squeeze(final_split.astype(np.int32)))
                 valid_idxs = slice(None)
 
             # filter input
@@ -1295,66 +1281,6 @@ class SolutionSFCSMeasurement:
                     dt_prt_split[0][valid_idxs], get_afterpulsing
                 )
                 final_filter_input_list.append(split_filter)
-
-            # temporal background correlations - gather split info
-            if subtract_temporal_bg_corr:
-
-                # initialize variables
-                if split_idx == 0:
-                    t0 = 0
-                    last_idx = 0
-                    split_countrate_list = []
-                    split_lag_list = []
-                    accum_split_time_list = []
-                    split_idxs_list = []
-                    self.temporal_bg_corr_list = []
-
-                # convert timestamps from laser pulses to seconds
-                ts_s = ts / self.laser_freq_hz
-                t_split_s = np.cumsum(ts_s)
-                t_s = t_split_s + t0
-                t0 = t_s[-1]
-                accum_split_time_list.append(t_s)
-
-                # smooth using moving average with 50%-size window - required since data is extremely noisy
-                split_cr = 1.0 / (moving_average(ts, ts.size // 2))
-                split_countrate_list.append(split_cr)
-
-                # collect start/stop indices
-                split_idxs_list.append((last_idx, last_idx + dt_prt_split.shape[1]))
-                last_idx += dt_prt_split.shape[1]
-
-                # collect lags
-                split_lag_list.append(t_split_s)
-
-        # temporal background correlations - fit and correlate
-        if subtract_temporal_bg_corr:
-            t_total_s = np.hstack(accum_split_time_list)
-            cr_total = np.hstack(split_countrate_list)
-
-            # fitting exponent with background to measurement countrate curve
-            A0 = cr_total.max()
-            bg0 = cr_total.min()
-            try:
-                tau0 = t_total_s[np.nonzero(cr_total < A0 / np.exp(1))[0][0]]
-            except IndexError:
-                # happens if countrate does not significantly drop during the measurement.
-                # TODO: should do linear fit in this case? or just append a "zero" correlation?
-                tau0 = t_total_s[int(t_total_s.size / 2)]
-            FP = curve_fit_lims(
-                exponent_with_background_fit,
-                (A0, tau0, bg0),
-                t_total_s,
-                cr_total,
-                ys_errors=None,
-            )
-
-            # for each split, get ACF of relevant part of fit and add to list
-            # (to be interpolated upon and subtracted in Corrfunc.correlate_measurement)
-            for (start_idx, stop_idx), split_lag in zip(split_idxs_list, split_lag_list):
-                split_fit = FP.fitted_y[start_idx:stop_idx]
-                c, _ = xcorr(split_fit, split_fit)
-                self.temporal_bg_corr_list.append({"lag": split_lag, "corrfunc": c})
 
         if corr_options.get("is_verbose"):
             print("Done.")
@@ -1384,12 +1310,11 @@ class SolutionSFCSMeasurement:
             duration_min=self.duration_min,
         )
         CF.correlate_measurement(
-            final_corr_input_list,
+            final_corr_section_input_list,
             external_afterpulse_params
             if external_afterpulse_params is not None
             else self.afterpulse_params,
             getattr(self, "bg_line_corr_list", []) if subtract_spatial_bg_corr else [],
-            temporal_bg_corr_list=self.temporal_bg_corr_list if subtract_temporal_bg_corr else None,
             external_afterpulsing=external_afterpulsing,
             corr_filter_list=final_filter_input_list if is_filtered else None,
             should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
@@ -1410,117 +1335,6 @@ class SolutionSFCSMeasurement:
         self.cf[cf_name] = CF
 
         return CF
-
-    def cross_correlate_data(
-        self,
-        xcorr_types=["AB", "BA"],
-        cf_name=None,
-        gate1_ns=Gate(),
-        gate2_ns=Gate(),
-        afterpulse_params=None,
-        subtract_spatial_bg_corr=True,
-        is_verbose=False,
-        should_add_to_xcf_dict=True,
-        **kwargs,
-    ) -> Dict[str, CorrFunc]:
-        """Doc."""
-        # TODO: currently does not support 'Enderlein-filtering' - needs new correlator types built and code here fixed similarly to 'correlate_data'
-
-        if is_verbose:
-            print(
-                f"{self.type} - Preparing split data ({self.n_files} files) for software correlator...",
-                end=" ",
-            )
-
-        # Unite TDC gates and detector gates
-        gates = []
-        for i in (1, 2):
-            gate_ns = locals()[f"gate{i}_ns"]
-            tdc_gate_ns = Gate(gate_ns)
-            if tdc_gate_ns or self.detector_settings["gate_ns"]:
-                if not hasattr(self, "tdc_calib"):  # calibrate TDC (if not already calibrated)
-                    self.calibrate_tdc(is_verbose=is_verbose)
-                effective_lower_gate_ns = max(
-                    tdc_gate_ns.lower, self.detector_settings["gate_ns"].lower
-                )
-                effective_upper_gate_ns = min(
-                    tdc_gate_ns.upper, self.detector_settings["gate_ns"].upper
-                )
-                gates.append(Limits(effective_lower_gate_ns, effective_upper_gate_ns))
-        gate1_ns, gate2_ns = gates
-
-        # create list of split data for correlator
-        dt_ts_split_dict = self.data.prepare_xcorr_input(
-            xcorr_types,
-            gate1_ns=gate1_ns,
-            gate2_ns=gate2_ns,
-        )
-
-        if is_verbose:
-            print("Done.")
-
-        # disregard the first line of each split (delay_time, used for gating in autocorrelation) and convert to int32 for correlator
-        corr_input_dict: Dict[str, List] = {xx: [] for xx in xcorr_types}
-        for xx in xcorr_types:
-            for split in dt_ts_split_dict[xx]:
-                corr_input_dict[xx].append(np.squeeze(split[1:].astype(np.int32)))
-
-        # correlate data
-        if is_verbose:
-            print(
-                f"Correlating ({', '.join(xcorr_types)}) {self.scan_type} data ({cf_name} [{gate1_ns} vs. {gate2_ns}]):",
-                end=" ",
-            )
-
-        if self.scan_type in {"static", "circle"}:
-            correlator_option = SimpleNamespace(
-                auto=CorrelatorType.PH_DELAY_CORRELATOR,
-                cross=CorrelatorType.PH_DELAY_CROSS_CORRELATOR,
-            )
-        elif self.scan_type == "angular":
-            correlator_option = SimpleNamespace(
-                auto=CorrelatorType.PH_DELAY_CORRELATOR_LINES,
-                cross=CorrelatorType.PH_DELAY_CROSS_CORRELATOR_LINES,
-            )
-
-        # create a dictionary with instantiated CorrFunc objects according to the needed 'xcorr_types'
-        CF_dict = {
-            xx: CorrFunc(
-                f"{cf_name}_{xx} ({gate1_ns} vs. {gate2_ns} ns)"
-                if cf_name is not None
-                else f"{xx} ({gate1_ns} vs. {gate2_ns} ns)",
-                correlator_option.auto if xx in {"AA", "BB"} else correlator_option.cross,
-                self.laser_freq_hz,
-                # TODO: this (gate1_ns) is just to silence mypy. crosscorr currently not operational (needs testing)
-                gate1_ns,
-            )
-            for xx in xcorr_types
-        }
-
-        # cross/auto-correlate
-        for xx in xcorr_types:
-            CF = CF_dict[xx]
-            CF.correlate_measurement(
-                corr_input_dict[xx],
-                afterpulse_params if afterpulse_params is not None else self.afterpulse_params,
-                getattr(self, "bg_line_corr_list", []) if subtract_spatial_bg_corr else [],
-                **kwargs,
-            )
-
-            try:  # temporal to spatial conversion, if scanning
-                CF.vt_um = self.v_um_ms * CF.lag
-            except AttributeError:
-                CF.vt_um = CF.lag  # static
-
-            if should_add_to_xcf_dict:
-                # name the Corrfunc object
-                # TODO: this should be eventually a list, not a dict (only first element and all together are ever interesting)
-                self.xcf[CF.name] = CF
-
-        if is_verbose:
-            print("- Done.")
-
-        return CF_dict
 
     def remove_backgrounds(self):
         """Remove mean ACF backgrounds from all CorrFunc objects"""
@@ -1781,8 +1595,8 @@ class SolutionSFCSMeasurement:
         meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
             # don't save correlator inputs (re-built when loaded)
-            corr_input_list = self.corr_input_list
-            self.corr_input_list = None
+            corr_section_input_list = self.corr_section_input_list
+            self.corr_section_input_list = None
             self.filter_input_list = None
 
             # save the measurement object
@@ -1796,7 +1610,7 @@ class SolutionSFCSMeasurement:
                 should_track_progress=is_verbose,
             )
             # restore correlator inputs
-            self.corr_input_list = corr_input_list
+            self.corr_section_input_list = corr_section_input_list
 
             if is_verbose:
                 print("Done.")

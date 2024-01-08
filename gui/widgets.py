@@ -289,11 +289,13 @@ PROC_OPTIONS_COLL = QtWidgetCollection(
     should_alleviate_bright_pixels=("alleviateBrightPixels", "QCheckBox", "options", False),
     # general processing
     subtract_spatial_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
-    subtract_temporal_bg_corr=("subtractTemporalBgCorr", "QCheckBox", "options", False),
     should_ignore_hard_gate=("ignoreHardGate", "QCheckBox", "options", False),
     should_parallel_process=("useMultiProcessing", "QCheckBox", "options", False),
     should_unite_start_times=("shouldUniteStartTimes", "QCheckBox", "options", False),
     afterpulsing_method=("afterpulsingRemovalMethod", "QComboBox", "options", False),
+    should_data_slice=("dataSlice", "QCheckBox", "options", False),
+    slice_start_idx=("startIndex", "QSpinBox", "options", False),
+    slice_stop_idx=("stopIndex", "QSpinBox", "options", False),
     override_system_info=("useDefaultSysInfo", "QCheckBox", "options", False),
     should_weight_fits=("weightedFits", "QCheckBox", "options", False),
 )

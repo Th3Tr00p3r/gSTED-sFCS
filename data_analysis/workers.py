@@ -58,8 +58,8 @@ def dump_data_file(p):
     p.raw.dump()
 
 
-def get_xcorr_input_dict(p, **kwargs):
-    return p.get_xcorr_input_dict(**kwargs)
+def _get_section_splits(p, **kwargs):
+    return p._get_section_splits(**kwargs)
 
 
 def data_processing_worker(data_processing_queue, io_queue, **proc_options):

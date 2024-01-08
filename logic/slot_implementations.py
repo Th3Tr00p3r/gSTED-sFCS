@@ -27,7 +27,6 @@ from data_analysis.correlation_function import (
     SolutionSFCSExperiment,
     SolutionSFCSMeasurement,
 )
-from data_analysis.data_processing import AngularScanDataMixin
 from logic.scan_patterns import ScanPatternAO
 from utilities import file_utilities, fit_tools, helper
 from utilities.display import GuiDisplay, auto_brightness_and_contrast
@@ -1781,12 +1780,22 @@ class MainWin:
 
         # update loading_options with file selection # TODO: this should also move to 'PROC_OPTIONS_COLL'
         import_collection = wdgts.DATA_IMPORT_COLL.gui_to_dict(self._gui)
+        # file selection
         if import_collection["sol_file_dicrimination"].objectName() == "solImportUse":
             loading_options[
                 "file_selection"
             ] = f"{import_collection['sol_file_use_or_dont']} {import_collection['sol_file_selection']}"
         else:
             loading_options["file_selection"] = "Use All"
+        # data slicing
+        if loading_options["should_data_slice"]:
+            start_idx = loading_options["slice_start_idx"]
+            stop_idx = (
+                loading_options["slice_stop_idx"]
+                if loading_options["slice_stop_idx"] > start_idx
+                else None
+            )
+            loading_options["byte_data_slice"] = slice(start_idx, stop_idx, None)
 
         return loading_options
 
@@ -1924,7 +1933,7 @@ class MainWin:
                 roi = meas.roi_list[file_idx]
 
                 if should_normalize_rows:
-                    img = AngularScanDataMixin().normalize_scan_img_rows(img, mask)
+                    img = helper.normalize_scan_img_rows(img, mask)
                 if should_bw_mask:
                     img *= mask
 

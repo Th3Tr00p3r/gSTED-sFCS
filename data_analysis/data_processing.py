@@ -1,11 +1,9 @@
 """Data Processing."""
 
-import multiprocessing as mp
 from collections import deque
 from contextlib import suppress
 from copy import copy
 from dataclasses import InitVar, dataclass, field
-from functools import partial
 from itertools import count as infinite_range
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
@@ -14,15 +12,9 @@ import numpy as np
 import scipy
 import skimage
 
-from data_analysis.workers import N_CPU_CORES, get_xcorr_input_dict
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object
-from utilities.fit_tools import (
-    FitParams,
-    curve_fit_lims,
-    exponent_with_background_fit,
-    gaussian_1d_fit,
-)
+from utilities.fit_tools import FitParams, curve_fit_lims, exponent_with_background_fit
 from utilities.helper import (
     Gate,
     Limits,
@@ -157,37 +149,67 @@ class AngularScanDataMixin:
         return pix_shift
 
     def _threshold_and_smooth(
-        self, img, otsu_classes=4, n_bins=256, disk_radius=2, median_factor=1.1, **kwargs
+        self, image, otsu_classes=4, num_bins=256, disk_radius=2, median_factor=1.1, **kwargs
     ) -> np.ndarray:
-        """Doc."""
+        """
+        Apply thresholding and smoothing operations to an input image.
 
-        # global filtering of outliers (replace bright pixels with median of central area)
-        img = img.copy()
+        Parameters:
+        -----------
+        image : np.ndarray
+            Input image data.
+
+        otsu_classes : int, optional
+            Number of classes for Otsu's thresholding method. Default is 4.
+
+        num_bins : int, optional
+            Number of bins for histogram computation. Default is 256.
+
+        disk_radius : int, optional
+            Radius of the disk-shaped structuring element. Default is 2.
+
+        median_factor : float, optional
+            Factor to adjust the threshold for median filtering. Default is 1.1.
+
+        Returns:
+        --------
+        np.ndarray
+            Processed binary image after thresholding and smoothing operations.
+        """
+
+        # Make a copy of the input image to avoid modifying the original data
+        img = image.copy()
+
+        # Global filtering of outliers (replace bright pixels with median of central area)
         _, width = img.shape
-        median = np.median(img[:, int(width * 0.25) : int(width * 0.75)])
-        img[img > median * median_factor] = median
+        central_area_median = np.median(img[:, int(width * 0.25) : int(width * 0.75)])
+        median_threshold = central_area_median * median_factor
+        img[img > median_threshold] = central_area_median
 
-        # minor local filtering of outliers then thresholding
-        thresh = skimage.filters.threshold_multiotsu(
-            skimage.filters.median(img).astype(np.float32), otsu_classes, nbins=n_bins
+        # Minor local filtering of outliers, then thresholding using Otsu's method
+        median_filtered_img = skimage.filters.median(img).astype(np.float32)
+        otsu_thresholds = skimage.filters.threshold_multiotsu(
+            median_filtered_img, otsu_classes, nbins=num_bins
         )
-        cnt_dig = np.digitize(img, bins=thresh)
+        digitized_img = np.digitize(img, bins=otsu_thresholds)
 
-        plateau_lvl = np.median(img[cnt_dig == (otsu_classes - 1)])
-        std_plateau = scipy.stats.median_abs_deviation(img[cnt_dig == (otsu_classes - 1)])
-        dev_cnt = img - plateau_lvl
-        bw = dev_cnt >= -std_plateau
+        # Determine plateau level and standard deviation of plateau pixels
+        plateau_level = np.median(img[digitized_img == (otsu_classes - 1)])
+        std_dev_plateau = scipy.stats.median_abs_deviation(img[digitized_img == (otsu_classes - 1)])
+        deviation_from_plateau = img - plateau_level
+        binary_image = deviation_from_plateau >= -std_dev_plateau
 
-        bw = scipy.ndimage.binary_fill_holes(bw)
-        disk_open = skimage.morphology.disk(radius=disk_radius)
-        bw = skimage.morphology.opening(bw, footprint=disk_open)
+        # Fill holes in the binary image and perform morphological opening
+        binary_image = scipy.ndimage.binary_fill_holes(binary_image)
+        disk_structure = skimage.morphology.disk(radius=disk_radius)
+        binary_image = skimage.morphology.opening(binary_image, footprint=disk_structure)
 
-        return bw
+        return binary_image
 
     def _get_line_markers_and_roi(
         self,
         bw_mask: np.ndarray,
-        pulse_runtime: np.ndarray,
+        sample_runtime: np.ndarray,
         laser_freq_hz: int,
         ao_sampling_freq_hz: int,
     ):
@@ -199,24 +221,27 @@ class AngularScanDataMixin:
         line_stop_labels = []
         roi: Dict[str, deque] = {"row": deque([]), "col": deque([])}
 
-        sample_runtime = pulse_runtime * ao_sampling_freq_hz // laser_freq_hz
+        # sec_slice = slice(None, None)
+        # diff_test_arr = np.hstack(([0], np.diff(test_arr)))
+        # jump_idxs = (diff_test_arr > 1).nonzero()[0]
+        # sec_edges = np.hstack(([sec_slice.start], jump_idxs, [sec_slice.stop]))
+        # all_section_slices = [slice(*edges) for edges in np.array([sec_edges[:-1], sec_edges[1:]]).T]
 
         for row_idx in np.unique(bw_mask.nonzero()[0]):
+            # the the left and right edges for the row
             nonzero_row_idxs = bw_mask[row_idx, :].nonzero()[0]
             left_edge, right_edge = nonzero_row_idxs[0], nonzero_row_idxs[-1]
-            # add row to ROI
-            roi["row"].appendleft(row_idx)
-            roi["col"].appendleft(left_edge)
-            roi["row"].append(row_idx)
-            roi["col"].append(right_edge)
-
-            line_starts_new_idx = np.ravel_multi_index((row_idx, left_edge), bw_mask.shape)
+            # get the flat index of the line start for row
+            row_start_flat_idx = np.ravel_multi_index((row_idx, left_edge), bw_mask.shape)
+            # get all line start indices for that line index by adding integer whole scans
             line_starts_new = list(
-                range(sample_runtime[0] + line_starts_new_idx, sample_runtime[-1], bw_mask.size)
+                range(sample_runtime[0] + row_start_flat_idx, sample_runtime[-1], bw_mask.size)
             )
-            line_stops_new_idx = np.ravel_multi_index((row_idx, right_edge), bw_mask.shape)
+            # get the flat index of the line stop for row
+            row_stop_flat_idx = np.ravel_multi_index((row_idx, right_edge), bw_mask.shape)
+            # get all line stops indices for that line index by adding integer whole scans
             line_stops_new = list(
-                range(sample_runtime[0] + line_stops_new_idx, sample_runtime[-1], bw_mask.size)
+                range(sample_runtime[0] + row_stop_flat_idx, sample_runtime[-1], bw_mask.size)
             )
 
             try:
@@ -226,73 +251,42 @@ class AngularScanDataMixin:
             except ValueError:
                 continue
             else:
+                # mark line starts with '-row_idx' except for zero, where 'ZERO_LINE_START_ADDER' is used instead
                 line_start_labels += [
                     (-ZERO_LINE_START_ADDER if row_idx == 0 else -row_idx)
                     for elem in range(len(line_starts_new))
                 ]
+                # mark line ends with '-row_idx - LINE_END_ADDER'
                 line_stop_labels += [
                     (-row_idx - LINE_END_ADDER) for elem in range(len(line_stops_new))
                 ]
                 line_starts += line_starts_new
                 line_stops += line_stops_new
 
+            # add row to ROI
+            roi["row"].appendleft(row_idx)
+            roi["col"].appendleft(left_edge)
+            roi["row"].append(row_idx)
+            roi["col"].append(right_edge)
+
         # repeat first point to close the polygon
         roi["row"].append(roi["row"][0])
         roi["col"].append(roi["col"][0])
 
-        # convert lists/deques to numpy arrays
-        roi = {key: np.array(val, dtype=np.uint16) for key, val in roi.items()}
-        line_start_labels = np.array(line_start_labels, dtype=np.int16)
-        line_stop_labels = np.array(line_stop_labels, dtype=np.int16)
-        line_starts = np.array(line_starts, dtype=np.int64)
-        line_stops = np.array(line_stops, dtype=np.int64)
-
-        line_starts_prt = line_starts * round(laser_freq_hz / ao_sampling_freq_hz)
-        scan_line_stops_prt = line_stops * round(laser_freq_hz / ao_sampling_freq_hz)
-
-        return line_starts_prt, scan_line_stops_prt, line_start_labels, line_stop_labels, roi
-
-    def get_bright_pixels(self, img: np.ndarray, mask: np.ndarray, thresh_factor=1000, **kwargs):
-        """Get a mask for 'bright pixels' of an image using a histogram-based heuristic method."""
-
-        # select number of bins based on number of unique values in ROI
-        n_unique = len(np.unique(img[mask]))
-        n_bins = max(10, round(n_unique / 3.5))
-
-        scan_hist, bin_edges = np.histogram(img[mask], bins=n_bins)
-        bin_num = np.arange(len(scan_hist))
-        bg_part = round(n_bins / 10)
-
-        # fit Gaussian to histogram
-        FP = curve_fit_lims(
-            gaussian_1d_fit,
-            (
-                scan_hist[bg_part:].max() / 10,
-                np.mean(bin_num[bg_part:]),
-                len(bin_num[bg_part:]) / 10,
-                0,
-            ),
-            bin_num[bg_part:],
-            scan_hist[bg_part:],
-            curve_fit_kwargs=dict(
-                bounds=(  # A, mu, sigma, bg
-                    [0, 0, 0, -10],
-                    [1e4, bin_num.max(), bin_num.max(), 0],
-                )
-            ),
+        # convert to Numpy arrays and return
+        line_starts_prt: np.ndarray = (
+            np.array(line_starts, dtype=np.int64) * laser_freq_hz / ao_sampling_freq_hz
+        ).astype(int)
+        line_stops_prt = (
+            np.array(line_stops, dtype=np.int64) * laser_freq_hz / ao_sampling_freq_hz
+        ).astype(int)
+        return (
+            line_starts_prt,
+            line_stops_prt,
+            np.array(line_start_labels, dtype=np.int16),
+            np.array(line_stop_labels, dtype=np.int16),
+            {key: np.array(val, dtype=np.uint16) for key, val in roi.items()},
         )
-
-        # get bin where fitted_y drops to 1/N_TRESH of value and use as threshold
-        try:
-            thresh_bin = FP.x[
-                (FP.x > FP.beta["mu"]) & (FP.fitted_y < FP.beta["A"] / thresh_factor)
-            ][0]
-        except IndexError:
-            thresh_bin = bin_num.max()
-
-        # get the bad pixels
-        d = np.digitize(img, bin_edges)
-        return d > thresh_bin
 
     def _bg_line_correlations(
         self,
@@ -328,23 +322,6 @@ class AngularScanDataMixin:
                     }
                 )
         return line_corr_list
-
-    def normalize_scan_img_rows(self, img: np.ndarray, mask=None):
-        """Normalize an image to the median of the maximum row. Optionally use a supplied mask first."""
-
-        if mask is None:
-            mask = np.full(img.shape, True, dtype=np.bool)
-            mask[-1, :] = False  # last row is always empty
-
-        temp_img = img.copy().astype(np.float64)
-        temp_img[~mask] = 0
-        max_row = np.argmax(temp_img.sum(axis=1))
-        max_row_median = np.median(img[max_row][mask[max_row]])
-        norm_masked_img = img.astype(np.float64)
-        for row_idx in np.unique(norm_masked_img.nonzero()[0]):
-            if mask[row_idx].any():
-                norm_masked_img[row_idx] *= max_row_median / np.median(img[row_idx][mask[row_idx]])
-        return norm_masked_img
 
 
 class RawFileData:
@@ -604,16 +581,15 @@ class GeneralFileData:
 
     # general
     laser_freq_hz: int
-    section_runtime_edges: list
     size_estimate_mb: float
     duration_s: float
     skipped_duration: float
+    all_section_slices: np.ndarray = None
     avg_cnt_rate_khz: float = None
     image: np.ndarray = None
     bg_line_corr: List[Dict[str, Any]] = None
 
     # continuous scan
-    all_section_edges: np.ndarray = None
     split_duration_s: float = None
     # TODO: 'split_duration_s' should be an attribute of the measurement, not a specific data file - it is uniform anyway
 
@@ -624,8 +600,6 @@ class GeneralFileData:
     roi: Dict[str, deque] = None
     bw_mask: np.ndarray = None
     image_bw_mask: np.ndarray = None
-    pix_shift: int = None
-    single_scan_edges: List[Tuple[int, int]] = None
     normalized_masked_alleviated_image: np.ndarray = None
 
 
@@ -745,182 +719,52 @@ class TDCPhotonFileData:
     def __repr__(self):
         return f"TDCPhotonFileData(idx={self.idx}, dump_path={self.dump_path})"
 
-    def import_raw(self, raw_data: np.ndarray, **kwargs):
-        """Load RawFileData using an existing ndarray"""
-
-        self.raw = RawFileData(
-            self.idx,
-            self.dump_path,
-            *[line for line in raw_data],
-            **kwargs,
-        )
-
-    def get_xcorr_input_dict(
-        self, xcorr_types: List[str], gate1_ns=Gate(), gate2_ns=Gate(), **kwargs
-    ):
-        """Return a list of SoftwareCorrelator input units (splits) from a measurement data in a single file (self)"""
-
-        if self.raw.line_num is not None:  # line data
-            return self._get_line_xcorr_input_dict(xcorr_types, gate1_ns, gate2_ns, **kwargs)
-        else:  # continuous data
-            return self._get_continuous_xcorr_input_dict(xcorr_types, gate1_ns, gate2_ns, **kwargs)
-
-    def _get_line_xcorr_input_dict(
+    def get_section_line_splits(
         self,
-        xcorr_types: List[str],
-        gate1_ns,
-        gate2_ns,
+        sec_slice: slice,
+        sec_idx: int,
+        gate_ns,
         **kwargs,
     ):
         """Splits are all photons belonging to each scan line."""
 
-        # Gating is performed here
-        dt = self.raw.delay_time
+        # get valid indices
+        sec_dt = self.raw.delay_time[sec_slice]
         # NOTE: NaNs mark line starts/ends (used to create valid = -1/-2 needed in C code)
-        nan_idxs = np.isnan(dt)
-        if "A" in "".join(xcorr_types):
-            gate1_idxs = gate1_ns.valid_indices(dt)
-            valid_idxs1 = gate1_idxs | nan_idxs
-            dt1 = dt[valid_idxs1]
-            prt1 = self.raw.pulse_runtime[valid_idxs1]
-            ts1 = np.hstack(([0], np.diff(prt1)))
-            dt_ts1 = np.vstack((dt1, ts1))
-            line_num1 = self.raw.line_num[valid_idxs1]
-        if "B" in "".join(xcorr_types):
-            gate2_idxs = gate2_ns.valid_indices(dt)
-            valid_idxs2 = gate2_idxs | nan_idxs
-            dt2 = dt[valid_idxs2]
-            prt2 = self.raw.pulse_runtime[valid_idxs2]
-            ts2 = np.hstack(([0], np.diff(prt2)))
-            dt_ts2 = np.vstack((dt2, ts2))
-            line_num2 = self.raw.line_num[valid_idxs2]
-        if "AB" in xcorr_types or "BA" in xcorr_types:
-            # NOTE: # gate2 is first in line to match how software correlator C-code is written
-            dt_ts12 = np.vstack(
-                (
-                    dt,
-                    self.raw.pulse_runtime,
-                    valid_idxs2,
-                    valid_idxs1,
-                )
-            )[:, valid_idxs1 | valid_idxs2]
-            dt_ts12[0] = np.hstack(([0], np.diff(dt_ts12[0])))
-            line_num12 = self.raw.line_num[valid_idxs1 | valid_idxs2]
+        nan_idxs = np.isnan(sec_dt)
+        in_gate_idxs = gate_ns.valid_indices(sec_dt)
+        valid_idxs = in_gate_idxs | nan_idxs
+        # create split components
+        sec_dt = sec_dt[valid_idxs]
+        sec_prt = self.raw.pulse_runtime[sec_slice][valid_idxs]
+        sec_ts = np.hstack(([0], np.diff(sec_prt)))
+        sec_dt_ts = np.vstack((sec_dt, sec_ts))
+        sec_line_num = self.raw.line_num[sec_slice][valid_idxs]
+        # add validity to each photon (based on line attribution)
+        sec_valid_lines = self.general.valid_lines[sec_idx]
+        line_splits = [
+            self._add_validity(sec_dt_ts, line_idx, sec_line_num, **kwargs)
+            for line_idx in sec_valid_lines
+        ]
+        return line_splits
 
-        xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
-        for line_idx in self.general.valid_lines:
-            for xx in xcorr_types:
-                if xx == "AA":
-                    xcorr_input_dict[xx].append(
-                        self._add_validity(dt_ts1, line_idx, line_num1, **kwargs)
-                    )
-                if xx == "BB":
-                    xcorr_input_dict[xx].append(
-                        self._add_validity(dt_ts2, line_idx, line_num2, **kwargs)
-                    )
-                if xx == "AB":
-                    xcorr_input_AB = self._add_validity(
-                        dt_ts12,
-                        line_idx,
-                        line_num12,
-                        **kwargs,
-                    )
-                    xcorr_input_dict[xx].append(xcorr_input_AB)
-                if xx == "BA":
-                    if "AB" in xcorr_types:
-                        xcorr_input_dict[xx].append(xcorr_input_AB[[0, 2, 1, 3], :])
-                    else:
-                        dt_ts21 = dt_ts12[[0, 2, 1, 3], :]
-                        xcorr_input_dict[xx].append(
-                            self._add_validity(
-                                dt_ts21,
-                                line_idx,
-                                line_num12,
-                                **kwargs,
-                            )
-                        )
-
-        print(".", end="")  # TESTESTEST
-        return xcorr_input_dict
-
-    def _get_continuous_xcorr_input_dict(
+    def get_section_continuous_splits(
         self,
-        xcorr_types: List[str],
-        gate1_ns: Gate,
-        gate2_ns: Gate,
+        sec_slice: slice,
+        gate_ns: Gate,
         *args,
         **kwargs,
     ):
         """Continuous scan/static measurement - splits are arbitrarily cut along the measurement"""
 
-        # Unite all sections
-        total_duration = 0
-        section_pulse_runtimes = []
-        section_delay_times = []
-        for se_idx, (se_start, se_end) in enumerate(self.general.all_section_edges):
-            total_duration += (
-                self.raw.pulse_runtime[se_end] - self.raw.pulse_runtime[se_start]
-            ) / self.general.laser_freq_hz
-            section_pulse_runtimes.append(self.raw.pulse_runtime[se_start : se_end + 1])
-            section_delay_times.append(self.raw.delay_time[se_start : se_end + 1])
-
-        pulse_runtime = np.hstack(section_pulse_runtimes)
-        delay_time = np.hstack(section_delay_times)
-
-        # split the data into parts A/B according to gates
-        if "A" in "".join(xcorr_types):
-            gate1_idxs = gate1_ns.valid_indices(delay_time)
-            prt1 = pulse_runtime[gate1_idxs]
-            dt1 = delay_time[gate1_idxs]
-            dt_prt1 = np.vstack((dt1, prt1))
-
-        if "B" in "".join(xcorr_types):
-            gate2_idxs = gate2_ns.valid_indices(delay_time)
-            prt2 = pulse_runtime[gate2_idxs]
-            dt2 = delay_time[gate2_idxs]
-            dt_prt2 = np.vstack((dt2, prt2))
-        if "AB" in xcorr_types or "BA" in xcorr_types:
-            prt12 = pulse_runtime
-            dt_prt12 = np.vstack((delay_time, prt12, gate2_idxs, gate1_idxs))[
-                :, gate1_idxs | gate2_idxs
-            ]
+        sec_dt = self.raw.delay_time[sec_slice]
+        gate_idxs = gate_ns.valid_indices(sec_dt)
+        sec_dt = sec_dt[gate_idxs]
+        sec_prt = self.raw.pulse_runtime[sec_slice][gate_idxs]
+        sec_dt_prt = np.vstack((sec_dt, sec_prt))
 
         # add all splits for each requested xcorr type
-        xcorr_input_dict: Dict[str, List[np.ndarray]] = {xx: [] for xx in xcorr_types}
-        for xx in xcorr_types:
-            if xx == "AA":
-                xcorr_input_dict[xx].extend(
-                    self._split_continuous_section(
-                        dt_prt1,
-                    )
-                )
-            elif xx == "BB":
-                xcorr_input_dict[xx].extend(
-                    self._split_continuous_section(
-                        dt_prt2,
-                    )
-                )
-            elif xx == "AB":
-                xcorr_input_AB = self._split_continuous_section(
-                    dt_prt12,
-                )
-                xcorr_input_dict[xx].extend(xcorr_input_AB)
-
-            elif xx == "BA":
-                if "AB" in xcorr_types:
-                    xcorr_input_dict[xx].extend(xcorr_input_AB[[0, 2, 1], :])
-                else:
-                    dt_prt21 = dt_prt12[[0, 2, 1], :]
-                    xcorr_input_dict[xx].extend(
-                        self._split_continuous_section(
-                            dt_prt21,
-                        )
-                    )
-
-        # track file progress
-        print(".", end="")
-
-        return xcorr_input_dict
+        return self._split_continuous_section(sec_dt_prt)
 
     def _split_continuous_section(
         self,
@@ -954,18 +798,18 @@ class TDCPhotonFileData:
     def _add_validity(
         self,
         dt_ts_in,
-        idx,
+        line_idx,
         line_num,
         **kwargs,
     ) -> np.ndarray:
         """Doc."""
 
-        valid = (line_num == idx).astype(np.int8)
-        if idx != 0:
-            valid[line_num == -idx] = -1
+        valid = (line_num == line_idx).astype(np.int8)
+        if line_idx != 0:
+            valid[line_num == -line_idx] = -1
         else:
             valid[line_num == -ZERO_LINE_START_ADDER] = -1
-        valid[line_num == -idx - LINE_END_ADDER] = -2
+        valid[line_num == -line_idx - LINE_END_ADDER] = -2
 
         #  remove photons from wrong lines
         dt_ts_out = dt_ts_in[:, valid != 0]
@@ -1011,47 +855,25 @@ class TDCPhotonMeasurementData(list):
     def __init__(self):
         super().__init__()
 
-    def prepare_xcorr_input(
-        self, xcorr_types: List[str], should_parallel_process=False, **kwargs
-    ) -> Dict[str, List]:
+    def prepare_corr_split_list(self, gate_ns=Gate(), **kwargs) -> List[np.ndarray]:
         """
         Prepare SoftwareCorrelator input from complete measurement data.
-        Gates are meant to divide the data into 2 parts (A&B), each having its own splits.
-        To perform autocorrelation, only one ("AA") is used, and in the default (0, inf) limits, with actual gating done later in 'correlate_data' method.
         """
 
-        # parallel processing
-        if should_parallel_process and (N_FILES := len(self)) > 20:
-            N_PROCESSES = N_CPU_CORES - 1
-            CHUNKSIZE = N_FILES // N_PROCESSES
-            kwargs["xcorr_types"] = xcorr_types
-            partial_get_splits_dict = partial(get_xcorr_input_dict, **kwargs)
-            print(
-                f"(Parallel processing using {N_PROCESSES} processes, with chunksize {CHUNKSIZE}) ",
-                end="",
-            )
-            with mp.get_context().Pool(N_PROCESSES) as pool:
-                file_xcorr_input_dict_list = list(
-                    pool.imap_unordered(partial_get_splits_dict, self, CHUNKSIZE)
-                )
+        split_list = []
+        # iterate over all files
+        for p in self:
+            # get splits separately for each section (the main reason is that the line numbers in different sections are not neccessarily identical)
+            # TODO: I could possibly define 'global' line numbers for each file, which could allow me to combine matching photon line numbers of different sections into the same splits
+            for sec_idx, sec_slice in enumerate(p.general.all_section_slices):
+                if p.raw.line_num is not None:
+                    # line data
+                    split_list += p.get_section_line_splits(sec_slice, sec_idx, gate_ns, **kwargs)
+                else:
+                    # continuous data
+                    split_list += p.get_section_continuous_splits(sec_slice, gate_ns, **kwargs)
 
-        # serial (regular) processing
-        else:
-            file_xcorr_input_dict_list = [
-                p.get_xcorr_input_dict(xcorr_types, **kwargs) for p in self
-            ]
-
-        # TODO: explain this in a comment (uniting the dicts)
-        xcorr_input_dict = {
-            xx: [
-                xcorr_input
-                for xcorr_input_dict in file_xcorr_input_dict_list
-                for xcorr_input in xcorr_input_dict[xx]
-            ]
-            for xx in xcorr_types
-        }
-
-        return xcorr_input_dict
+        return split_list
 
 
 @dataclass
@@ -1262,7 +1084,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             scan_type = "static"
             p = self._convert_fpga_data_to_photons(
                 idx,
-                is_scan_continuous=True,
                 **proc_options,
             )
 
@@ -1285,7 +1106,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         idx,
         byte_data_path=None,
         byte_data=None,
-        is_scan_continuous=False,
         should_use_all_sections=True,
         len_factor=0.01,
         byte_data_slice=None,
@@ -1304,39 +1124,44 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         # option to use only certain parts of data (for testing)
         if byte_data_slice is not None:
-            print(f"Using slice of data: {byte_data_slice.stop/len(byte_data):.2%} ", end="")
+            print(
+                f"Using {byte_data_slice} of data ({byte_data[byte_data_slice].size/byte_data.size:.2%} used) ",
+                end="",
+            )
             byte_data = byte_data[byte_data_slice]
 
-        section_edges, tot_single_errors = self._find_all_section_edges(byte_data)
-        section_lengths = [edge_stop - edge_start for (edge_start, edge_stop) in section_edges]
+        section_slices, tot_single_errors = self._find_all_section_edges(byte_data)
+        section_lengths = [sec_slice.stop - sec_slice.start for sec_slice in section_slices]
 
         if should_use_all_sections:
             photon_idxs_list: List[int] = []
             section_runtime_edges = []
-            for start_idx, end_idx in section_edges:
-                if end_idx - start_idx > sum(section_lengths) * len_factor:
+            for sec_slice in section_slices:
+                if sec_slice.stop - sec_slice.start > sum(section_lengths) * len_factor:
                     section_runtime_start = len(photon_idxs_list)
-                    section_photon_indxs = list(range(start_idx, end_idx, self.GROUP_LEN))
+                    section_photon_indxs = list(
+                        range(sec_slice.start, sec_slice.stop, self.GROUP_LEN)
+                    )
                     section_runtime_end = section_runtime_start + len(section_photon_indxs)
                     photon_idxs_list += section_photon_indxs
-                    section_runtime_edges.append((section_runtime_start, section_runtime_end))
+                    section_runtime_edges.append(slice(section_runtime_start, section_runtime_end))
 
             photon_idxs = np.array(photon_idxs_list)
 
         else:  # using largest section only
-            max_sec_start_idx, max_sec_end_idx = section_edges[np.argmax(section_lengths)]
-            photon_idxs = np.arange(max_sec_start_idx, max_sec_end_idx, self.GROUP_LEN)
-            section_runtime_edges = [(0, len(photon_idxs))]
+            max_sec_slice = section_slices[np.argmax(section_lengths)]
+            photon_idxs = np.arange(max_sec_slice.start, max_sec_slice.stop, self.GROUP_LEN)
+            section_runtime_edges = [slice(0, len(photon_idxs))]
 
         if proc_options.get("is_verbose"):
-            if len(section_edges) > 1:
+            if len(section_slices) > 1:
                 print(
-                    f"Found {len(section_edges)} sections of lengths: {', '.join([str(round(sec_len * 1e-3)) for sec_len in section_lengths])} Kb.",
+                    f"Found {len(section_slices)} sections of lengths: {', '.join([str(round(sec_len * 1e-3)) for sec_len in section_lengths])} Kb.",
                     end=" ",
                 )
                 if should_use_all_sections:
                     print(
-                        f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_edges)}/{len(section_edges)}).",
+                        f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_edges)}/{len(section_slices)}).",
                         end=" ",
                     )
                 else:  # Use largest section only
@@ -1376,6 +1201,32 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         neg_time_stamp_idxs = np.where(time_stamps < 0)[0]
         for i in neg_time_stamp_idxs + 1:
             pulse_runtime[i:] += self.MAX_VAL
+        time_stamps = np.hstack(([0], np.diff(pulse_runtime).astype(np.int32)))
+
+        # Break each section into sub-setions according to simple outlier timestamp detection
+        all_section_slices, skipped_duration = self._section_continuous_data(
+            slice(0, pulse_runtime.size), pulse_runtime, time_stamps, **proc_options
+        )
+
+        #        # Break each section into sub-setions according to simple outlier timestamp detection
+        #        skipped_duration = 0
+        #        all_section_slices = []
+        #        for sec_slice in section_runtime_edges:
+        #            sec_prt = pulse_runtime[sec_slice]
+        #            sec_ts = time_stamps[sec_slice]
+        #            sec_subslices, sec_skipped_duration = self._section_continuous_data(
+        #                sec_slice, sec_prt, sec_ts, **proc_options
+        #            )
+        #            all_section_slices += sec_subslices
+        #            skipped_duration += sec_skipped_duration
+
+        #        # TESTESTEST
+        #        with Plotter(selection_limits=Limits(), close_after_selection=True) as ax:
+        #            ax.plot(pulse_runtime)
+        #            for sec_slice in all_section_slices:
+        #                ax.axvline(sec_slice.start, color="green")
+        #                ax.axvline(sec_slice.stop, color="red")
+        #        # /TESTESTEST
 
         # handling coarse and fine times (for gating)
         coarse = byte_data[photon_idxs + 4].astype(np.int16)
@@ -1387,16 +1238,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         coarse = coarse_mod64
 
         # Duration calculation
-        time_stamps = np.diff(pulse_runtime).astype(np.int32)
         duration_s = (time_stamps / self.laser_freq_hz).sum()
-
-        if is_scan_continuous:  # relevant for static/circular data
-            all_section_edges, skipped_duration = self._section_continuous_data(
-                pulse_runtime, time_stamps, **proc_options
-            )
-        else:  # angular scan
-            all_section_edges = None
-            skipped_duration = 0
 
         return TDCPhotonFileData(
             # TODO: using properties, I can ignore the fact that some attributes are 'raw' and some are 'general' and get less code
@@ -1404,12 +1246,11 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             GeneralFileData(
                 # general
                 laser_freq_hz=self.laser_freq_hz,
-                section_runtime_edges=section_runtime_edges,
                 size_estimate_mb=max(section_lengths) / 1e6,
                 duration_s=duration_s,
                 skipped_duration=skipped_duration,
+                all_section_slices=all_section_slices,
                 # continuous scan
-                all_section_edges=all_section_edges,
                 split_duration_s=split_duration_s,
             ),
             RawFileData(
@@ -1429,56 +1270,60 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
     def _section_continuous_data(
         self,
-        pulse_runtime,
-        time_stamps,
-        max_outlier_prob=1e-5,
-        n_splits_requested=10,
-        min_time_frac=0.5,
+        sec_slice: slice,
+        pulse_runtime: np.ndarray,
+        time_stamps: np.ndarray,
+        max_time_stamp=300_000,  # TESTESTEST
+        max_outlier_prob=1e-9,
         **kwargs,
     ):
         """Find outliers and create sections seperated by them. Short sections are discarded"""
 
-        mu = np.median(time_stamps) / np.log(2)
-        duration_estimate_s = mu * len(pulse_runtime) / self.laser_freq_hz
-
         # find additional outliers (improbably large time_stamps) and break into
         # additional sections if they exist.
         # for exponential distribution MEDIAN and MAD are the same, but for
-        # biexponential MAD seems more sensitive
-        mu = max(np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()) / np.log(
-            2
-        )
-        max_time_stamp = scipy.stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
-        sec_edges = (time_stamps > max_time_stamp).nonzero()[0].tolist()
-        if (n_outliers := len(sec_edges)) > 0 and kwargs.get("is_verbose"):
+        #        # biexponential MAD seems more sensitive
+        #        mu = max(np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()) / np.log(
+        #            2
+        #        )
+        #        max_time_stamp = scipy.stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
+        jump_idxs = (time_stamps > max_time_stamp).nonzero()[0]
+        if (n_outliers := len(jump_idxs)) > 0 and kwargs.get("is_verbose"):
             print(f"found {n_outliers} outliers.", end=" ")
-        sec_edges = [0] + sec_edges + [len(time_stamps)]
-        all_section_edges = np.array([sec_edges[:-1], sec_edges[1:]]).T
+        sec_edges = np.hstack(([sec_slice.start], jump_idxs, [sec_slice.stop]))
+        all_section_slices = [
+            slice(*edges) for edges in np.array([sec_edges[:-1], sec_edges[1:]]).T
+        ]
 
-        # Filter short sections
-        # TODO: duration limitation is unclear
-        split_duration = duration_estimate_s / n_splits_requested
-        skipped_duration = 0
-        all_section_edges_valid = []
-        # Ignore short sections (default is below half the run_duration)
-        for se_idx, (se_start, se_end) in enumerate(all_section_edges):
-            section_time = (pulse_runtime[se_end] - pulse_runtime[se_start]) / self.laser_freq_hz
-            if section_time < min_time_frac * split_duration:
-                if kwargs.get("is_verbose"):
-                    print(
-                        f"Skipping section {se_idx} - too short ({section_time * 1e3:.2f} ms).",
-                        end=" ",
-                    )
-                skipped_duration += section_time
-            else:  # use section
-                all_section_edges_valid.append((se_start, se_end))
+        #        # Filter short sections
+        #        # TODO: duration limitation is unclear
+        #        skipped_duration = 0
+        #        all_section_edges_valid = []
+        #        # Ignore short sections (default is below half the run_duration)
+        #        for sec_idx, (sec_start, sec_end) in enumerate(all_section_edges):
+        #            section_time = (pulse_runtime[sec_end-1] - pulse_runtime[sec_start]) / self.laser_freq_hz
+        #            if section_time < min_section_duration_s:
+        #                if kwargs.get("is_verbose"):
+        #                    print(
+        #                        f"Skipping section {sec_idx} - too short ({section_time * 1e3:.2f} ms).",
+        #                        end=" ",
+        #                    )\
+        #                skipped_duration += section_time
+        #            else:  # use section
+        #                all_section_edges_valid.append((sec_start, sec_end))
 
-        return np.array(all_section_edges_valid), skipped_duration
+        # get largest section
+        section_lengths = [sec_slice.stop - sec_slice.start for sec_slice in all_section_slices]
+        #        skipped_duration = sum(section_lengths) - max(section_lengths)
+        skipped_duration = pulse_runtime.size - sum(section_lengths)
+
+        #        return [all_section_slices[np.argmax(section_lengths)]], skipped_duration
+        return all_section_slices, skipped_duration
 
     def _find_all_section_edges(
         self,
         byte_data: np.ndarray,
-    ) -> Tuple[List[Tuple[int, int]], int]:
+    ) -> Tuple[List[slice], int]:
         """Doc."""
 
         section_edges = []
@@ -1492,8 +1337,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             )
             new_edge_start += last_edge_stop
             new_edge_stop += last_edge_stop
-            section_edges.append((new_edge_start, new_edge_stop))
-            last_edge_stop = new_edge_stop
+            section_edges.append(slice(new_edge_start, new_edge_stop))
+            last_edge_stop = section_edges[-1].stop
             total_single_errors += n_single_errors
 
         return section_edges, total_single_errors
@@ -1640,7 +1485,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         p = self._convert_fpga_data_to_photons(
             idx,
-            is_scan_continuous=True,
             **proc_options,
         )
 
@@ -1703,19 +1547,35 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         if kwargs.get("is_verbose"):
             print("Converting angular scan to image...", end=" ")
 
-        pulse_runtime = np.empty(p.raw.pulse_runtime.shape, dtype=np.int64)
+        # initialize the total scan image and the ROI mask
         img = np.zeros((p.general.n_lines + 1, p.general.samples_per_line), dtype=np.uint16)
-        sample_runtime = np.empty(pulse_runtime.shape, dtype=np.int64)
-        pixel_num = np.empty(pulse_runtime.shape, dtype=np.int64)
-        line_num = np.empty(pulse_runtime.shape, dtype=np.int16)
-        for sec_idx, (start_idx, end_idx) in enumerate(p.general.section_runtime_edges):
-            sec_pulse_runtime = p.raw.pulse_runtime[start_idx:end_idx]
+        img_bw = np.full(img.shape, False, dtype=bool)
+
+        pulse_runtime_list = []
+        coarse_list = []
+        coarse2_list = []
+        fine_list = []
+        pixel_num_list = []
+        line_num_list = []
+        delay_time_list = []
+        new_section_slices = []
+        p.general.valid_lines = []
+        p.general.bg_line_corr = []
+        last_idx = 0
+        for sec_slice in p.general.all_section_slices:
+            # after concatenating the sections, these will be the new section slices to use for creating splits for correlator
+            new_section_slices.append(
+                slice(last_idx, last_idx + (sec_slice.stop - sec_slice.start))
+            )
+            last_idx = new_section_slices[-1].stop
+
+            sec_pulse_runtime = p.raw.pulse_runtime[sec_slice]
             (
                 sec_img,
                 sec_sample_runtime,
                 sec_pixel_num,
                 sec_line_num,
-                pix_shift,
+                sec_pix_shift,
             ) = self.convert_angular_scan_to_image(
                 sec_pulse_runtime,
                 self.laser_freq_hz,
@@ -1724,253 +1584,180 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 p.general.n_lines,
                 **kwargs,
             )
+            sec_shifted_sample_runtime = sec_sample_runtime + sec_pix_shift
+            sec_prt_shift = sec_pix_shift * round(self.laser_freq_hz / ao_sampling_freq_hz)
 
-            pulse_runtime[start_idx:end_idx] = sec_pulse_runtime
-            img += sec_img
-            sample_runtime[start_idx:end_idx] = sec_sample_runtime
-            pixel_num[start_idx:end_idx] = sec_pixel_num
-            line_num[start_idx:end_idx] = sec_line_num
-
-        # work with entire scan image, then return to ROI lines start/stops after
-        prt_shift = pix_shift * round(self.laser_freq_hz / ao_sampling_freq_hz)
-        (
-            whole_line_starts_prt,
-            whole_line_stops_prt,
-            whole_line_start_labels,
-            whole_line_stop_labels,
-            _,
-        ) = self._get_line_markers_and_roi(
-            np.full(img.shape, True),
-            pulse_runtime + prt_shift,
-            self.laser_freq_hz,
-            ao_sampling_freq_hz,
-        )
-
-        # keeping the single-scan, in ROI, start/stop runtimes
-        single_scan_edges = list(
-            zip(
-                whole_line_starts_prt[whole_line_start_labels == whole_line_start_labels[0]],
-                whole_line_stops_prt[whole_line_stop_labels == whole_line_stop_labels[-1]],
-            )
-        )
-
-        if roi_selection == "auto":
-            if kwargs.get("is_verbose"):
-                print("Thresholding and smoothing...", end=" ")
-            try:
-                img_bw = self._threshold_and_smooth(img.copy())
-            except ValueError:
-                raise RuntimeError("Automatic ROI selection: Thresholding failed")
-        elif roi_selection == "all":
-            img_bw = np.full(img.shape, True)
-        else:
-            raise ValueError(
-                f"roi_selection='{roi_selection}' is not supported. Only 'auto' is, at the moment."
-            )
-
-        # cut edges
-        bw_temp = np.full(img_bw.shape, False, dtype=bool)
-        bw_temp[:, linear_part] = img_bw[:, linear_part]
-        img_bw = bw_temp
-
-        # discard short rows, then fill long rows
-        m2 = np.sum(img_bw, axis=1)
-        img_bw[m2 < 0.5 * m2.max(), :] = False
-        true_vals = np.argwhere(img_bw)
-        for row_idx in np.unique(img_bw.nonzero()[0]):
-            true_idxs = true_vals[true_vals[:, 0] == row_idx][:, 1]
-            img_bw[row_idx, true_idxs.min() : true_idxs.max() + 1] = True
-
-        # create a copy and reverse 2nd rows again to get a "data mask"
-        bw = img_bw.copy()
-        bw[1::2, :] = np.flip(bw[1::2, :], 1)
-
-        if kwargs.get("is_verbose"):
-            print("Building ROI...", end=" ")
-
-        # TODO: this is an experimantal feature - it should be fixed so that only the "best" (least bright spots) of each file are used
-        if kwargs.get("should_alleviate_bright_pixels"):
-            if kwargs.get("is_verbose"):
-                print("Getting rid of rows with bright spots on the single-scan level...", end=" ")
-
-            n_lines_removed = 0  # TESTESTEST
-            n_total_lines = p.general.n_lines * len(single_scan_edges)  # TESTESTEST
-
-            line_list = img_bw.sum(axis=1).nonzero()[0]  # initialize once
-
-            # calculate the pulse runtime shift from the pixel shift
-            prt_shift = pix_shift * round(self.laser_freq_hz / ao_sampling_freq_hz)
-            # initialize the valid indices to be all False, then set the photons in good rows (which are in ful scans) to True
-            total_valid_photon_idxs = np.full(len(line_num), False, dtype=bool)
-            scan_line_starts_prt_list = []
-            scan_line_stops_prt_list = []
-            scan_line_start_labels_list = []
-            scan_line_stop_labels_list = []
-            for scan_idx, (scan_start_prt, scan_stop_prt) in enumerate(single_scan_edges):
-                # get the indices of in-scan photons
-                in_scan_idxs = Limits(scan_start_prt, scan_stop_prt).valid_indices(pulse_runtime)
-                scan_prt = pulse_runtime[in_scan_idxs]
-
-                # Handle faulty scans
-                if scan_prt.size < 100:
-                    raise RuntimeError(
-                        f"One of the single scans (index {scan_idx}) is faulty. Ignoring whole file."
-                    )
-
-                # prepare scan image to discriminate bad rows (with bright pixels)
-                scan_img, _, scan_pixel_num, scan_line_num, _ = self.convert_angular_scan_to_image(
-                    scan_prt + prt_shift,
-                    self.laser_freq_hz,
-                    ao_sampling_freq_hz,
-                    p.general.samples_per_line,
-                    p.general.n_lines,
-                )
-                bright_pixels_img_bw = self.get_bright_pixels(scan_img, img_bw, **kwargs)
-                scan_bad_row_labels = np.unique(bright_pixels_img_bw.nonzero()[0])
-
-                # get indices of all valid photons (full rows withought bright spots) in the scan
-                total_valid_photon_idxs[in_scan_idxs] = np.in1d(
-                    scan_line_num, scan_bad_row_labels, invert=True
-                )
-
-                # also get the valid line start/stop and labels indices and ignore the bad lines
-                valid_scan_line_idxs = np.in1d(
-                    line_list, scan_bad_row_labels, assume_unique=True, invert=True
-                )
-
-                #                # Check out line discrimination in each scan image # TESTESTEST
-                #                with Plotter(should_force_aspect=True) as ax: # TESTESTEST
-                #                    ax.imshow(scan_img * scan_img_bw, vmin=0, vmax=128, interpolation="none") # TESTESTEST
-                #                    for bad_row_idx in set([label for label in scan_bad_row_labels if label >= 0]): # TESTESTEST
-                #                        ax.axhline(y=bad_row_idx, color="r", lw=1, ls="--") # TESTESTEST
-
-                # get in-scan line starts/stops/labels (necessary in this case since the ROI "changes" each scan - lines starts/stops change)
-                (
-                    scan_line_starts_prt,
-                    scan_line_stops_prt,
-                    scan_line_start_labels,
-                    scan_line_stop_labels,
-                    _,
-                ) = self._get_line_markers_and_roi(
-                    img_bw, scan_prt + prt_shift, self.laser_freq_hz, ao_sampling_freq_hz
-                )
-
+            # get BW section image
+            if roi_selection == "auto":
+                if kwargs.get("is_verbose"):
+                    print("Thresholding and smoothing...", end=" ")
                 try:
-                    scan_line_starts_prt = scan_line_starts_prt[valid_scan_line_idxs]
-                    scan_line_stops_prt = scan_line_stops_prt[valid_scan_line_idxs]
-                    scan_line_start_labels = scan_line_start_labels[valid_scan_line_idxs]
-                    scan_line_stop_labels = scan_line_stop_labels[valid_scan_line_idxs]
-                except IndexError:
-                    # scan_line_starts_prt is empty
-                    ...
-                else:
-                    # add to total list of start/stops
-                    scan_line_starts_prt_list.append(scan_line_starts_prt)
-                    scan_line_stops_prt_list.append(scan_line_stops_prt)
-                    scan_line_start_labels_list.append(scan_line_start_labels)
-                    scan_line_stop_labels_list.append(scan_line_stop_labels)
+                    sec_img_bw = self._threshold_and_smooth(sec_img.copy())
+                except ValueError:
+                    raise RuntimeError("Automatic ROI selection: Thresholding failed")
+            elif roi_selection == "all":
+                sec_img_bw = np.full(sec_img.shape, True)
+            else:
+                raise ValueError(
+                    f"roi_selection='{roi_selection}' is not supported. Only 'auto' is, at the moment."
+                )
 
-                n_lines_removed += len(scan_bad_row_labels)
+            # cut edges
+            bw_temp = np.full(sec_img_bw.shape, False, dtype=bool)
+            bw_temp[:, linear_part] = sec_img_bw[:, linear_part]
+            sec_img_bw = bw_temp
 
-            print(f"removed: {n_lines_removed:.0f}/{n_total_lines} lines.")
+            # discard short rows, then fill long rows
+            m2 = np.sum(sec_img_bw, axis=1)
+            sec_img_bw[m2 < 0.5 * m2.max(), :] = False
+            true_vals = np.argwhere(sec_img_bw)
+            for row_idx in np.unique(sec_img_bw.nonzero()[0]):
+                true_idxs = true_vals[true_vals[:, 0] == row_idx][:, 1]
+                sec_img_bw[row_idx, true_idxs.min() : true_idxs.max() + 1] = True
 
-            # Now, to actually discriminate the bad rows using the accumulated indices
-            pulse_runtime = pulse_runtime[total_valid_photon_idxs]
-            coarse = p.raw.coarse[total_valid_photon_idxs]
-            coarse2 = p.raw.coarse2[total_valid_photon_idxs]
-            fine = p.raw.fine[total_valid_photon_idxs]
+            # Getting line markers and ROI
+            if kwargs.get("is_verbose"):
+                print("Building ROI...", end=" ")
 
-            # create a new scan image as well
-            (p.general.image, _, pixel_num, line_num, _,) = self.convert_angular_scan_to_image(
-                pulse_runtime + prt_shift,
-                self.laser_freq_hz,
-                ao_sampling_freq_hz,
-                p.general.samples_per_line,
-                p.general.n_lines,
-            )
-
-            # Now cut crop the filtered lines using the ROI
-            # TODO: get the ROI separately - all I need is the 'img_bw' anyway...
-            *_, roi = self._get_line_markers_and_roi(
-                img_bw, pulse_runtime + prt_shift, self.laser_freq_hz, ao_sampling_freq_hz
-            )
-
-            # remove bad lines from line starts/stops/labels (sorting them by pulse runtime first so they match the scan line order)
-            # unite all line starts/stops/labels
-            line_starts_prt = np.hstack(tuple(scan_line_starts_prt_list))
-            line_stops_prt = np.hstack(tuple(scan_line_stops_prt_list))
-            line_start_labels = np.hstack(tuple(scan_line_start_labels_list))
-            line_stop_labels = np.hstack(tuple(scan_line_stop_labels_list))
-
-        else:
             try:
                 (
-                    line_starts_prt,
-                    line_stops_prt,
-                    line_start_labels,
-                    line_stop_labels,
-                    roi,
+                    sec_line_starts_prt,
+                    sec_line_stops_prt,
+                    sec_line_start_labels,
+                    sec_line_stop_labels,
+                    sec_roi,
                 ) = self._get_line_markers_and_roi(
-                    img_bw, pulse_runtime + prt_shift, self.laser_freq_hz, ao_sampling_freq_hz
+                    sec_img_bw, sec_shifted_sample_runtime, self.laser_freq_hz, ao_sampling_freq_hz
                 )
             except IndexError:
-                # TODO: this should just be an error, and handled as such up the call chain
+                # TODO: this should be allowed to propagate and handled up the call chain
                 if kwargs.get("is_verbose"):
                     print("ROI is empty (need to figure out the cause). Skipping file.\n")
                 return None
 
-            coarse = p.raw.coarse
-            coarse2 = p.raw.coarse2
-            fine = p.raw.fine
-            p.general.image = img
+            #            # TESTESTEST -redraw the image with only the line start/stops
+            #            # calculate the number of samples obtained at each photon arrival, since beginning of file
+            #            sec_line_starts_sample_runtime = sec_line_starts_prt * ao_sampling_freq_hz // self.laser_freq_hz
+            #            # calculate to which pixel each photon belongs (possibly many samples per pixel)
+            #            sec_line_starts_pixel_num = sec_line_starts_sample_runtime % p.general.samples_per_line
+            #            # calculate to which line each photon belongs (global, not considering going back to the first line)
+            #            sec_line_starts_line_num_tot = sec_line_starts_sample_runtime // p.general.samples_per_line
+            #            # calculate to which line each photon belongs (extra line is for returning to starting position)
+            #            sec_line_starts_line_num = (sec_line_starts_line_num_tot % (p.general.n_lines + 1)).astype(np.int16)
+            #
+            #            with Plotter(selection_limits=Limits(), close_after_selection=True, should_force_aspect=True) as ax:
+            #                ax.imshow(sec_img, interpolation="none")
+            #                ax.plot(sec_roi["col"], sec_roi["row"], color="white")
+            #                # plot all line starts on image
+            #                ax.scatter(sec_line_starts_pixel_num, sec_line_starts_line_num, c="green")
+            #            # /TESTESTEST
 
-        # Inserting the line start/stop markers into the arrays
-        pulse_runtime = np.hstack((line_starts_prt, line_stops_prt, pulse_runtime))
-        sorted_idxs = np.argsort(pulse_runtime)
-        new_pulse_runtime = pulse_runtime[sorted_idxs]
-        # Set an 'out-of-bounds' line number to all photons outside mask (these are later ignored by '_prepare_correlator_input')
-        line_num[~bw[line_num, pixel_num]] = -3000  # TODO: give this a constant
+            # COMMENT HERE
+            sec_coarse = p.raw.coarse[sec_slice]
+            sec_coarse2 = p.raw.coarse2[sec_slice]
+            sec_fine = p.raw.fine[sec_slice]
 
-        new_line_num = np.hstack(
-            (
-                line_start_labels,
-                line_stop_labels,
-                line_num,
+            # Inserting the line start/stop markers into the arrays
+            sec_pulse_runtime = np.hstack(
+                (sec_line_starts_prt, sec_line_stops_prt, sec_pulse_runtime + sec_prt_shift)
             )
-        )[sorted_idxs]
-        line_starts_nans = np.full(line_starts_prt.size, NAN_PLACEBO, dtype=np.int16)
-        line_stops_nans = np.full(line_stops_prt.size, NAN_PLACEBO, dtype=np.int16)
-        new_coarse = np.hstack((line_starts_nans, line_stops_nans, coarse))[sorted_idxs]
-        new_coarse2 = np.hstack((line_starts_nans, line_stops_nans, coarse2))[sorted_idxs]
-        new_fine = np.hstack((line_starts_nans, line_stops_nans, fine))[sorted_idxs]
+            sec_sorted_idxs = np.argsort(sec_pulse_runtime)
+            sec_pulse_runtime = sec_pulse_runtime[sec_sorted_idxs]
+            # Set an 'out-of-bounds' line number to all photons outside mask (these are later ignored by '_prepare_correlator_input')
+            sec_bw = sec_img_bw.copy()
+            sec_bw[1::2, :] = np.flip(sec_bw[1::2, :], 1)
+            sec_line_num[~sec_bw[sec_line_num, sec_pixel_num]] = -3000  # TODO: give this a constant
+            sec_line_num = np.hstack(
+                (
+                    sec_line_start_labels,
+                    sec_line_stop_labels,
+                    sec_line_num,
+                )
+            )[sec_sorted_idxs]
 
-        # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
-        delay_time = np.full(new_pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16)
-        line_edge_idxs = new_fine == NAN_PLACEBO
-        delay_time[line_edge_idxs] = np.nan
+            # keep the valid lines for each section
+            sec_valid_lines = np.unique(sec_line_num[sec_line_num >= 0])
+            p.general.valid_lines.append(sec_valid_lines)
+
+            #            # TESTESTEST
+            #            with Plotter(selection_limits=Limits(), close_after_selection=True, should_force_aspect=True) as ax:
+            #                ax.imshow(sec_img, interpolation="none")
+            #                ax.plot(sec_roi["col"], sec_roi["row"], color="white")
+            #            # /TESTESTEST
+
+            # TESTESTEST
+            with Plotter(selection_limits=Limits(), close_after_selection=True) as ax:
+                ax.plot(sec_line_num[:10000], "o")
+            # /TESTESTEST
+
+            # Getting section background correlation
+            if kwargs.get("is_verbose"):
+                print("Getting background correlation...", end=" ")
+            p.general.bg_line_corr += self._bg_line_correlations(
+                sec_img,
+                sec_img_bw,
+                sec_valid_lines,
+                ao_sampling_freq_hz,
+            )
+
+            sec_line_starts_nans = np.full(sec_line_starts_prt.size, NAN_PLACEBO, dtype=np.int16)
+            sec_line_stops_nans = np.full(sec_line_stops_prt.size, NAN_PLACEBO, dtype=np.int16)
+            sec_coarse = np.hstack((sec_line_starts_nans, sec_line_stops_nans, sec_coarse))[
+                sec_sorted_idxs
+            ]
+            sec_coarse2 = np.hstack((sec_line_starts_nans, sec_line_stops_nans, sec_coarse2))[
+                sec_sorted_idxs
+            ]
+            sec_fine = np.hstack((sec_line_starts_nans, sec_line_stops_nans, sec_fine))[
+                sec_sorted_idxs
+            ]
+
+            # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
+            sec_delay_time = np.full(
+                sec_pulse_runtime.shape, self.detector_gate_ns.lower, dtype=np.float16
+            )
+            sec_line_edge_idxs = sec_fine == NAN_PLACEBO
+            sec_delay_time[sec_line_edge_idxs] = np.nan
+
+            # keep all section stuff in lists, to be combined into arrays afterwards
+            pulse_runtime_list.append(sec_pulse_runtime)
+            pixel_num_list.append(sec_pixel_num)
+            line_num_list.append(sec_line_num)
+            delay_time_list.append(sec_delay_time)
+            coarse_list.append(sec_coarse)
+            coarse2_list.append(sec_coarse2)
+            fine_list.append(sec_fine)
+
+            # combine section images
+            img += sec_img
+            img_bw += sec_img_bw
+
+        # combine sections
+        pulse_runtime = np.hstack(pulse_runtime_list)
+        line_num = np.hstack(line_num_list)
+        delay_time = np.hstack(delay_time_list)
+        coarse = np.hstack(coarse_list)
+        coarse2 = np.hstack(coarse2_list)
+        fine = np.hstack(fine_list)
+        # update the section slices after leaving only the in-section indices
+        p.general.all_section_slices = new_section_slices
 
         # replace the raw data after angular scan changes made
-        p.import_raw(
-            np.vstack(
-                (new_coarse, new_coarse2, new_fine, new_pulse_runtime, delay_time, new_line_num)
-            ),
+        p.raw = RawFileData(
+            p.idx,
+            p.dump_path,
+            coarse,
+            coarse2,
+            fine,
+            pulse_runtime,
+            delay_time,
+            line_num,
             **kwargs,
         )
-
+        p.general.image = img
         p.general.image_bw_mask = img_bw
-        p.general.roi = roi
-        p.general.pix_shift = pix_shift
-        p.general.single_scan_edges = single_scan_edges
-
-        # get background correlation
-        if kwargs.get("is_verbose"):
-            print("Getting background correlation...", end=" ")
-        p.general.valid_lines = np.unique(new_line_num[new_line_num >= 0])
-        p.general.bg_line_corr = self._bg_line_correlations(
-            p.general.image,
-            img_bw,
-            p.general.valid_lines,
-            ao_sampling_freq_hz,
+        p.general.roi = (
+            sec_roi  # TODO: THIS IS THE LAST ROI, NEED TO COMBINE THEM (IMAGE IS COMBINED)
         )
 
         return p

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>407</width>
-    <height>541</height>
+    <width>362</width>
+    <height>528</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,12 +26,18 @@
       <enum>QFrame::Raised</enum>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_7">
+      <property name="spacing">
+       <number>2</number>
+      </property>
       <item>
        <widget class="QGroupBox" name="groupBox_2">
         <property name="title">
          <string>General</string>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="spacing">
+          <number>2</number>
+         </property>
          <item>
           <widget class="QCheckBox" name="useDefaultSysInfo">
            <property name="toolTip">
@@ -56,17 +62,6 @@ System Info</string>
              <property name="text">
               <string>Subtract
 Spatial Background</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="subtractTemporalBgCorr">
-             <property name="toolTip">
-              <string>Subtract spatial correlations from the section/file scan.</string>
-             </property>
-             <property name="text">
-              <string>Subtract
-Temporal Background </string>
              </property>
             </widget>
            </item>
@@ -142,6 +137,111 @@ Temporal Background </string>
               </property>
              </item>
             </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_9">
+           <property name="spacing">
+            <number>6</number>
+           </property>
+           <item>
+            <widget class="QCheckBox" name="dataSlice">
+             <property name="font">
+              <font>
+               <pointsize>8</pointsize>
+              </font>
+             </property>
+             <property name="toolTip">
+              <string>Define a slice of data to use for each file</string>
+             </property>
+             <property name="text">
+              <string>Data Slice</string>
+             </property>
+             <property name="tristate">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_10">
+             <property name="spacing">
+              <number>2</number>
+             </property>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_9">
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="label_7">
+                 <property name="text">
+                  <string>Start Index</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="startIndex">
+                 <property name="toolTip">
+                  <string>Minimum byte-data index to use (per file)</string>
+                 </property>
+                 <property name="buttonSymbols">
+                  <enum>QAbstractSpinBox::NoButtons</enum>
+                 </property>
+                 <property name="maximum">
+                  <number>999999999</number>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_10">
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="label_8">
+                 <property name="text">
+                  <string>Stop Index</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="stopIndex">
+                 <property name="toolTip">
+                  <string>Maximum byte-data index to use (per file)</string>
+                 </property>
+                 <property name="buttonSymbols">
+                  <enum>QAbstractSpinBox::NoButtons</enum>
+                 </property>
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>999999999</number>
+                 </property>
+                 <property name="value">
+                  <number>10</number>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_4">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </item>
