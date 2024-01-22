@@ -6,7 +6,7 @@ from copy import copy
 from dataclasses import InitVar, dataclass, field
 from itertools import count as infinite_range
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Generator, List, Tuple, Union
 
 import numpy as np
 import scipy
@@ -753,11 +753,9 @@ class TDCPhotonFileData:
         sec_line_num = self.raw.line_num[sec_slice][valid_idxs]
         # add validity to each photon (based on line attribution)
         sec_valid_lines = self.general.valid_lines[sec_idx]
-        line_splits = [
-            self._add_validity(sec_dt_ts, line_idx, sec_line_num, **kwargs)
-            for line_idx in sec_valid_lines
-        ]
-        return line_splits
+        for line_idx in sec_valid_lines:
+            line_split = self._add_validity(sec_dt_ts, line_idx, sec_line_num, **kwargs)
+            yield line_split
 
     def get_section_continuous_splits(
         self,
@@ -775,7 +773,7 @@ class TDCPhotonFileData:
         sec_dt_prt = np.vstack((sec_dt, sec_prt))
 
         # add all splits for each requested xcorr type
-        return self._split_continuous_section(sec_dt_prt)
+        yield from self._split_continuous_section(sec_dt_prt)
 
     def _split_continuous_section(
         self,
@@ -866,12 +864,13 @@ class TDCPhotonMeasurementData(list):
     def __init__(self):
         super().__init__()
 
-    def prepare_corr_split_list(self, gate_ns=Gate(), **kwargs) -> Tuple[List[np.ndarray], int]:
+    def prepare_corr_split_list(
+        self, gate_ns=Gate(), **kwargs
+    ) -> Generator[np.ndarray, None, None]:
         """
         Prepare SoftwareCorrelator input from complete measurement data.
         """
 
-        split_list = []
         # iterate over all files
         for p in self:
             # get splits separately for each section (the main reason is that the line numbers in different sections are not neccessarily identical)
@@ -879,15 +878,10 @@ class TDCPhotonMeasurementData(list):
             for sec_idx, sec_slice in enumerate(p.general.all_section_slices):
                 if p.raw.line_num is not None:
                     # line data
-                    split_list += p.get_section_line_splits(sec_slice, sec_idx, gate_ns, **kwargs)
+                    yield from p.get_section_line_splits(sec_slice, sec_idx, gate_ns, **kwargs)
                 else:
                     # continuous data
-                    split_list += p.get_section_continuous_splits(sec_slice, gate_ns, **kwargs)
-
-            if kwargs.get("is_verbose"):
-                print(".", end="")
-
-        return split_list, len(split_list)
+                    yield from p.get_section_continuous_splits(sec_slice, gate_ns, **kwargs)
 
 
 @dataclass

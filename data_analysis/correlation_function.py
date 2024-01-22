@@ -293,7 +293,6 @@ class CorrFunc:
     def correlate_measurement(
         self,
         split_gen: Generator[np.ndarray, None, None],
-        n_splits: int,
         *args,
         **kwargs,
     ) -> None:
@@ -304,7 +303,6 @@ class CorrFunc:
 
         output, self.split_durations_s, valid_idxs = self.SC.correlate_list(
             split_gen,
-            n_splits,
             self.laser_freq_hz,
             self.correlator_type,
             timebase_ms=1000 / self.laser_freq_hz,
@@ -808,39 +806,8 @@ class SolutionSFCSMeasurement:
         self.was_processed_data_loaded = False
         self.data = TDCPhotonMeasurementData()
         self._was_corr_input_built: bool = False
-        self.n_splits = None
         self.afterpulsing_filter: AfterpulsingFilter = None
         self.lifetime_params: LifeTimeParams = None
-
-    @property
-    def corr_section_input_gen(self):
-        """Load the memory-mapped arrays as a generator"""
-
-        if not self._was_corr_input_built:
-            return None
-        else:
-            fpath = Path(
-                str(self.file_path_template)
-                .replace("_*", "")
-                .replace(".pkl", "")
-                .replace(".mat", "")
-                + ".npz"
-            )
-            self._corr_section_input_list = np.load(fpath, mmap_mode="r")
-            return (
-                self._corr_section_input_list[file] for file in self._corr_section_input_list.files
-            )
-
-    @corr_section_input_gen.setter
-    def corr_section_input_gen(self, arr_list: List[np.ndarray]):
-        """Save the splits to disk to free RAM"""
-
-        fpath = Path(
-            str(self.file_path_template).replace("_*", "").replace(".pkl", "").replace(".mat", "")
-            + ".npz"
-        )
-        np.savez(fpath, *arr_list)
-        self._was_corr_input_built = True
 
     @property
     def avg_cnt_rate_khz(self):
@@ -1301,16 +1268,6 @@ class SolutionSFCSMeasurement:
                 if corr_options.get("is_verbose"):
                     print(f"Using existing {self.type} afterpulsing filter.")
 
-        # build correlator input - create list of split data for correlator.
-        if self.corr_section_input_gen is None:
-            if corr_options.get("is_verbose"):
-                print("Building correlator section input splits: ", end="")
-            self.corr_section_input_gen, self.n_splits = self.data.prepare_corr_split_list(
-                **corr_options
-            )
-            if corr_options.get("is_verbose"):
-                print(" Done.")
-
         # choose correct correlator type
         if self.scan_type in {"static", "circle"}:
             if is_filtered:
@@ -1336,15 +1293,15 @@ class SolutionSFCSMeasurement:
             duration_min=self.duration_min,
         )
         CF.correlate_measurement(
+            # TODO: perhaps both 'generate_combined_inputs' and 'data.prepare_corr_split_list' can be united in data_processing.py
             self.generate_combined_inputs(
-                self.corr_section_input_gen,
+                self.data.prepare_corr_split_list(**corr_options),
                 subtract_spatial_bg_corr,
                 gate_ns,
                 is_filtered,
                 get_afterpulsing,
                 corr_options.get("is_verbose", False),
             ),
-            self.n_splits,
             external_afterpulse_params
             if external_afterpulse_params is not None
             else self.afterpulse_params,

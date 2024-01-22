@@ -106,7 +106,6 @@ class SoftwareCorrelator:
     def correlate_list(
         self,
         split_gen: Generator[np.ndarray, None, None],
-        n_splits: int,
         laser_freq_hz: int,
         *args,
         **kwargs,
@@ -128,6 +127,8 @@ class SoftwareCorrelator:
         split_durations_s = []
         valid_idxs = []
         for idx, (ts_split, filter_split) in enumerate(split_gen):
+            if kwargs.get("is_verbose") and idx > 0:
+                print(", ", end="")
             if (
                 ts_split is not None and ts_split.size != 0 and ts_split.shape != ()
             ):  # has elements and is not a scalar
@@ -136,7 +137,7 @@ class SoftwareCorrelator:
                 corr_output = self.correlate(ts_split, *args, **kwargs)
                 correlator_output_list.append(corr_output)
                 if kwargs.get("is_verbose"):
-                    print(idx + 1, end=(", " if idx < n_splits - 1 else ""))
+                    print(idx + 1, end="")
                 valid_idxs.append(idx)
 
             # calculate split duration
