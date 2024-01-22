@@ -56,7 +56,7 @@
          <enum>QTabWidget::Rounded</enum>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>1</number>
         </property>
         <property name="elideMode">
          <enum>Qt::ElideNone</enum>
@@ -5268,6 +5268,13 @@ DOWN the queue</string>
                         <number>0</number>
                        </property>
                        <item>
+                        <widget class="QCheckBox" name="shouldPlot">
+                         <property name="text">
+                          <string>Plot</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
                         <layout class="QVBoxLayout" name="verticalLayout_26">
                          <property name="spacing">
                           <number>0</number>
@@ -5275,8 +5282,7 @@ DOWN the queue</string>
                          <item>
                           <widget class="QCheckBox" name="shouldFit">
                            <property name="text">
-                            <string>Should
-Fit</string>
+                            <string>Fit</string>
                            </property>
                           </widget>
                          </item>

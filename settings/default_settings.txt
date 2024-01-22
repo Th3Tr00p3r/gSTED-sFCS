@@ -13,6 +13,9 @@ psdDescription,FT230X Basic UART
 psdModelQuery,RSN
 cam1Serial,4102737458
 cam2Serial,4102835063
+um232BitMode,Single Channel Synchronous 245 FIFO
+um232FlowControl,RTS-CTS
+um232Description,UM232H
 counterPixelClockAddress,Dev1/Ctr0
 pixelClockCounterIntOutputAddress,/Dev3/Ctr0InternalOutput
 counterTriggerAddress,Dev3/port1/line0
@@ -43,9 +46,6 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-um232BitMode,Single Channel Synchronous 245 FIFO
-um232FlowControl,RTS-CTS
-um232Description,UM232H
 arduinoAddr,COM3
 spadBaudRate,115200
 spadTimeout,100
@@ -53,6 +53,10 @@ psdBaudRate,115200
 psdTimeout,10
 psdThreshold_mV,-500
 psdFreqDiv,1
+um232Timeout,2
+um232TxSize,256000
+um232NumBytes,256000
+um232LatencyTimerVal,2
 TDClaserFreq,10
 TDCFPGAFreq,400
 TDCversion,3
@@ -61,11 +65,7 @@ pixelClockHighTicks,2
 pixelClockLowTicks,10
 maxScanFreq,40
 AIclkDiv,100
-um232Timeout,2
-um232TxSize,256000
-um232NumBytes,256000
-um232LatencyTimerVal,2
-stepperStageStepsPerSampleDrop,1000
+stepperStageStepsPerSampleDrop,700
 syncDelay,49.61
 excIdleTimer,60.0
 depIdleTimer,60.0

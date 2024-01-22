@@ -15,13 +15,21 @@ from utilities import helper
 class QtWidgetAccess:
     """Doc."""
 
-    def __init__(self, obj_name: str, widget_class: str, gui_parent_name: str, does_hold_obj: bool):
+    def __init__(
+        self,
+        obj_name: str,
+        widget_class: str,
+        gui_parent_name: str,
+        does_hold_obj: bool,
+        inverse_bool: bool = False,
+    ):
         self.obj_name = obj_name
         self.getter: str
         self.setter: str
         self.getter, self.setter, _ = _getter_setter_type_dict.get(widget_class, (None,) * 3)
         self.gui_parent_name = gui_parent_name
         self.does_hold_obj = does_hold_obj
+        self._inverse_bool = inverse_bool
 
     def hold_widget(self, parent_gui) -> QtWidgetAccess:
         """Save the actual widget object as an attribute"""
@@ -35,7 +43,10 @@ class QtWidgetAccess:
 
         if self.getter is not None:
             wdgt = self.obj if parent_gui is None else getattr(parent_gui, self.obj_name)
-            return getattr(wdgt, self.getter)()
+            val = getattr(wdgt, self.getter)()
+            if isinstance(val, bool) and self._inverse_bool:
+                val = not val
+            return val
         else:
             return None
 
@@ -275,6 +286,7 @@ DATA_IMPORT_COLL = QtWidgetCollection(
 )
 
 PROC_OPTIONS_COLL = QtWidgetCollection(
+    force_processing=("solImportAutoLoadProcessed", "QCheckBox", "main", False, True),
     # continuous scan processing
     split_duration_s=("splitDuration", "QDoubleSpinBox", "options", False),
     # image scan processing
@@ -412,6 +424,7 @@ SOL_MEAS_COLL = QtWidgetCollection(
     g0_wdgt=("g0", "QDoubleSpinBox", "main", True),
     tau_wdgt=("decayTime", "QDoubleSpinBox", "main", True),
     plot_wdgt=("solScanAcf", None, "main", True),
+    should_plot=("shouldPlot", "QCheckBox", "main", False),
     should_fit=("shouldFit", "QCheckBox", "main", False),
     fit_led=("ledFit", "QIcon", "main", True),
     should_accumulate_corrfuncs=("accumAcf", "QCheckBox", "main", False),

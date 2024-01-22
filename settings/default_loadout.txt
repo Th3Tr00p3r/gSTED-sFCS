@@ -1,11 +1,15 @@
-solScanFileTemplate,
 imgScanFileTemplate,gb
-newTemplate,YOYO30kbp_1in150_1uW_angular_exc
+solScanFileTemplate,
+newTemplate,bp300_angular_exc
 solImportFileSelectionPattern,1
 searchQuery,
 lineEdit,
 experimentName,test
 spadMode,free running
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
 solScanFloatingAmp,0
 circAoSampFreq,10000
 circDiameter,25
@@ -20,10 +24,6 @@ maxWidth,42
 solPointsPerLine,102
 solTotPointsPerLine,125
 solNumLines,22
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
 expStrctFctrRbstIntrpPnts,3
 tdcCalibGating,40
 scanImgFileNum,1
@@ -33,16 +33,16 @@ depCurr,1500
 stageSteps,250
 spadGateWidth,98
 spadEffGateWidth,1
+imgScanDim1,15.0
+imgScanDim2,15.0
+imgScanDim3,0.0
+imgScanLinFrac,0.9
 solScanMaxFileSize,20.0
 solScanStageDwell,5.0
 solLinFrac,0.9
 solAngActualSpeed,8800.0
 solActualScanFreq,40.0
 solScanDur,25.0
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,0.0
-imgScanLinFrac,0.9
 expStrctFctrGMin,0.01
 customGateLifetimesLower,0.5
 customGateLifetimesUpper,99.0
@@ -54,17 +54,17 @@ zAOV,5.0
 axisMoveUm,5.0
 psdDelay,0.0
 psdEffDelay,49.61
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - normalized
 solMeasPreset,Standard Angular
 solScanStagePattern,None
 solScanType,angular
 solScanDurUnits,seconds
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - normalized
-dataMonth,12
-dataYear,2023
-dataDay,20
-dataTemplate1,YOYO30kbp_1in150_1uW_angular_exc_140343_*.pkl
+dataMonth,5
+dataYear,2018
+dataDay,10
+dataTemplate1,bp300_angular_exc_000000_*.mat
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -86,8 +86,8 @@ repeatSolMeas,False
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveDbscan,False
@@ -109,11 +109,12 @@ tabWidget_2,0
 tabWidget_4,0
 tabWidget_3,0
 tabWidget_5,1
-circShouldPrecess,True
-shouldFit,False
-accumAcf,True
 autoCrosshair,True
 alwaysSaveImg,False
+circShouldPrecess,True
+shouldPlot,False
+shouldFit,False
+accumAcf,True
 solImportReCorrelate,False
 solImportAutoLoadProcessed,False
 bwMask,False

@@ -5,7 +5,7 @@ from collections import namedtuple
 from ctypes import CDLL, c_double, c_int, c_long
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import Generator, List, Tuple
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
@@ -105,11 +105,12 @@ class SoftwareCorrelator:
 
     def correlate_list(
         self,
-        list_of_photon_arrays: List[np.ndarray],
+        split_gen: Generator[np.ndarray, None, None],
+        n_splits: int,
+        laser_freq_hz: int,
         *args,
-        corr_filter_list=None,
         **kwargs,
-    ) -> SoftwareCorrelatorListOutput:
+    ) -> Tuple[SoftwareCorrelatorListOutput, List[float], List[int]]:
         """Doc."""
 
         #        # TODO: parallel correlation isn't operational. SoftwareCorrelator objects contain ctypes containing pointers, which cannot be pickled for seperate processes.
@@ -124,21 +125,36 @@ class SoftwareCorrelator:
         #                correlator_output_list = list(pool.imap(func, time_stamp_split_list))
 
         correlator_output_list = []
-        for idx, ts_split in enumerate(list_of_photon_arrays):
-            if ts_split.size != 0 and ts_split.shape != ():  # has elements and is not a scalar
-                if corr_filter_list is not None:
-                    kwargs["filter_array"] = corr_filter_list[idx]
+        split_durations_s = []
+        valid_idxs = []
+        for idx, (ts_split, filter_split) in enumerate(split_gen):
+            if (
+                ts_split is not None and ts_split.size != 0 and ts_split.shape != ()
+            ):  # has elements and is not a scalar
+                if filter_split is not None:
+                    kwargs["filter_array"] = filter_split
                 corr_output = self.correlate(ts_split, *args, **kwargs)
                 correlator_output_list.append(corr_output)
                 if kwargs.get("is_verbose"):
-                    print(idx + 1, end=(", " if idx < len(list_of_photon_arrays) - 1 else ""))
+                    print(idx + 1, end=(", " if idx < n_splits - 1 else ""))
+                valid_idxs.append(idx)
+
+            # calculate split duration
+            if ts_split is not None and ts_split.shape != ():
+                split_durations_s.append(
+                    ts_split[0 if ts_split.ndim != 1 else slice(None)].sum() / laser_freq_hz
+                )
 
         lag_list = [output.lag for output in correlator_output_list]
         corrfunc_list = [output.corrfunc for output in correlator_output_list]
         weights_list = [output.weights for output in correlator_output_list]
         countrate_list = [output.countrate for output in correlator_output_list]
 
-        return SoftwareCorrelatorListOutput(lag_list, corrfunc_list, weights_list, countrate_list)
+        return (
+            SoftwareCorrelatorListOutput(lag_list, corrfunc_list, weights_list, countrate_list),
+            split_durations_s,
+            valid_idxs,
+        )
 
     def correlate(  # NOQA C901
         self, photon_array, correlator_option, filter_array=None, timebase_ms=1, **kwargs

@@ -856,6 +856,7 @@ class MainWin:
             "Standard Static": {
                 "scan_type": "static",
                 "repeat": True,
+                "should_plot": True,
                 "should_fit": True,
                 "should_accumulate_corrfuncs": False,
                 "stage_pattern": "None",
@@ -863,6 +864,7 @@ class MainWin:
             "Standard Angular": {
                 "scan_type": "angular",
                 "regular": True,
+                "should_plot": False,
                 "should_fit": False,
                 "should_accumulate_corrfuncs": True,
                 "stage_pattern": "Snake",
@@ -870,6 +872,7 @@ class MainWin:
             "Standard Circular": {
                 "scan_type": "circle",
                 "regular": True,
+                "should_plot": False,
                 "should_fit": False,
                 "should_accumulate_corrfuncs": True,
                 "stage_pattern": "Snake",
@@ -2548,7 +2551,7 @@ class SettWin:
             duration_units="seconds",
             final=False,
             repeat=False,  # TODO: why are both final and repeat needed? aren't they mutually exclusive?
-            should_disp_acf=False,
+            should_plot_acf=False,
         )
         # run measurement
         await self._app.meas.run(should_save=False)

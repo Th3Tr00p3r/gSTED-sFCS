@@ -6,7 +6,7 @@ from contextlib import suppress
 from dataclasses import InitVar, dataclass
 from itertools import cycle
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Sequence, Tuple, Union, cast
+from typing import Any, Dict, Generator, Iterator, List, Sequence, Tuple, Union, cast
 
 import numpy as np
 from matplotlib.lines import Line2D
@@ -292,38 +292,35 @@ class CorrFunc:
 
     def correlate_measurement(
         self,
-        time_stamp_split_list: List[np.ndarray],
+        split_gen: Generator[np.ndarray, None, None],
+        n_splits: int,
         *args,
         **kwargs,
     ) -> None:
         """Doc."""
 
         if kwargs.get("is_verbose"):
-            print(f"Correlating {len(time_stamp_split_list)} splits -", end=" ")
+            print("Correlating splits -", end=" ")
 
-        output = self.SC.correlate_list(
-            time_stamp_split_list,
+        output, self.split_durations_s, valid_idxs = self.SC.correlate_list(
+            split_gen,
+            n_splits,
+            self.laser_freq_hz,
             self.correlator_type,
             timebase_ms=1000 / self.laser_freq_hz,
             **kwargs,
         )
         self.lag = max(output.lag_list, key=len)
 
-        # calculate split durations
-        self.split_durations_s = [
-            split[0 if split.ndim != 1 else slice(None)].sum() / self.laser_freq_hz
-            for split in time_stamp_split_list
-            if split.shape != ()
-        ]
-
         if kwargs.get("is_verbose"):
             print(". Processing correlator output...", end=" ")
 
-        self._process_correlator_list_output(output, *args, **kwargs)
+        self._process_correlator_list_output(output, valid_idxs, *args, **kwargs)
 
     def _process_correlator_list_output(
         self,
         corr_output,
+        valid_idxs,
         afterpulse_params,
         bg_corr_list,
         temporal_bg_min_lag_ms=2e-3,
@@ -334,7 +331,8 @@ class CorrFunc:
         """Doc."""
 
         # subtract background correlations
-        for idx, bg_corr_dict in enumerate(bg_corr_list):
+        for idx, valid_idx in enumerate(valid_idxs):
+            bg_corr_dict = bg_corr_list[valid_idx]
             bg_corr = np.interp(
                 corr_output.lag_list[idx],
                 bg_corr_dict["lag"],
@@ -809,9 +807,40 @@ class SolutionSFCSMeasurement:
         self.is_loaded = False
         self.was_processed_data_loaded = False
         self.data = TDCPhotonMeasurementData()
-        self.corr_section_input_list: List[np.ndarray] = None
+        self._was_corr_input_built: bool = False
+        self.n_splits = None
         self.afterpulsing_filter: AfterpulsingFilter = None
         self.lifetime_params: LifeTimeParams = None
+
+    @property
+    def corr_section_input_gen(self):
+        """Load the memory-mapped arrays as a generator"""
+
+        if not self._was_corr_input_built:
+            return None
+        else:
+            fpath = Path(
+                str(self.file_path_template)
+                .replace("_*", "")
+                .replace(".pkl", "")
+                .replace(".mat", "")
+                + ".npz"
+            )
+            self._corr_section_input_list = np.load(fpath, mmap_mode="r")
+            return (
+                self._corr_section_input_list[file] for file in self._corr_section_input_list.files
+            )
+
+    @corr_section_input_gen.setter
+    def corr_section_input_gen(self, arr_list: List[np.ndarray]):
+        """Save the splits to disk to free RAM"""
+
+        fpath = Path(
+            str(self.file_path_template).replace("_*", "").replace(".pkl", "").replace(".mat", "")
+            + ".npz"
+        )
+        np.savez(fpath, *arr_list)
+        self._was_corr_input_built = True
 
     @property
     def avg_cnt_rate_khz(self):
@@ -1158,6 +1187,48 @@ class SolutionSFCSMeasurement:
         CF.average_correlation(**kwargs)
         return CF
 
+    def generate_combined_inputs(
+        self,
+        input_gen,
+        subtract_spatial_bg_corr=False,
+        gate_ns=None,
+        is_filtered=False,
+        get_afterpulsing=False,
+        is_verbose=False,
+    ):
+        """Using the memory-mapped 'input_gen', build, prepare and optionally gate splits for the correlator, as well as optional corresponsding filter splits"""
+
+        for split_idx, dt_prt_split in enumerate(input_gen):
+            # skipping empty splits
+            if not dt_prt_split.size:
+                if is_verbose:
+                    print(f"Empty split encountered! Skipping split {split_idx}... ", end="")
+                yield None, None
+                continue
+
+            valid_idxs = gate_ns.valid_indices(dt_prt_split[0]) if gate_ns else slice(None)
+
+            # Generate final_corr_section_input
+            if gate_ns:
+                ts = np.hstack(([0], np.diff(dt_prt_split[1][valid_idxs])))
+                final_split = np.vstack((ts, dt_prt_split[2:][:, valid_idxs]))
+                final_corr_section_input = np.squeeze(final_split.astype(np.int32))
+            else:
+                ts = np.hstack(([0], np.diff(dt_prt_split[1])))
+                final_split = np.vstack((ts, dt_prt_split[2:]))
+                final_corr_section_input = np.squeeze(final_split.astype(np.int32))
+
+            # Generate final_filter_input
+            split_filter = (
+                self.afterpulsing_filter.get_split_filter_input(
+                    dt_prt_split[0][valid_idxs], get_afterpulsing
+                )
+                if is_filtered
+                else None
+            )
+
+            yield final_corr_section_input, split_filter
+
     def correlate_data(  # NOQA C901
         self,
         cf_name="unnamed",
@@ -1231,59 +1302,14 @@ class SolutionSFCSMeasurement:
                     print(f"Using existing {self.type} afterpulsing filter.")
 
         # build correlator input - create list of split data for correlator.
-        if self.corr_section_input_list is None:
+        if self.corr_section_input_gen is None:
             if corr_options.get("is_verbose"):
                 print("Building correlator section input splits: ", end="")
-            self.corr_section_input_list = self.data.prepare_corr_split_list(**corr_options)
+            self.corr_section_input_gen, self.n_splits = self.data.prepare_corr_split_list(
+                **corr_options
+            )
             if corr_options.get("is_verbose"):
                 print(" Done.")
-
-        # Using previously built input/filter
-        else:
-            if corr_options.get("is_verbose"):
-                print("Using existing correlator input splits.")
-
-        # Gating, diffing (prt to ts) and filtering
-        if corr_options.get("is_verbose"):
-            if gate_ns:
-                print(
-                    f"Gating {len(self.corr_section_input_list)} input splits ({gate_ns})... ",
-                    end="",
-                )
-            else:
-                print(f"Preparing {len(self.corr_section_input_list)} input splits... ", end="")
-
-        final_corr_section_input_list = []
-        final_filter_input_list = []
-        for split_idx, dt_prt_split in enumerate(self.corr_section_input_list):
-            # skipping empty splits
-            if not dt_prt_split.size:
-                if corr_options.get("is_verbose"):
-                    print(f"Empty split encountered! Skipping split {split_idx}... ", end="")
-                # drop matching backgorund corr too
-                if subtract_spatial_bg_corr:
-                    self.bg_line_corr_list.pop(split_idx)
-                continue
-            if gate_ns:
-                valid_idxs = gate_ns.valid_indices(dt_prt_split[0])
-                ts = np.hstack(([0], np.diff(dt_prt_split[1][valid_idxs])))
-                final_split = np.vstack((ts, dt_prt_split[2:][:, valid_idxs]))
-                final_corr_section_input_list.append(np.squeeze(final_split.astype(np.int32)))
-            else:
-                ts = np.hstack(([0], np.diff(dt_prt_split[1])))
-                final_split = np.vstack((ts, dt_prt_split[2:]))
-                final_corr_section_input_list.append(np.squeeze(final_split.astype(np.int32)))
-                valid_idxs = slice(None)
-
-            # filter input
-            if is_filtered:
-                split_filter = self.afterpulsing_filter.get_split_filter_input(
-                    dt_prt_split[0][valid_idxs], get_afterpulsing
-                )
-                final_filter_input_list.append(split_filter)
-
-        if corr_options.get("is_verbose"):
-            print("Done.")
 
         # choose correct correlator type
         if self.scan_type in {"static", "circle"}:
@@ -1310,13 +1336,20 @@ class SolutionSFCSMeasurement:
             duration_min=self.duration_min,
         )
         CF.correlate_measurement(
-            final_corr_section_input_list,
+            self.generate_combined_inputs(
+                self.corr_section_input_gen,
+                subtract_spatial_bg_corr,
+                gate_ns,
+                is_filtered,
+                get_afterpulsing,
+                corr_options.get("is_verbose", False),
+            ),
+            self.n_splits,
             external_afterpulse_params
             if external_afterpulse_params is not None
             else self.afterpulse_params,
             getattr(self, "bg_line_corr_list", []) if subtract_spatial_bg_corr else [],
             external_afterpulsing=external_afterpulsing,
-            corr_filter_list=final_filter_input_list if is_filtered else None,
             should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
             **corr_options,
         )
@@ -1595,8 +1628,6 @@ class SolutionSFCSMeasurement:
         meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
             # don't save correlator inputs (re-built when loaded)
-            corr_section_input_list = self.corr_section_input_list
-            self.corr_section_input_list = None
             self.filter_input_list = None
 
             # save the measurement object
@@ -1609,8 +1640,6 @@ class SolutionSFCSMeasurement:
                 obj_name="processed measurement",
                 should_track_progress=is_verbose,
             )
-            # restore correlator inputs
-            self.corr_section_input_list = corr_section_input_list
 
             if is_verbose:
                 print("Done.")

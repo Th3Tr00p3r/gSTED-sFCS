@@ -346,13 +346,14 @@ class RawFileData:
         self,
         idx: int,
         dump_path: Path,
-        coarse: np.ndarray,
-        coarse2: np.ndarray,
-        fine: np.ndarray,
-        pulse_runtime: np.ndarray,
-        delay_time: np.ndarray,
+        coarse: np.ndarray = None,
+        coarse2: np.ndarray = None,
+        fine: np.ndarray = None,
+        pulse_runtime: np.ndarray = None,
+        delay_time: np.ndarray = None,
         line_num: np.ndarray = None,
         should_avoid_dumping=False,
+        was_data_dumped: bool = False,
         **kwargs,
     ):
         """
@@ -375,7 +376,7 @@ class RawFileData:
         self._line_num = line_num
 
         # keep track
-        self._was_data_dumped = False
+        self._was_data_dumped = was_data_dumped
         self.compressed_file_path: Path = None
 
     @property
@@ -865,7 +866,7 @@ class TDCPhotonMeasurementData(list):
     def __init__(self):
         super().__init__()
 
-    def prepare_corr_split_list(self, gate_ns=Gate(), **kwargs) -> List[np.ndarray]:
+    def prepare_corr_split_list(self, gate_ns=Gate(), **kwargs) -> Tuple[List[np.ndarray], int]:
         """
         Prepare SoftwareCorrelator input from complete measurement data.
         """
@@ -883,7 +884,10 @@ class TDCPhotonMeasurementData(list):
                     # continuous data
                     split_list += p.get_section_continuous_splits(sec_slice, gate_ns, **kwargs)
 
-        return split_list
+            if kwargs.get("is_verbose"):
+                print(".", end="")
+
+        return split_list, len(split_list)
 
 
 @dataclass
@@ -1078,35 +1082,70 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self.fpga_freq_hz = fpga_freq_hz
         self.detector_gate_ns = detector_gate_ns
 
-    def process_data(self, idx, full_data, should_dump=True, **proc_options) -> TDCPhotonFileData:
+    def process_data(
+        self, idx, full_data, should_dump=True, force_processing: bool = True, **proc_options
+    ) -> TDCPhotonFileData:
         """Doc."""
 
-        # sFCS
-        if scan_settings := full_data.get("scan_settings"):
-            if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
-                p = self._process_circular_scan_data_file(idx, full_data, **proc_options)
-            elif scan_type == "angular":  # Angular sFCS
-                p = self._process_angular_scan_data_file(idx, full_data, **proc_options)
-            elif scan_type == "image":  # image sFCS
-                p = self._process_image_scan_plane_data(idx, full_data, **proc_options)
-        # FCS
-        else:
-            scan_type = "static"
-            p = self._convert_fpga_data_to_photons(
-                idx,
-                **proc_options,
+        # if is allowed and able to use dumped pre-processed data
+        if (
+            not force_processing
+            and (dumped_fpath := self.dump_path / f"raw_data_{idx}.npy").exists()
+        ):
+            raise NotImplementedError(
+                f"I still need to save/dump the GeneralFileData to '{dumped_fpath.parent}', alongside the raw data (used for memory-mapping arrays) so that I can load it as well, as some of its properties are necessary downstream (e.g. correlation."
             )
+        #            p = TDCPhotonFileData(
+        #                idx,
+        #                GeneralFileData(
+        #                    # general
+        #                    laser_freq_hz=self.laser_freq_hz,
+        #                    size_estimate_mb=max(section_lengths) / 1e6,
+        #                    duration_s=duration_s,
+        #                    skipped_duration=skipped_duration,
+        #                    all_section_slices=all_section_slices,
+        #                    # continuous scan
+        #                    split_duration_s=split_duration_s,
+        #                ),
+        #                RawFileData(
+        #                idx,
+        #                self.dump_path,
+        #                should_avoid_dumping=True,
+        #                was_data_dumped=True,
+        #                ),
+        #                self.dump_path
+        #            )
+        #            if proc_options.get("is_verbose"):
+        #                print(f"Pre-processed file used: {dumped_fpath}", end=" ")
+        # process file
+        else:
+            # sFCS
+            if scan_settings := full_data.get("scan_settings"):
+                if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
+                    p = self._process_circular_scan_data_file(idx, full_data, **proc_options)
+                elif scan_type == "angular":  # Angular sFCS
+                    p = self._process_angular_scan_data_file(idx, full_data, **proc_options)
+                elif scan_type == "image":  # image sFCS
+                    p = self._process_image_scan_plane_data(idx, full_data, **proc_options)
+            # FCS
+            else:
+                scan_type = "static"
+                p = self._convert_fpga_data_to_photons(
+                    idx,
+                    **proc_options,
+                )
 
-        # dumping of raw data to disk
-        # False only if multiprocessing or if manually set to avoid re-dumping many existing identical files
-        if should_dump:
-            if proc_options.get("is_verbose"):
-                print("Dumping raw data file to disk (if needed)...", end=" ")
-            p.raw.dump()
-
-        # add general properties
         with suppress(AttributeError):
             # AttributeError: p is None
+            # dumping of raw data to disk
+            # False only if manually set to avoid re-dumping many existing identical files
+            if should_dump:
+                if proc_options.get("is_verbose"):
+                    print("Dumping raw data file to disk (if needed)...", end=" ")
+                    # TODO: this isn't transparent enough. the should/shouldn't dump flag should be determined from the file (p) and notified to user
+                p.raw.dump()
+
+            # add general properties
             p.general.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
         return p
@@ -1134,10 +1173,11 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         # option to use only certain parts of data (for testing)
         if byte_data_slice is not None:
-            print(
-                f"Using {byte_data_slice} of data ({byte_data[byte_data_slice].size/byte_data.size:.2%} used) ",
-                end="",
-            )
+            if proc_options.get("is_verbose"):
+                print(
+                    f"Using {byte_data_slice} of data ({byte_data[byte_data_slice].size/byte_data.size:.2%} used) ",
+                    end="",
+                )
             byte_data = byte_data[byte_data_slice]
 
         section_slices, tot_single_errors = self._find_all_section_edges(byte_data)
@@ -1145,7 +1185,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         if should_use_all_sections:
             photon_idxs_list: List[int] = []
-            section_runtime_edges = []
+            section_runtime_slices = []
             for sec_slice in section_slices:
                 if sec_slice.stop - sec_slice.start > sum(section_lengths) * len_factor:
                     section_runtime_start = len(photon_idxs_list)
@@ -1154,14 +1194,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     )
                     section_runtime_end = section_runtime_start + len(section_photon_indxs)
                     photon_idxs_list += section_photon_indxs
-                    section_runtime_edges.append(slice(section_runtime_start, section_runtime_end))
+                    section_runtime_slices.append(slice(section_runtime_start, section_runtime_end))
 
             photon_idxs = np.array(photon_idxs_list)
 
         else:  # using largest section only
             max_sec_slice = section_slices[np.argmax(section_lengths)]
             photon_idxs = np.arange(max_sec_slice.start, max_sec_slice.stop, self.GROUP_LEN)
-            section_runtime_edges = [slice(0, len(photon_idxs))]
+            section_runtime_slices = [slice(0, len(photon_idxs))]
 
         if proc_options.get("is_verbose"):
             if len(section_slices) > 1:
@@ -1169,9 +1209,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     f"Found {len(section_slices) - 1:,} removeable discontinuities, potentially causing sections of lengths: {', '.join([str(round(sec_len * 1e-3)) for sec_len in section_lengths])} Kb.",
                     end=" ",
                 )
-                if should_use_all_sections:
+                if should_use_all_sections and len(section_slices) > len(section_runtime_slices):
                     print(
-                        f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_edges)}/{len(section_slices)}).",
+                        f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_slices)}/{len(section_slices)}).",
                         end=" ",
                     )
                 else:  # Use largest section only
@@ -1215,7 +1255,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         # Break each section into sub-setions according to simple outlier timestamp detection
         all_section_slices, skipped_duration = self._section_continuous_data(
-            slice(0, pulse_runtime.size), pulse_runtime, time_stamps, **proc_options
+            pulse_runtime, time_stamps, **proc_options
         )
 
         # handling coarse and fine times (for gating)
@@ -1260,11 +1300,12 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
     def _section_continuous_data(
         self,
-        sec_slice: slice,
         pulse_runtime: np.ndarray,
         time_stamps: np.ndarray,
         max_time_stamp=300_000,  # TESTESTEST
-        max_outlier_prob=1e-9,
+        max_outliers=3,  # TESTESTEST
+        #        max_outlier_prob=1e-9,
+        len_factor=0.01,
         **kwargs,
     ):
         """Find outliers and create sections seperated by them. Short sections are discarded"""
@@ -1277,37 +1318,46 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         #            2
         #        )
         #        max_time_stamp = scipy.stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
+
         jump_idxs = (time_stamps > max_time_stamp).nonzero()[0]
-        if (n_outliers := len(jump_idxs)) > 0 and kwargs.get("is_verbose"):
-            print(f"Found {n_outliers + 1:,} sections caused by jumps in runtime.", end=" ")
-        sec_edges = np.hstack(([sec_slice.start], jump_idxs, [sec_slice.stop]))
-        all_section_slices = [
-            slice(*edges) for edges in np.array([sec_edges[:-1], sec_edges[1:]]).T
-        ]
+        if n_outliers := len(jump_idxs):
+            if n_outliers > max_outliers:
+                raise RuntimeError(
+                    f"Too many jumps in runtime (found {n_outliers:,}, {max_outliers:,} allowed)."
+                )
+            if kwargs.get("is_verbose"):
+                print(f"Found {n_outliers + 1:,} sections caused by jumps in runtime. ", end="")
 
-        #        # Filter short sections
-        #        # TODO: duration limitation is unclear
-        #        skipped_duration = 0
-        #        all_section_edges_valid = []
-        #        # Ignore short sections (default is below half the run_duration)
-        #        for sec_idx, (sec_start, sec_end) in enumerate(all_section_edges):
-        #            section_time = (pulse_runtime[sec_end-1] - pulse_runtime[sec_start]) / self.laser_freq_hz
-        #            if section_time < min_section_duration_s:
-        #                if kwargs.get("is_verbose"):
-        #                    print(
-        #                        f"Skipping section {sec_idx} - too short ({section_time * 1e3:.2f} ms).",
-        #                        end=" ",
-        #                    )\
-        #                skipped_duration += section_time
-        #            else:  # use section
-        #                all_section_edges_valid.append((sec_start, sec_end))
+            # find all section edges
+            sec_edges = np.hstack(([0], jump_idxs, [pulse_runtime.size]))
+            all_section_slices = [
+                slice(*edges) for edges in np.array([sec_edges[:-1], sec_edges[1:]]).T
+            ]
 
-        # get largest section
-        section_lengths = [sec_slice.stop - sec_slice.start for sec_slice in all_section_slices]
-        #        skipped_duration = sum(section_lengths) - max(section_lengths)
-        skipped_duration = pulse_runtime.size - sum(section_lengths)
+            # Filter short sections
+            sec_lens = [
+                pulse_runtime[sec_slice.stop - 1] - pulse_runtime[sec_slice.start]
+                for sec_slice in all_section_slices
+            ]
+            all_section_slices = [
+                sec_slice
+                for sec_slice, sec_len in zip(all_section_slices, sec_lens)
+                if sec_len > sum(sec_lens) * len_factor
+            ]
+            if (n_outliers + 1) > len(all_section_slices) and kwargs.get("is_verbose"):
+                print(
+                    f"Using all valid (> {len_factor:.1%}) sections ({len(all_section_slices)}/{n_outliers + 1}). ",
+                    end="",
+                )
 
-        #        return [all_section_slices[np.argmax(section_lengths)]], skipped_duration
+            # find lost duration
+            section_lengths = [sec_slice.stop - sec_slice.start for sec_slice in all_section_slices]
+            skipped_duration = pulse_runtime.size - sum(section_lengths)
+
+        else:
+            skipped_duration = 0
+            all_section_slices = [slice(0, pulse_runtime.size)]
+
         return all_section_slices, skipped_duration
 
     def _find_all_section_edges(
@@ -1908,11 +1958,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
             delay_time_list.append(_delay_time[photon_idxs])
 
-        delay_time = np.hstack(delay_time_list)
-
         fine_bins = np.arange(
             -time_bins_for_hist_ns / 2,
-            np.max(delay_time) + time_bins_for_hist_ns,
+            max([np.max(delay_time) for delay_time in delay_time_list]) + time_bins_for_hist_ns,
             time_bins_for_hist_ns,
             dtype=np.float16,
         )
@@ -1920,12 +1968,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         t_hist = (fine_bins[:-1] + fine_bins[1:]) / 2
         k = np.digitize(delay_times, fine_bins)
 
-        hist_weight = np.empty(t_hist.shape, dtype=np.float64)
+        hist_weight = np.empty_like(t_hist, dtype=np.float64)
         for i in range(len(hist_weight)):
             j = k == (i + 1)
             hist_weight[i] = np.sum(t_weight[j])
 
-        all_hist = np.histogram(delay_time, bins=fine_bins)[0].astype(np.uint32)
+        all_hist = np.zeros(fine_bins.size - 1, dtype=np.uint32)
+        for delay_time in delay_time_list:
+            all_hist += np.histogram(delay_time, bins=fine_bins)[0].astype(np.uint32)
 
         all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)
         error_all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)
@@ -1975,7 +2025,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # keep pulse_runtime elements of each file for array size allocation
         if scan_type == "angular":
             # remove line starts/ends from angular scan data sizes
-            n_elem = np.cumsum([0] + [p.raw.fine[p.raw.fine > NAN_PLACEBO].size for p in data])
+            n_elem = np.cumsum(
+                [0] + [(p.raw.fine > NAN_PLACEBO).sum() for p in data], dtype=np.int64
+            )
         else:
             n_elem = np.cumsum([0] + [p.raw.fine.size for p in data])
 

@@ -596,7 +596,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.scan_type = kwargs["scan_type"]
         self.repeat = kwargs["repeat"]
         self.final = kwargs["final"]
-        self.should_disp_acf = kwargs.get("should_disp_acf", True)
         self.max_file_size_mb = kwargs.get("max_file_size_mb", 20)
         self.duration = kwargs["duration"]
         self.duration_units = kwargs["duration_units"]
@@ -610,6 +609,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.plot_wdgt = kwargs.get("plot_wdgt")
         self.fit_led = kwargs.get("fit_led")
         self.should_accumulate_corrfuncs = kwargs.get("should_accumulate_corrfuncs")
+        self.should_plot_acf = kwargs.get("should_plot")  # TODO: make this "live"?
         self.should_fit_acf = kwargs.get("should_fit")
         self.processing_options = kwargs.get("processing_options")
 
@@ -699,11 +699,11 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
             )
 
             s = SolutionSFCSMeasurement(meas_laser_type_dict[self.laser_mode])
-            # NOTE: using only up to first 1 Mb to avoid blocking measurements for too long
+            # NOTE: using only up to first 10 Mb to avoid blocking measurements for too long
             p = s.process_data_file(
                 file_dict=self._prep_meas_dict(),
                 byte_data=byte_data,
-                byte_data_slice=slice(0, int(1e6)),
+                byte_data_slice=slice(0, int(10e6)),
                 **self.processing_options,
             )
             s.data.append(p)
@@ -865,7 +865,7 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                         await self.stage_dvc.move(next(self.stage_pattern), relative=False)
 
                 # show/add the ACF of the latest file in GUI (if not manually stopped)
-                if self.should_disp_acf and self.is_running:
+                if self.should_plot_acf and self.is_running:
                     self.disp_ACF()
 
                 # case aligning and not manually stopped
