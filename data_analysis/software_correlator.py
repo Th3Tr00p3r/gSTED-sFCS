@@ -57,11 +57,7 @@ class SoftwareCorrelator:
             LIB_NAME = "SoftCorrelatorDynamicLib_win32.so"
         self.LIB_PATH = self.LIB_DIR_PATH / LIB_NAME
 
-        try:
-            soft_corr_dynamic_lib = CDLL(str(self.LIB_PATH), winmode=0)
-        except OSError:
-            # TODO: fix DLL error on laptop (CAN'T CORRELATE AFTER THIS!)
-            return
+        soft_corr_dynamic_lib = CDLL(str(self.LIB_PATH), winmode=0)
         get_corr_params = soft_corr_dynamic_lib.getCorrelatorParams
         get_corr_params.restype = None
         get_corr_params.argtypes = [ndpointer(c_int), ndpointer(c_int)]
