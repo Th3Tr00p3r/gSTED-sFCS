@@ -395,15 +395,17 @@ def load_processed_solution_measurement(dir_path: Path, file_template: str, shou
     meas = load_object(meas_file_path)
     print("Done.")
 
-    #    # define the template # TODO: why is this needed?
-    #    meas.template = file_template
-
     # load separately the data, but only if not already in temp folder (to avoid long decompressing)
     if should_load_data:
-        for p in meas.data:
+        print(
+            f"Loading (decompressing and memory-mapping) {len(meas.data):,} processed data files:",
+            end="",
+        )
+        for idx, p in enumerate(meas.data):
             if not p.raw.dump_file_path.exists():
                 p.raw.load_compressed(dir_path / "data")
-
+            print(f" ({idx+1})", end="")
+        print(".")
     return meas
 
 

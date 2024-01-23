@@ -2034,7 +2034,7 @@ class MainWin:
                     except KeyError:
                         cf = list(meas.cf.values())[-1]
                         print(
-                            "Warning! data type was errorneously inferred from template - possible bad template naming..."
+                            "Warning! data type was errorneously inferred from template - possible bad template naming/gating. Using last CorrFunc object."
                         )
                     cf.average_correlation(**avg_corr_kwargs)
 

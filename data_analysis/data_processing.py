@@ -1,5 +1,6 @@
 """Data Processing."""
 
+import multiprocessing
 from collections import deque
 from contextlib import suppress
 from copy import copy
@@ -9,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Tuple, Union
 
 import numpy as np
+import psutil
 import scipy
 import skimage
 
@@ -1775,6 +1777,46 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         return p
 
+    def get_delay_time(self, args):
+        """Doc."""
+
+        (
+            p,
+            coarse_bins,
+            first_coarse_bin,
+            last_coarse_bin,
+            max_j,
+            l_quarter_tdc,
+            r_quarter_tdc,
+            t_calib,
+            fpga_freq_hz,
+            NAN_PLACEBO,
+        ) = args
+
+        _delay_time = np.full(p.raw.coarse.shape, np.nan, dtype=np.float64)
+        crs = np.minimum(p.raw.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
+        crs[crs < 0] += last_coarse_bin - first_coarse_bin + 1
+
+        delta_coarse = p.raw.coarse2 - p.raw.coarse
+        delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
+
+        # in the TDC midrange use "coarse" counter
+        in_mid_tdc = (p.raw.fine >= l_quarter_tdc) & (p.raw.fine <= r_quarter_tdc)
+        delta_coarse[in_mid_tdc] = 0
+
+        # on the right of TDC use "coarse2" counter (no change in delta)
+        # on the left of TDC use "coarse2" counter decremented by 1
+        on_left_tdc = p.raw.fine < l_quarter_tdc
+        delta_coarse[on_left_tdc] -= 1
+
+        photon_idxs = p.raw.fine != NAN_PLACEBO
+        _delay_time[photon_idxs] = (
+            t_calib[p.raw.fine[photon_idxs]]
+            + (crs[photon_idxs] + delta_coarse[photon_idxs]) / fpga_freq_hz * 1e9
+        )
+        p.raw.delay_time = _delay_time
+        return _delay_time[photon_idxs]
+
     def calibrate_tdc(  # NOQA C901
         self,
         data: list[TDCPhotonFileData],
@@ -1920,52 +1962,68 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             t_weight = t_weight[j_sorted]
 
         # assign time delays to all photons
+        N_CORES = psutil.cpu_count(logical=False)
         if kwargs.get("is_verbose"):
-            print("Assigning delay times... ", end="")
+            print(
+                f"Assigning delay times (multiprocessing using {N_CORES-1}/{N_CORES} available cores)... ",
+                end="",
+            )
         total_laser_pulses = 0
         first_coarse_bin, *_, last_coarse_bin = coarse_bins
-        delay_time_list = []
-        for p in data:
-            _delay_time = np.full(p.raw.coarse.shape, np.nan, dtype=np.float64)
-            crs = np.minimum(p.raw.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
-            crs[crs < 0] = crs[crs < 0] + last_coarse_bin - first_coarse_bin + 1
 
-            delta_coarse = p.raw.coarse2 - p.raw.coarse
-            delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
+        # Create a pool of worker processes
+        with multiprocessing.Pool(N_CORES - 1) as pool:
+            # Create argument tuples for each process
+            args_list = [
+                (
+                    p,
+                    coarse_bins,
+                    first_coarse_bin,
+                    last_coarse_bin,
+                    max_j,
+                    l_quarter_tdc,
+                    r_quarter_tdc,
+                    t_calib,
+                    self.fpga_freq_hz,
+                    NAN_PLACEBO,
+                )
+                for p in data
+            ]
+            # Use the pool to parallelize the processing of data
+            delay_time_list = pool.map(self.get_delay_time, args_list)
 
-            # in the TDC midrange use "coarse" counter
-            in_mid_tdc = (p.raw.fine >= l_quarter_tdc) & (p.raw.fine <= r_quarter_tdc)
-            delta_coarse[in_mid_tdc] = 0
+        if kwargs.get("is_verbose"):
+            print("Collecting total pulses... ", end="")
 
-            # on the right of TDC use "coarse2" counter (no change in delta)
-            # on the left of TDC use "coarse2" counter decremented by 1
-            on_left_tdc = p.raw.fine < l_quarter_tdc
-            delta_coarse[on_left_tdc] = delta_coarse[on_left_tdc] - 1
+        # get total laser pulses
+        total_laser_pulses = sum(p.raw.pulse_runtime[-1] for p in data)
 
-            photon_idxs = p.raw.fine != NAN_PLACEBO  # self.NAN_PLACEBO are starts/ends of lines
-            _delay_time[photon_idxs] = (
-                t_calib[p.raw.fine[photon_idxs]]
-                + (crs[photon_idxs] + delta_coarse[photon_idxs]) / self.fpga_freq_hz * 1e9
-            )
-            p.raw.delay_time = _delay_time
-            total_laser_pulses += p.raw.pulse_runtime[-1]
-
-            delay_time_list.append(_delay_time[photon_idxs])
+        if kwargs.get("is_verbose"):
+            print("Defining 'fine_bins'... ", end="")
 
         fine_bins = np.arange(
             -time_bins_for_hist_ns / 2,
-            max([np.max(delay_time) for delay_time in delay_time_list]) + time_bins_for_hist_ns,
+            max(delay_time.max() for delay_time in delay_time_list) + time_bins_for_hist_ns,
             time_bins_for_hist_ns,
             dtype=np.float16,
         )
 
+        if kwargs.get("is_verbose"):
+            print("Binning 'delay_times' into 'fine_bins'...  ", end="")
+
         t_hist = (fine_bins[:-1] + fine_bins[1:]) / 2
         k = np.digitize(delay_times, fine_bins)
+
+        if kwargs.get("is_verbose"):
+            print("Calculating 'hist_weight'...  ", end="")
 
         hist_weight = np.empty_like(t_hist, dtype=np.float64)
         for i in range(len(hist_weight)):
             j = k == (i + 1)
             hist_weight[i] = np.sum(t_weight[j])
+
+        if kwargs.get("is_verbose"):
+            print("Calculating 'all_hist'...  ", end="")
 
         all_hist = np.zeros(fine_bins.size - 1, dtype=np.uint32)
         for delay_time in delay_time_list:

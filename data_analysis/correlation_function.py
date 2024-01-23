@@ -881,7 +881,7 @@ class SolutionSFCSMeasurement:
             self.bg_line_corr_list = []
 
         # caculate durations
-        calc_duration_mins = sum([p.general.duration_s for p in self.data]) / 60
+        calc_duration_mins = sum(p.general.duration_s for p in self.data) / 60
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
                 print(
@@ -995,16 +995,16 @@ class SolutionSFCSMeasurement:
         # serial processing (default)
         else:
             proc_options["is_verbose"] = True
-            for file_path in file_paths:
+            for file_idx, file_path in enumerate(file_paths):
                 # Processing data
-                p = self.process_data_file(file_path, **proc_options)
+                p = self.process_data_file(file_path, file_idx + 1, **proc_options)
                 print("Done.\n")
                 # Appending data to self
                 if p is not None:
                     self.data.append(p)
 
         # auto determination of run duration
-        self.run_duration = sum([p.general.duration_s for p in self.data])
+        self.run_duration = sum(p.general.duration_s for p in self.data)
 
     def _get_general_properties(
         self,
@@ -1077,7 +1077,7 @@ class SolutionSFCSMeasurement:
             self.scan_type = "static"
 
     def process_data_file(
-        self, file_path: Path = None, file_dict: dict = None, **proc_options
+        self, file_path: Path = None, file_idx: int = None, file_dict: dict = None, **proc_options
     ) -> TDCPhotonFileData:
         """Doc."""
 
@@ -1093,10 +1093,6 @@ class SolutionSFCSMeasurement:
         # File Data Loading
         if file_path is not None:  # Loading file from disk
             *_, template = file_path.parts
-            try:
-                file_idx = int(re.split("_(\\d+)\\.", template)[1])
-            except IndexError:  # legacy template style
-                file_idx = int(re.split("(\\d+)\\.", template)[1])
             print(
                 f"Loading and processing file No. {file_idx} ({self.n_paths} files): '{template}'...",
                 end=" ",
