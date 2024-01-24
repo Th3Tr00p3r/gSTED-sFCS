@@ -661,9 +661,6 @@ class AfterpulsingFilter:
         ) as axes:
             axes[0].set_title("Filter Ingredients")
             axes[0].set_yscale("log")
-            #            axes[0].plot(
-            #                self.t_hist, self.all_hist_norm / self.norm_factor, label="norm. raw histogram"
-            #            )
             axes[0].plot(
                 self.t_hist[valid_idxs],
                 self.I_j / self.norm_factor,
@@ -684,12 +681,12 @@ class AfterpulsingFilter:
                 self.M.T[1],
                 label="$M_{j2}$ (ideal afterpulsing 'decay' curve)",
             )
-            axes[0].set_ylabel("Normmalized Photon Count")
+            axes[0].set_ylabel("Norm. Photon Count")
             axes[0].set_ylim(self.baseline / self.norm_factor / 10, None)
             axes[0].legend()
 
             axes[1].set_title("Filter")
-            try:  # TODO: fix this at the filter-building level!
+            try:  # TODO: fix this error at the filter-building level!
                 axes[1].plot(
                     self.t_hist,
                     self.filter.T,

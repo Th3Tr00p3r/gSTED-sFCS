@@ -398,13 +398,15 @@ def load_processed_solution_measurement(dir_path: Path, file_template: str, shou
     # load separately the data, but only if not already in temp folder (to avoid long decompressing)
     if should_load_data:
         print(
-            f"Loading (decompressing and memory-mapping) {len(meas.data):,} processed data files:",
+            f"Loading (decompressing and memory-mapping) {len(meas.data):,} processed data files: ",
             end="",
         )
         for idx, p in enumerate(meas.data):
+            if idx > 0:
+                print(", ", end="")
             if not p.raw.dump_file_path.exists():
                 p.raw.load_compressed(dir_path / "data")
-            print(f" ({idx+1})", end="")
+            print(f"{idx+1}", end="")
         print(".")
     return meas
 
