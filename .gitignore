@@ -13,10 +13,11 @@ yacctab.py
 # pushed by oleg sometimes (idomich)
 .DS_Store
 
-# eric project folder (idomich)
+# eric project folder & files (idomich)
 .eric6project
 .eric7project
 .jedi
+*.epj
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
