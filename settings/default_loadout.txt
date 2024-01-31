@@ -1,6 +1,6 @@
 imgScanFileTemplate,gb
 solScanFileTemplate,
-newTemplate,bp300_angular_exc
+newTemplate,YOYO_30kbp_Linear_400nW_angular_exc
 solImportFileSelectionPattern,1
 searchQuery,
 lineEdit,
@@ -61,10 +61,10 @@ solMeasPreset,Standard Angular
 solScanStagePattern,None
 solScanType,angular
 solScanDurUnits,seconds
-dataMonth,5
-dataYear,2018
-dataDay,10
-dataTemplate1,bp300_angular_exc_000000_*.mat
+dataMonth,1
+dataYear,2024
+dataDay,14
+dataTemplate1,YOYO_30kbp_Linear_400nW_angular_exc_152153_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,

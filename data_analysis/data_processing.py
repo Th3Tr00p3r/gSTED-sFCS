@@ -6,6 +6,7 @@ from contextlib import suppress
 from copy import copy
 from dataclasses import InitVar, dataclass, field
 from itertools import count as infinite_range
+from itertools import cycle
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Tuple, Union
 
@@ -16,21 +17,29 @@ import skimage
 
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object
-from utilities.fit_tools import FitParams, curve_fit_lims, exponent_with_background_fit
+from utilities.fit_tools import (
+    FitParams,
+    curve_fit_lims,
+    exponent_with_background_fit,
+    gaussian_1d_fit,
+)
 from utilities.helper import (
     Gate,
     Limits,
     MemMapping,
     chunked_bincount,
+    exclude_elements_by_indices_1d,
     nan_helper,
     unify_length,
     xcorr,
 )
 
+# line markers
 NAN_PLACEBO = -100  # marks starts/ends of lines
 LINE_END_ADDER = 1000
 ZERO_LINE_START_ADDER = 2000
 OUT_OF_SAMPLE_LINE = -3000
+IGNORED_LINE = -4000
 
 
 class CircularScanDataMixin:
@@ -334,6 +343,48 @@ class AngularScanDataMixin:
                     }
                 )
         return line_corr_list
+
+    def get_bright_pixels(self, img: np.ndarray, mask: np.ndarray, thresh_factor=1000, **kwargs):
+        """Get a mask for 'bright pixels' of an image using a histogram-based heuristic method."""
+
+        # select number of bins based on number of unique values in ROI
+        n_unique = len(np.unique(img[mask]))
+        n_bins = max(10, round(n_unique / 3.5))
+
+        scan_hist, bin_edges = np.histogram(img[mask], bins=n_bins)
+        bin_num = np.arange(len(scan_hist))
+        bg_part = round(n_bins / 10)
+
+        # fit Gaussian to histogram
+        FP = curve_fit_lims(
+            gaussian_1d_fit,
+            (
+                scan_hist[bg_part:].max() / 10,
+                np.mean(bin_num[bg_part:]),
+                len(bin_num[bg_part:]) / 10,
+                0,
+            ),
+            bin_num[bg_part:],
+            scan_hist[bg_part:],
+            curve_fit_kwargs=dict(
+                bounds=(  # A, mu, sigma, bg
+                    [0, 0, 0, -10],
+                    [1e4, bin_num.max(), bin_num.max(), 0],
+                )
+            ),
+        )
+
+        # get bin where fitted_y drops to 1/N_TRESH of value and use as threshold
+        try:
+            thresh_bin = FP.x[
+                (FP.x > FP.beta["mu"]) & (FP.fitted_y < FP.beta["A"] / thresh_factor)
+            ][0]
+        except IndexError:
+            thresh_bin = bin_num.max()
+
+        # get the bad pixels
+        d = np.digitize(img, bin_edges)
+        return d > thresh_bin
 
 
 class RawFileData:
@@ -1202,6 +1253,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     f"Found {len(section_slices) - 1:,} removeable discontinuities, potentially causing sections of lengths: {', '.join([str(round(sec_len * 1e-3)) for sec_len in section_lengths])} Kb.",
                     end=" ",
                 )
+                # TODO: why the second condition? is it even what actually happens?
                 if should_use_all_sections and len(section_slices) > len(section_runtime_slices):
                     print(
                         f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_slices)}/{len(section_slices)}).",
@@ -1675,9 +1727,129 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     print("ROI is empty (need to figure out the cause). Skipping file.\n")
                 return None
 
+            # ignore lines with outlier pixels (bright or dark)
+            # TESTESTEST
+            # TODO: A faster method might be to first find the all single scans PRTs, then use their edges, instead of going line by line
+
+            # sort the line starts/stops/labels so that they can be filtered properly (per single scan)
+            lines_starts_sorted_idxs = np.argsort(sec_line_starts_prt)
+            sec_line_starts_prt = sec_line_starts_prt[lines_starts_sorted_idxs]
+            sec_line_stops_prt = sec_line_stops_prt[lines_starts_sorted_idxs]
+            sec_line_start_labels = sec_line_start_labels[lines_starts_sorted_idxs]
+            sec_line_stop_labels = sec_line_stop_labels[lines_starts_sorted_idxs]
+
+            # gather the start/stop indices of bad lines
+            min_scan_idx = 0
+            max_scan_idx = 0
+            agg_scan_idx = 0  # track aggragated scan images
+            single_scan_idx = 0  # track single scans
+            n_scans_per_image = 10
+            bad_line_idxs = []
+            sec_image = np.zeros_like(
+                sec_image
+            )  # rebuild the section image from the single scans minus the bad rows
+            sec_pulse_runtime_shifted = sec_pulse_runtime + sec_prt_shift
+            scan_min_row, *_, scan_max_row = np.unique(sec_image_mask.nonzero()[0])
+            scan_n_rows = scan_max_row - scan_min_row
+            for total_idx, (scan_line_idx, line_start_prt, line_stop_prt) in enumerate(
+                zip(
+                    cycle(range(scan_min_row, scan_max_row + 1)),
+                    sec_line_starts_prt,
+                    sec_line_stops_prt,
+                )
+            ):
+
+                #                print(f"Agg. Image {agg_scan_idx}, Scan: {single_scan_idx}, in-scan line: {scan_line_idx}") # TESTESTEST
+
+                # get the line indices and update the minimum and maximum scan indices based on them
+                line_idxs = Limits(line_start_prt, line_stop_prt).valid_indices(
+                    sec_pulse_runtime_shifted, as_bool=False
+                )
+                # Skip line if no photons are found within the line (can happen if there are jupms in the runtime)
+                if line_idxs.size == 0:
+                    continue
+                # update the scan edges
+                min_scan_idx = min(min_scan_idx, line_idxs[0])
+                max_scan_idx = max(max_scan_idx, line_idxs[-1])
+
+                # reached end of single scan, remove lines with bright spots
+                if scan_line_idx == scan_max_row or total_idx == sec_line_starts_prt.size - 1:
+
+                    # reached end of aggregated scans - determine bad rows!
+                    if single_scan_idx == n_scans_per_image - 1:
+
+                        # build single-scan image using the section runtime with the line indices with convert_angular_scan_to_image()
+                        scan_image, *_ = self.convert_angular_scan_to_image(
+                            sec_pulse_runtime[min_scan_idx:max_scan_idx] + sec_prt_shift,
+                            self.laser_freq_hz,
+                            ao_sampling_freq_hz,
+                            p.general.samples_per_line,
+                            p.general.n_lines,
+                            should_fix_shift=False,
+                        )
+
+                        # find the bad rows
+                        bright_pixels_img_bw = self.get_bright_pixels(
+                            scan_image, sec_image_mask, **kwargs
+                        )
+                        image_bad_row_idxs = np.unique(
+                            bright_pixels_img_bw.nonzero()[0]
+                        )  # this is supposed to get the indices of the bad lines
+                        # add indices of all aggregated scans
+                        all_scan_idxs = image_bad_row_idxs.tolist()
+                        for scan_idx in range(1, n_scans_per_image):
+                            all_scan_idxs += (image_bad_row_idxs + scan_n_rows * scan_idx).tolist()
+
+                        # add valid rows of scan to the total section image
+                        scan_image[image_bad_row_idxs] = 0
+                        sec_image += scan_image
+
+                        #                        with Plotter(should_show=True, should_force_aspect=True) as ax: # TESTESTEST - plot single scan
+                        #                            ax.imshow(scan_image, interpolation=None) # TESTESTEST
+                        #                            ax.plot(sec_roi["col"], sec_roi["row"], color="white") # TESTESTEST
+
+                        bad_line_idxs += (
+                            np.array(all_scan_idxs)
+                            + (agg_scan_idx * scan_n_rows * n_scans_per_image)
+                        ).tolist()
+
+                        # reset
+                        single_scan_idx = 0
+                        min_scan_idx = 0
+                        max_scan_idx = 0
+
+                        # increment scan idx
+                        agg_scan_idx += 1
+
+                    # keep aggregating scans
+                    else:
+                        # increment scan idx
+                        single_scan_idx += 1
+
+            # /TESTESTEST
+
             # Set an 'out-of-bounds' line number to all photons outside mask (these are later ignored by '_prepare_correlator_input')
             sec_valid_logical_idxs = sec_data_mask[sec_line_num, sec_pixel_num]
             sec_line_num[~sec_valid_logical_idxs] = OUT_OF_SAMPLE_LINE
+
+            # label all photon in the bad lines as IGNORED_LINE
+            for bad_line_edges in zip(
+                sec_line_starts_prt[bad_line_idxs], sec_line_stops_prt[bad_line_idxs]
+            ):
+                single_bad_line_idxs = Limits(bad_line_edges).valid_indices(
+                    sec_pulse_runtime + sec_prt_shift
+                )
+                sec_line_num[single_bad_line_idxs] = IGNORED_LINE
+
+            # use the gathered indices to filter line starts/stops and their corresponding labels
+            sec_line_starts_prt = exclude_elements_by_indices_1d(sec_line_starts_prt, bad_line_idxs)
+            sec_line_stops_prt = exclude_elements_by_indices_1d(sec_line_stops_prt, bad_line_idxs)
+            sec_line_start_labels = exclude_elements_by_indices_1d(
+                sec_line_start_labels, bad_line_idxs
+            )
+            sec_line_stop_labels = exclude_elements_by_indices_1d(
+                sec_line_stop_labels, bad_line_idxs
+            )
 
             # TODO: COMMENT HERE
             sec_coarse = p.raw.coarse[sec_slice]
@@ -1699,7 +1871,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             )[sec_sorted_idxs]
 
             # keep the valid lines for each section
-            sec_valid_lines = np.unique(sec_line_num[sec_line_num >= 0])
+            #            sec_valid_lines = np.unique(sec_line_num[sec_line_num >= 0])
+            sec_valid_lines = np.unique((sec_image * sec_image_mask).nonzero()[0])
             p.general.valid_lines.append(sec_valid_lines)
 
             # Getting section background correlation

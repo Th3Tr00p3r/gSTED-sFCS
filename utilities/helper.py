@@ -491,6 +491,15 @@ class InterpExtrap1D:
             ax.legend()
 
 
+def exclude_elements_by_indices_1d(input_arr, idxs_to_exclude):
+    """Doc."""
+    # TODO: look for lines where I filter indices using list comprehensions and replace with this function
+
+    all_idxs = np.arange(len(input_arr))
+    idxs_to_keep = np.setdiff1d(all_idxs, idxs_to_exclude)
+    return input_arr[idxs_to_keep]
+
+
 def normalize_scan_img_rows(img: np.ndarray, mask=None):
     """Normalize an image to the median of the maximum row. Optionally use a supplied mask first."""
 

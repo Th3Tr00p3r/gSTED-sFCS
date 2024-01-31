@@ -160,6 +160,7 @@ class Plotter:
         self.selection_limits: helper.Limits = kwargs.get("selection_limits")
         self.should_close_after_selection = kwargs.get("should_close_after_selection", False)
         self.subplot_kw = kwargs.get("subplot_kw", {})  # dict(projection='3d')
+        self.should_show = kwargs.get("should_show", False)  # show on exit
 
     def __enter__(self):
         """Prepare the 'axes' object to use in context manager"""
@@ -263,6 +264,12 @@ class Plotter:
                 if self.should_close_after_selection:
                     plt.close(self.fig)
                 return
+
+        # show on exit (for testing)
+        if self.should_show:
+            self.fig.show()
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
 
         if self.parent_ax is None:  # set figure attributes, and show it (dealing with figure)
             if self.gui_display is not None:
