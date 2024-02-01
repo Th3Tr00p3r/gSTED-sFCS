@@ -241,6 +241,8 @@ class AngularScanDataMixin:
                     image_mask.size,
                 )
             )
+            if (np.array(line_starts_new) < 0).any():  # TESTESTEST
+                print("WHOA THERE!")
             # get the flat index of the line stop for row
             row_stop_flat_idx = np.ravel_multi_index((row_idx, right_edge), image_mask.shape)
             # get all line stops indices for that line index by adding integer whole scans
@@ -285,11 +287,9 @@ class AngularScanDataMixin:
 
         # convert to Numpy arrays
         line_starts_prt: np.ndarray = (
-            np.array(line_starts, dtype=np.int64) * laser_freq_hz / ao_sampling_freq_hz
-        ).astype(int)
-        line_stops_prt = (
-            np.array(line_stops, dtype=np.int64) * laser_freq_hz / ao_sampling_freq_hz
-        ).astype(int)
+            np.array(line_starts, dtype=np.int64) * laser_freq_hz // ao_sampling_freq_hz
+        )
+        line_stops_prt = np.array(line_stops, dtype=np.int64) * laser_freq_hz // ao_sampling_freq_hz
         line_start_labels_arr = np.array(line_start_labels, dtype=np.int16)
         line_stop_labels_arr = np.array(line_stop_labels, dtype=np.int16)
 
@@ -1603,6 +1603,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self,
         idx,
         full_data,
+        mask_short_rows_fac=0.5,
         roi_selection="auto",
         should_alleviate_bright_pixels=False,
         n_scans_per_image=1,
@@ -1696,7 +1697,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
             # discard short rows, then fill long rows
             m2 = np.sum(sec_image_mask, axis=1)
-            sec_image_mask[m2 < 0.5 * m2.max(), :] = False
+            sec_image_mask[m2 < mask_short_rows_fac * m2.max(), :] = False
             true_vals = np.argwhere(sec_image_mask)
             for row_idx in np.unique(sec_image_mask.nonzero()[0]):
                 true_idxs = true_vals[true_vals[:, 0] == row_idx][:, 1]

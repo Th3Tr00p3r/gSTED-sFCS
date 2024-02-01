@@ -297,6 +297,7 @@ PROC_OPTIONS_COLL = QtWidgetCollection(
     # angular scan processing
     should_fix_shift=("fixShift", "QCheckBox", "options", False),
     median_factor=("medFac", "QDoubleSpinBox", "options", False),
+    mask_short_rows_fac=("maskShortRowsFactor", "QDoubleSpinBox", "options", False),
     roi_selection=("roiSelection", "QComboBox", "options", False),
     should_alleviate_bright_pixels=("alleviateBrightPixels", "QCheckBox", "options", False),
     n_scans_per_image=("nAggScans", "QSpinBox", "options", False),
