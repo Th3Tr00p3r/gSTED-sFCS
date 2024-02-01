@@ -299,6 +299,8 @@ PROC_OPTIONS_COLL = QtWidgetCollection(
     median_factor=("medFac", "QDoubleSpinBox", "options", False),
     roi_selection=("roiSelection", "QComboBox", "options", False),
     should_alleviate_bright_pixels=("alleviateBrightPixels", "QCheckBox", "options", False),
+    n_scans_per_image=("nAggScans", "QSpinBox", "options", False),
+    thresh_factor=("brightPixelThreshFactor", "QDoubleSpinBox", "options", False),
     # general processing
     subtract_spatial_bg_corr=("subtractBgCorr", "QCheckBox", "options", False),
     should_ignore_hard_gate=("ignoreHardGate", "QCheckBox", "options", False),

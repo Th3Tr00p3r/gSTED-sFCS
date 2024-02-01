@@ -1,6 +1,6 @@
 imgScanFileTemplate,gb
 solScanFileTemplate,
-newTemplate,YOYO_30kbp_Linear_400nW_angular_exc
+newTemplate,YOYO_30kbp_CNCP_OC_1in150_1uW_Gated2ns_angular_sted_260mW
 solImportFileSelectionPattern,1
 searchQuery,
 lineEdit,
@@ -63,8 +63,8 @@ solScanType,angular
 solScanDurUnits,seconds
 dataMonth,1
 dataYear,2024
-dataDay,14
-dataTemplate1,YOYO_30kbp_Linear_400nW_angular_exc_152153_*.pkl
+dataDay,16
+dataTemplate1,YOYO_30kbp_CNCP_OC_1in150_1uW_Gated2ns_angular_sted_260mW_122402_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -86,8 +86,8 @@ repeatSolMeas,False
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,True
-solImportUse,False
+solImportUseAll,False
+solImportUse,True
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveDbscan,False

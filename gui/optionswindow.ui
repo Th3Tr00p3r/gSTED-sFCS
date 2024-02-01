@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>362</width>
-    <height>528</height>
+    <width>382</width>
+    <height>604</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -404,13 +404,93 @@ Spatial Background</string>
             </layout>
            </item>
            <item>
-            <widget class="QCheckBox" name="alleviateBrightPixels">
-             <property name="toolTip">
-              <string>Experimental! Needs work...</string>
+            <widget class="QGroupBox" name="groupBox_6">
+             <property name="title">
+              <string>Bright Pixel Line Removal</string>
              </property>
-             <property name="text">
-              <string>Alleviate Bright Pixels</string>
-             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_11">
+              <property name="spacing">
+               <number>2</number>
+              </property>
+              <item>
+               <widget class="QCheckBox" name="alleviateBrightPixels">
+                <property name="toolTip">
+                 <string>Turn &quot;Bright Pixel Line Removal&quot; ON/OFF</string>
+                </property>
+                <property name="text">
+                 <string>ON/OFF</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_11">
+                <property name="spacing">
+                 <number>2</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="label_9">
+                  <property name="text">
+                   <string>Aggregated
+Scans</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="nAggScans">
+                  <property name="toolTip">
+                   <string>Lower value - &gt; better resolution for discrimination</string>
+                  </property>
+                  <property name="buttonSymbols">
+                   <enum>QAbstractSpinBox::NoButtons</enum>
+                  </property>
+                  <property name="minimum">
+                   <number>1</number>
+                  </property>
+                  <property name="maximum">
+                   <number>1000</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_12">
+                <property name="spacing">
+                 <number>2</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="label_10">
+                  <property name="text">
+                   <string>Threshold
+Factor</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="brightPixelThreshFactor">
+                  <property name="toolTip">
+                   <string>Lower Value -&gt; stronger discrimination -&gt; noisier measurement (less lines used)</string>
+                  </property>
+                  <property name="buttonSymbols">
+                   <enum>QAbstractSpinBox::NoButtons</enum>
+                  </property>
+                  <property name="decimals">
+                   <number>1</number>
+                  </property>
+                  <property name="minimum">
+                   <double>1.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>100000.000000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
             </widget>
            </item>
           </layout>

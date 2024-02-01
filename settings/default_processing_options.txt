@@ -14,6 +14,6 @@ shouldUniteStartTimes,False
 weightedFits,False
 dataSlice,False
 fixShift,True
-alleviateBrightPixels,False
+alleviateBrightPixels,True
 ImgAutoGating,True
 ImgMultiScan,True

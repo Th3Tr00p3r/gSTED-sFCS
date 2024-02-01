@@ -6,7 +6,6 @@ from contextlib import suppress
 from copy import copy
 from dataclasses import InitVar, dataclass, field
 from itertools import count as infinite_range
-from itertools import cycle
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Tuple, Union
 
@@ -346,6 +345,7 @@ class AngularScanDataMixin:
 
     def get_bright_pixels(self, img: np.ndarray, mask: np.ndarray, thresh_factor=1000, **kwargs):
         """Get a mask for 'bright pixels' of an image using a histogram-based heuristic method."""
+        # TODO: generalize so that it also catches "dark" pixels
 
         # select number of bins based on number of unique values in ROI
         n_unique = len(np.unique(img[mask]))
@@ -1604,6 +1604,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         idx,
         full_data,
         roi_selection="auto",
+        should_alleviate_bright_pixels=False,
+        n_scans_per_image=1,
         **kwargs,
     ) -> TDCPhotonFileData:
         """
@@ -1670,6 +1672,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 **kwargs,
             )
             sec_prt_shift = sec_pixel_shift * (self.laser_freq_hz // ao_sampling_freq_hz)
+            sec_pulse_runtime_shifted = sec_pulse_runtime + sec_prt_shift
 
             # get BW section image
             if roi_selection == "auto":
@@ -1727,129 +1730,123 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     print("ROI is empty (need to figure out the cause). Skipping file.\n")
                 return None
 
-            # ignore lines with outlier pixels (bright or dark)
-            # TESTESTEST
-            # TODO: A faster method might be to first find the all single scans PRTs, then use their edges, instead of going line by line
-
-            # sort the line starts/stops/labels so that they can be filtered properly (per single scan)
-            lines_starts_sorted_idxs = np.argsort(sec_line_starts_prt)
-            sec_line_starts_prt = sec_line_starts_prt[lines_starts_sorted_idxs]
-            sec_line_stops_prt = sec_line_stops_prt[lines_starts_sorted_idxs]
-            sec_line_start_labels = sec_line_start_labels[lines_starts_sorted_idxs]
-            sec_line_stop_labels = sec_line_stop_labels[lines_starts_sorted_idxs]
-
-            # gather the start/stop indices of bad lines
-            min_scan_idx = 0
-            max_scan_idx = 0
-            agg_scan_idx = 0  # track aggragated scan images
-            single_scan_idx = 0  # track single scans
-            n_scans_per_image = 10
-            bad_line_idxs = []
-            sec_image = np.zeros_like(
-                sec_image
-            )  # rebuild the section image from the single scans minus the bad rows
-            sec_pulse_runtime_shifted = sec_pulse_runtime + sec_prt_shift
-            scan_min_row, *_, scan_max_row = np.unique(sec_image_mask.nonzero()[0])
-            scan_n_rows = scan_max_row - scan_min_row
-            for total_idx, (scan_line_idx, line_start_prt, line_stop_prt) in enumerate(
-                zip(
-                    cycle(range(scan_min_row, scan_max_row + 1)),
-                    sec_line_starts_prt,
-                    sec_line_stops_prt,
-                )
-            ):
-
-                #                print(f"Agg. Image {agg_scan_idx}, Scan: {single_scan_idx}, in-scan line: {scan_line_idx}") # TESTESTEST
-
-                # get the line indices and update the minimum and maximum scan indices based on them
-                line_idxs = Limits(line_start_prt, line_stop_prt).valid_indices(
-                    sec_pulse_runtime_shifted, as_bool=False
-                )
-                # Skip line if no photons are found within the line (can happen if there are jupms in the runtime)
-                if line_idxs.size == 0:
-                    continue
-                # update the scan edges
-                min_scan_idx = min(min_scan_idx, line_idxs[0])
-                max_scan_idx = max(max_scan_idx, line_idxs[-1])
-
-                # reached end of single scan, remove lines with bright spots
-                if scan_line_idx == scan_max_row or total_idx == sec_line_starts_prt.size - 1:
-
-                    # reached end of aggregated scans - determine bad rows!
-                    if single_scan_idx == n_scans_per_image - 1:
-
-                        # build single-scan image using the section runtime with the line indices with convert_angular_scan_to_image()
-                        scan_image, *_ = self.convert_angular_scan_to_image(
-                            sec_pulse_runtime[min_scan_idx:max_scan_idx] + sec_prt_shift,
-                            self.laser_freq_hz,
-                            ao_sampling_freq_hz,
-                            p.general.samples_per_line,
-                            p.general.n_lines,
-                            should_fix_shift=False,
-                        )
-
-                        # find the bad rows
-                        bright_pixels_img_bw = self.get_bright_pixels(
-                            scan_image, sec_image_mask, **kwargs
-                        )
-                        image_bad_row_idxs = np.unique(
-                            bright_pixels_img_bw.nonzero()[0]
-                        )  # this is supposed to get the indices of the bad lines
-                        # add indices of all aggregated scans
-                        all_scan_idxs = image_bad_row_idxs.tolist()
-                        for scan_idx in range(1, n_scans_per_image):
-                            all_scan_idxs += (image_bad_row_idxs + scan_n_rows * scan_idx).tolist()
-
-                        # add valid rows of scan to the total section image
-                        scan_image[image_bad_row_idxs] = 0
-                        sec_image += scan_image
-
-                        #                        with Plotter(should_show=True, should_force_aspect=True) as ax: # TESTESTEST - plot single scan
-                        #                            ax.imshow(scan_image, interpolation=None) # TESTESTEST
-                        #                            ax.plot(sec_roi["col"], sec_roi["row"], color="white") # TESTESTEST
-
-                        bad_line_idxs += (
-                            np.array(all_scan_idxs)
-                            + (agg_scan_idx * scan_n_rows * n_scans_per_image)
-                        ).tolist()
-
-                        # reset
-                        single_scan_idx = 0
-                        min_scan_idx = 0
-                        max_scan_idx = 0
-
-                        # increment scan idx
-                        agg_scan_idx += 1
-
-                    # keep aggregating scans
-                    else:
-                        # increment scan idx
-                        single_scan_idx += 1
-
-            # /TESTESTEST
-
             # Set an 'out-of-bounds' line number to all photons outside mask (these are later ignored by '_prepare_correlator_input')
             sec_valid_logical_idxs = sec_data_mask[sec_line_num, sec_pixel_num]
             sec_line_num[~sec_valid_logical_idxs] = OUT_OF_SAMPLE_LINE
 
-            # label all photon in the bad lines as IGNORED_LINE
-            for bad_line_edges in zip(
-                sec_line_starts_prt[bad_line_idxs], sec_line_stops_prt[bad_line_idxs]
-            ):
-                single_bad_line_idxs = Limits(bad_line_edges).valid_indices(
-                    sec_pulse_runtime + sec_prt_shift
-                )
-                sec_line_num[single_bad_line_idxs] = IGNORED_LINE
+            # ignore lines with outlier pixels (bright or dark)
+            # gather the start/stop indices of bad lines
+            bad_line_idxs = []
+            if should_alleviate_bright_pixels:
+                # sort the line starts/stops/labels so that they can be filtered properly
+                lines_starts_sorted_idxs = np.argsort(sec_line_starts_prt)
+                sec_line_starts_prt = sec_line_starts_prt[lines_starts_sorted_idxs]
+                sec_line_stops_prt = sec_line_stops_prt[lines_starts_sorted_idxs]
+                sec_line_start_labels = sec_line_start_labels[lines_starts_sorted_idxs]
+                sec_line_stop_labels = sec_line_stop_labels[lines_starts_sorted_idxs]
 
-            # use the gathered indices to filter line starts/stops and their corresponding labels
-            sec_line_starts_prt = exclude_elements_by_indices_1d(sec_line_starts_prt, bad_line_idxs)
-            sec_line_stops_prt = exclude_elements_by_indices_1d(sec_line_stops_prt, bad_line_idxs)
-            sec_line_start_labels = exclude_elements_by_indices_1d(
-                sec_line_start_labels, bad_line_idxs
-            )
-            sec_line_stop_labels = exclude_elements_by_indices_1d(
-                sec_line_stop_labels, bad_line_idxs
-            )
+                # rebuild the section image from the single scans minus the bad rows
+                sec_image = np.zeros_like(sec_image)
+                scan_min_row, *_, scan_max_row = np.unique(sec_image_mask.nonzero()[0])
+                n_rows_in_scan = scan_max_row - scan_min_row
+                lines_per_image = n_scans_per_image * n_rows_in_scan
+
+                if kwargs.get("is_verbose"):
+                    print(
+                        f"Ignoring lines with bright pixels, aggregating per {n_scans_per_image} scans ({sec_line_starts_prt.size // lines_per_image} images) ",
+                        end="",
+                    )
+
+                # Filter only the first and last lines of every "image" (aggregated scans), since only knowing the starts and ends is needed.
+                # This can be achieved by filtering the line start/stpos
+                image_edges_line_edges_prt = np.vstack(
+                    (
+                        sec_line_starts_prt[::lines_per_image],
+                        unify_length(
+                            sec_line_stops_prt[lines_per_image - 1 :: lines_per_image],
+                            sec_line_starts_prt[::lines_per_image].shape,
+                        ),
+                    )
+                )
+                image_edges_line_edges_prt = image_edges_line_edges_prt[
+                    :, image_edges_line_edges_prt[1] != 0
+                ]
+
+                for image_idx, (image_first_line_start_prt, image_last_line_stop_prt) in enumerate(
+                    zip(*image_edges_line_edges_prt)
+                ):
+                    # get the line indices and update the minimum and maximum scan indices based on them
+                    image_idxs = Limits(
+                        image_first_line_start_prt, image_last_line_stop_prt
+                    ).valid_indices(sec_pulse_runtime_shifted, as_bool=False)
+
+                    # build single-scan image using the section runtime with the line indices with convert_angular_scan_to_image()
+                    scan_image, *_ = self.convert_angular_scan_to_image(
+                        sec_pulse_runtime_shifted[image_idxs[0] : image_idxs[-1]],
+                        self.laser_freq_hz,
+                        ao_sampling_freq_hz,
+                        p.general.samples_per_line,
+                        p.general.n_lines,
+                        should_fix_shift=False,
+                    )
+
+                    # find the bad rows
+                    bright_pixels_img_bw = self.get_bright_pixels(
+                        scan_image, sec_image_mask, **kwargs
+                    )
+                    image_bad_row_idxs = np.unique(
+                        bright_pixels_img_bw.nonzero()[0]
+                    )  # this is supposed to get the indices of the bad lines
+                    # add indices of all aggregated scans
+                    all_scan_idxs = image_bad_row_idxs.tolist()
+                    for scan_idx in range(1, n_scans_per_image):
+                        all_scan_idxs += (image_bad_row_idxs + n_rows_in_scan * scan_idx).tolist()
+
+                    # add valid rows of scan to the total section image
+                    scan_image[image_bad_row_idxs] = 0
+                    sec_image += scan_image
+
+                    bad_line_idxs += (
+                        np.array(all_scan_idxs) + (image_idx * lines_per_image)
+                    ).tolist()
+
+                    if kwargs.get("is_verbose"):
+                        print(".", end="")
+
+                if kwargs.get("is_verbose"):
+                    print(f"(Optionally) marking {len(bad_line_idxs)} 'bad lines'", end="")
+
+                # label all photon in the bad lines as IGNORED_LINE
+                # TODO: why does this happen? Possibly due to jumps in the runtime?
+                while bad_line_idxs[-1] >= sec_line_starts_prt.size:
+                    print(
+                        f"last bad index: {bad_line_idxs[-1]}\nsec_line_starts_prt.size: {sec_line_starts_prt.size}"
+                    )  # TESTESTEST
+                    print("GETTING RID OF ALL INDICES ABOVE 'sec_line_starts_prt.size - 1'")
+                    bad_line_idxs.pop()
+                for bad_line_edges in zip(
+                    sec_line_starts_prt[bad_line_idxs], sec_line_stops_prt[bad_line_idxs]
+                ):
+                    single_bad_line_idxs = Limits(bad_line_edges).valid_indices(
+                        sec_pulse_runtime_shifted
+                    )
+                    sec_line_num[single_bad_line_idxs] = IGNORED_LINE
+                    if kwargs.get("is_verbose"):
+                        print(".", end="")
+
+                # use the gathered indices to filter line starts/stops and their corresponding labels
+                sec_line_starts_prt = exclude_elements_by_indices_1d(
+                    sec_line_starts_prt, bad_line_idxs
+                )
+                sec_line_stops_prt = exclude_elements_by_indices_1d(
+                    sec_line_stops_prt, bad_line_idxs
+                )
+                sec_line_start_labels = exclude_elements_by_indices_1d(
+                    sec_line_start_labels, bad_line_idxs
+                )
+                sec_line_stop_labels = exclude_elements_by_indices_1d(
+                    sec_line_stop_labels, bad_line_idxs
+                )
 
             # TODO: COMMENT HERE
             sec_coarse = p.raw.coarse[sec_slice]
@@ -1858,7 +1855,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
             # Inserting the line start/stop markers into the arrays
             sec_pulse_runtime = np.hstack(
-                (sec_line_starts_prt, sec_line_stops_prt, sec_pulse_runtime + sec_prt_shift)
+                (sec_line_starts_prt, sec_line_stops_prt, sec_pulse_runtime_shifted)
             )
             sec_sorted_idxs = np.argsort(sec_pulse_runtime)
             sec_pulse_runtime = sec_pulse_runtime[sec_sorted_idxs]
