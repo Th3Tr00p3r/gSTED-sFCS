@@ -17,6 +17,7 @@ import ftd2xx
 import nidaqmx.system as nisys
 import numpy as np
 import pyvisa
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QListWidgetItem, QWidget
 
 import gui.widgets as wdgts
@@ -404,6 +405,10 @@ class MainWin:
             new_item = QListWidgetItem(
                 f"{kwargs['file_template']}_{pattern}_{laser_mode.lower()}_{gated_str}_StepperPos{stage_str} - {kwargs['duration']:.0f} {kwargs['duration_units']}{' (REPEATED)' if kwargs['repeat'] else ''}{' (FINAL)' if kwargs['final'] else ''}"
             )
+            if kwargs["repeat"]:
+                new_item.setBackground(QColor(255, 192, 203))
+            elif kwargs["final"]:
+                new_item.setBackground(QColor(255, 0, 0))
             self._gui.main.measQueue.addItem(new_item)
             self._gui.main.measQueue.setCurrentItem(new_item)
             logging.info(f"{meas_type} measurement added to FIFO queue.")

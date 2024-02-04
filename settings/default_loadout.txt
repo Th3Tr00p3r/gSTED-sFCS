@@ -15,10 +15,6 @@ tdcCalibGating,40
 scanImgFileNum,1
 solAnalysisRemoveWorstSpinner,0
 solScanFloatingAmp,0
-circAoSampFreq,10000
-circDiameter,25
-circSpeed,20000
-numOfCircles,2564
 maxLineLen,100
 angAoSampFreq,10000
 angle,145
@@ -28,6 +24,10 @@ maxWidth,42
 solPointsPerLine,102
 solTotPointsPerLine,125
 solNumLines,22
+circAoSampFreq,10000
+circDiameter,25
+circSpeed,20000
+numOfCircles,2564
 depPow,260
 depCurr,1500
 stageSteps,250
@@ -47,7 +47,7 @@ solScanStageDwell,5.0
 solLinFrac,0.9
 solAngActualSpeed,8800.0
 solActualScanFreq,40.0
-solScanDur,3.0
+solScanDur,25.0
 xAOV,0.0
 yAOV,0.0
 zAOV,5.0

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>382</width>
-    <height>604</height>
+    <width>375</width>
+    <height>581</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,21 +34,10 @@
         <property name="title">
          <string>General</string>
         </property>
-        <layout class="QVBoxLayout" name="verticalLayout_3">
+        <layout class="QVBoxLayout" name="verticalLayout_2">
          <property name="spacing">
           <number>2</number>
          </property>
-         <item>
-          <widget class="QCheckBox" name="useDefaultSysInfo">
-           <property name="toolTip">
-            <string>Use default system info instead of that saved in the file.</string>
-           </property>
-           <property name="text">
-            <string>Use Default
-System Info</string>
-           </property>
-          </widget>
-         </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_8">
            <property name="spacing">
@@ -65,44 +54,63 @@ Spatial Background</string>
              </property>
             </widget>
            </item>
+           <item>
+            <widget class="QCheckBox" name="shouldUniteStartTimes">
+             <property name="toolTip">
+              <string>Combine measurements with identical templates except for the start time.</string>
+             </property>
+             <property name="text">
+              <string>Unite start times</string>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
          <item>
-          <widget class="QCheckBox" name="ignoreHardGate">
-           <property name="text">
-            <string>Ignore Detector Gate</string>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="horizontalLayout_15">
+           <item>
+            <widget class="QCheckBox" name="ignoreHardGate">
+             <property name="text">
+              <string>Ignore Detector Gate</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="useDefaultSysInfo">
+             <property name="toolTip">
+              <string>Use default system info instead of that saved in the file.</string>
+             </property>
+             <property name="text">
+              <string>Use Default
+System Info</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
-          <widget class="QCheckBox" name="useMultiProcessing">
-           <property name="toolTip">
-            <string>Use multiple cores where deemed effective</string>
-           </property>
-           <property name="text">
-            <string>Multiprocess data</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="shouldUniteStartTimes">
-           <property name="toolTip">
-            <string>Combine measurements with identical templates except for the start time.</string>
-           </property>
-           <property name="text">
-            <string>Unite start times</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="weightedFits">
-           <property name="toolTip">
-            <string>Whether to consider y-data uncertainty in fitting.</string>
-           </property>
-           <property name="text">
-            <string>Weighted Fits</string>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="horizontalLayout_16">
+           <item>
+            <widget class="QCheckBox" name="useMultiProcessing">
+             <property name="toolTip">
+              <string>Use multiple cores where deemed effective</string>
+             </property>
+             <property name="text">
+              <string>Multiprocess data</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="weightedFits">
+             <property name="toolTip">
+              <string>Whether to consider y-data uncertainty in fitting.</string>
+             </property>
+             <property name="text">
+              <string>Weighted Fits</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -561,35 +569,45 @@ Factor</string>
               </widget>
              </item>
              <item>
-              <layout class="QVBoxLayout" name="verticalLayout_2">
-               <property name="spacing">
-                <number>0</number>
+              <widget class="QCheckBox" name="ImgMultiScan">
+               <property name="toolTip">
+                <string>Treat each plane as a re-scan.</string>
                </property>
-               <item>
-                <widget class="QLabel" name="label_3">
-                 <property name="text">
-                  <string>Gate Width</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QSpinBox" name="ImgGateWidth">
-                 <property name="toolTip">
-                  <string>If auto-gating (STED), this determines the gate width.
+               <property name="text">
+                <string>Multiscan</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_14">
+             <property name="spacing">
+              <number>2</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Gate Width</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="ImgGateWidth">
+               <property name="toolTip">
+                <string>If auto-gating (STED), this determines the gate width.
 The lower gate is the pulse delay.</string>
-                 </property>
-                 <property name="buttonSymbols">
-                  <enum>QAbstractSpinBox::NoButtons</enum>
-                 </property>
-                 <property name="maximum">
-                  <number>999</number>
-                 </property>
-                 <property name="value">
-                  <number>15</number>
-                 </property>
-                </widget>
-               </item>
-              </layout>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+               <property name="maximum">
+                <number>999</number>
+               </property>
+               <property name="value">
+                <number>15</number>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -627,14 +645,20 @@ The lower gate is the pulse delay.</string>
             </layout>
            </item>
            <item>
-            <widget class="QCheckBox" name="ImgMultiScan">
-             <property name="toolTip">
-              <string>Treat each plane as a re-scan.</string>
+            <spacer name="verticalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
              </property>
-             <property name="text">
-              <string>Multiscan</string>
+             <property name="sizeType">
+              <enum>QSizePolicy::MinimumExpanding</enum>
              </property>
-            </widget>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>6</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </widget>
