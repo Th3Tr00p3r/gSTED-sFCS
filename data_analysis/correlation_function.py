@@ -329,15 +329,16 @@ class CorrFunc:
         """Doc."""
 
         # subtract background correlations
-        for idx, valid_idx in enumerate(valid_idxs):
-            bg_corr_dict = bg_corr_list[valid_idx]
-            bg_corr = np.interp(
-                corr_output.lag_list[idx],
-                bg_corr_dict["lag"],
-                bg_corr_dict["corrfunc"],
-                right=0,
-            )
-            corr_output.corrfunc_list[idx] -= bg_corr
+        if bg_corr_list:
+            for idx, valid_idx in enumerate(valid_idxs):
+                bg_corr_dict = bg_corr_list[valid_idx]
+                bg_corr = np.interp(
+                    corr_output.lag_list[idx],
+                    bg_corr_dict["lag"],
+                    bg_corr_dict["corrfunc"],
+                    right=0,
+                )
+                corr_output.corrfunc_list[idx] -= bg_corr
 
         # subtract afterpulsing
         if should_subtract_afterpulsing:
