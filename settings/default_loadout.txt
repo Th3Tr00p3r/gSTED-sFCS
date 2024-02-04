@@ -1,5 +1,5 @@
 imgScanFileTemplate,gb
-newTemplate,YOYO_30kbp_CNCP_OC_1in150_1uW_Gated2ns_angular_sted_260mW
+newTemplate,bp300_angular_exc
 solImportFileSelectionPattern,1
 searchQuery,
 lineEdit,
@@ -57,10 +57,10 @@ psdEffDelay,49.61
 imgScanPreset,Locate Plane - YZ Coarse
 imgScanType,YZ
 imgShowMethod,Forward scan - normalized
-dataMonth,1
-dataYear,2024
-dataDay,16
-dataTemplate1,YOYO_30kbp_CNCP_OC_1in150_1uW_Gated2ns_angular_sted_260mW_122402_*.pkl
+dataMonth,5
+dataYear,2018
+dataDay,10
+dataTemplate1,bp300_angular_exc_000000_*.mat
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -69,8 +69,8 @@ gateUnits,lifetimes
 assignedGates,
 gateMeasType,STED
 availableGates,
-importedSolDataTemplates2,
-importedSolDataTemplates1,
+importedSolDataTemplates2,bp300_angular_exc_000000_*.mat
+importedSolDataTemplates1,bp300_angular_exc_000000_*.mat
 solMeasPreset,Standard Static
 solScanStagePattern,None
 solScanType,static
@@ -114,7 +114,7 @@ alwaysSaveImg,False
 solImportReCorrelate,False
 solImportAutoLoadProcessed,False
 bwMask,False
-normRows,False
+normRows,True
 circShouldPrecess,True
 shouldPlot,True
 shouldFit,True

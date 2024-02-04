@@ -1606,7 +1606,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         mask_short_rows_fac=0.5,
         roi_selection="auto",
         should_alleviate_bright_pixels=False,
-        n_scans_per_image=1,
+        agg_ratio=0.01,
         **kwargs,
     ) -> TDCPhotonFileData:
         """
@@ -1750,6 +1750,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 sec_image = np.zeros_like(sec_image)
                 scan_min_row, *_, scan_max_row = np.unique(sec_image_mask.nonzero()[0])
                 n_rows_in_scan = scan_max_row - scan_min_row
+                total_scans = sec_line_starts_prt.size / n_rows_in_scan
+                n_scans_per_image = int(agg_ratio * total_scans)
                 lines_per_image = n_scans_per_image * n_rows_in_scan
 
                 if kwargs.get("is_verbose"):

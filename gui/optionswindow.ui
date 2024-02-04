@@ -478,24 +478,30 @@ Factor</string>
                 <item>
                  <widget class="QLabel" name="label_9">
                   <property name="text">
-                   <string>Aggregated
-Scans</string>
+                   <string>Aggregation
+Ratio</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QSpinBox" name="nAggScans">
+                 <widget class="QDoubleSpinBox" name="aggRatio">
                   <property name="toolTip">
                    <string>Lower value - &gt; better resolution for discrimination</string>
                   </property>
                   <property name="buttonSymbols">
                    <enum>QAbstractSpinBox::NoButtons</enum>
                   </property>
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
                   <property name="minimum">
-                   <number>1</number>
+                   <double>0.001000000000000</double>
                   </property>
                   <property name="maximum">
-                   <number>1000</number>
+                   <double>1.000000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>0.010000000000000</double>
                   </property>
                  </widget>
                 </item>
