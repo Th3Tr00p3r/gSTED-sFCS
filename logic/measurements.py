@@ -98,7 +98,7 @@ class MeasurementProcedure:
         self.n_ao_samps: int
         self.ai_conv_rate: float
 
-        self.is_running = False
+        self.is_running = True
 
     async def stop(self):
         """Doc."""
@@ -811,7 +811,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         # initialize start/end times
         self.set_current_and_end_times()
-        self.is_running = True
         file_num = 1
         logging.info(f"Running {self.type} measurement")
 

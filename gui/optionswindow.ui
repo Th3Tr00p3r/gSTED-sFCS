@@ -577,7 +577,8 @@ Factor</string>
              <item>
               <widget class="QCheckBox" name="ImgMultiScan">
                <property name="toolTip">
-                <string>Treat each plane as a re-scan.</string>
+                <string>Treat each plane as a re-scan.
+TODO: this should be defined for any image measurement, then removed from options.</string>
                </property>
                <property name="text">
                 <string>Multiscan</string>

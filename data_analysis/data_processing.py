@@ -1606,7 +1606,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         mask_short_rows_fac=0.5,
         roi_selection="auto",
         should_alleviate_bright_pixels=False,
-        agg_ratio=0.01,
+        agg_ratio=0.001,
         **kwargs,
     ) -> TDCPhotonFileData:
         """
@@ -1751,12 +1751,15 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 scan_min_row, *_, scan_max_row = np.unique(sec_image_mask.nonzero()[0])
                 n_rows_in_scan = scan_max_row - scan_min_row
                 total_scans = sec_line_starts_prt.size / n_rows_in_scan
-                n_scans_per_image = int(agg_ratio * total_scans)
+                # TODO: The least amount o data is lost when using a sinle scan. The only issue might be that in low CR scans,
+                # a single scan will not have enough photons - figure out what the minimum amount of photons is and only agregate as necessary
+                # Use the mean countrate to know in advance?
+                n_scans_per_image = max(1, int(agg_ratio * total_scans))  # TODO: see above
                 lines_per_image = n_scans_per_image * n_rows_in_scan
 
                 if kwargs.get("is_verbose"):
                     print(
-                        f"Ignoring lines with bright pixels, aggregating per {n_scans_per_image} scans ({sec_line_starts_prt.size // lines_per_image} images) ",
+                        f"Ignoring lines with bright pixels, aggregating per {n_scans_per_image} scans ({sec_line_starts_prt.size // lines_per_image} images)... ",
                         end="",
                     )
 
@@ -1813,11 +1816,11 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                         np.array(all_scan_idxs) + (image_idx * lines_per_image)
                     ).tolist()
 
-                    if kwargs.get("is_verbose"):
-                        print(".", end="")
-
                 if kwargs.get("is_verbose"):
-                    print(f"(Optionally) marking {len(bad_line_idxs)} 'bad lines'", end="")
+                    print(
+                        f"marking {len(bad_line_idxs)}/{(n_lines_total := int(n_rows_in_scan * total_scans))} ({len(bad_line_idxs)/n_lines_total:.1%}) 'bad lines'... ",
+                        end="",
+                    )
 
                 # label all photon in the bad lines as IGNORED_LINE
                 # TODO: why does this happen? Possibly due to jumps in the runtime?
@@ -1834,8 +1837,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                         sec_pulse_runtime_shifted
                     )
                     sec_line_num[single_bad_line_idxs] = IGNORED_LINE
-                    if kwargs.get("is_verbose"):
-                        print(".", end="")
 
                 # use the gathered indices to filter line starts/stops and their corresponding labels
                 sec_line_starts_prt = exclude_elements_by_indices_1d(
