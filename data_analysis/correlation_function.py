@@ -1332,17 +1332,20 @@ class SolutionSFCSMeasurement:
     def display_scan_images(self) -> None:
         """Doc."""
 
+        # get a maximum of 10 images along the whole measurement
+        img_idxs = np.arange(self.n_files, step=int(np.ceil(self.n_files / 10)))
+
         try:
             if self.scan_type == "angular":
                 with Plotter(
-                    subplots=(1, self.n_files), fontsize=8, should_force_aspect=True
+                    subplots=(1, len(img_idxs)), fontsize=8, should_force_aspect=True
                 ) as axes:
                     if not hasattr(
                         axes, "size"
                     ):  # if axes is not an ndarray (only happens if reading just one file)
                         axes = np.array([axes])
-                    for file_idx, (ax, image, roi) in enumerate(
-                        zip(axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list)
+                    for file_idx, ax, image, roi in zip(
+                        img_idxs, axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list
                     ):
                         ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
                         ax.set_xlabel("Pixel Index")

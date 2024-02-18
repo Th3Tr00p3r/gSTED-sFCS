@@ -2076,9 +2076,7 @@ class MainWin:
 
             elif meas.scan_type == "static":
                 data_type = self.infer_data_type_from_template(meas.template)
-                cf = meas.cf[
-                    data_type
-                ]  # TODO: keyerror might result from testing (using confocal as STED)
+                cf = list(meas.cf.values())[0]
                 cf.average_correlation()
                 try:
                     proc_opt_dict = self.get_processing_options_as_dict()
