@@ -242,7 +242,7 @@ class AngularScanDataMixin:
                 )
             )
             if (np.array(line_starts_new) < 0).any():  # TESTESTEST
-                print("WHOA THERE!")
+                print("Warning: There are line starts lower than 0!")
             # get the flat index of the line stop for row
             row_stop_flat_idx = np.ravel_multi_index((row_idx, right_edge), image_mask.shape)
             # get all line stops indices for that line index by adding integer whole scans
@@ -1872,7 +1872,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             )[sec_sorted_idxs]
 
             # keep the valid lines for each section
-            #            sec_valid_lines = np.unique(sec_line_num[sec_line_num >= 0])
             sec_valid_lines = np.unique((sec_image * sec_image_mask).nonzero()[0])
             p.general.valid_lines.append(sec_valid_lines)
 

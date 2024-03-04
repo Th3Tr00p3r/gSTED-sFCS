@@ -2119,6 +2119,7 @@ class SolutionSFCSExperiment:
         x_scale=None,
         y_scale=None,
         should_add_exp_name=True,
+        confocal_only=False,
         sted_only=False,
         **kwargs,
     ) -> List[Line2D]:
@@ -2171,7 +2172,14 @@ class SolutionSFCSExperiment:
                 existing_lines = parent_ax.get_lines()
                 kwargs.pop("parent_ax")
 
-            for meas_type in {"sted"} if sted_only else ("confocal", "sted"):
+            if confocal_only:
+                meas_types = {"confocal"}
+            elif sted_only:
+                meas_types = {"sted"}
+            else:
+                meas_types = {"confocal", "sted"}
+
+            for meas_type in meas_types:
                 getattr(self, meas_type).plot_correlation_functions(
                     parent_ax=ax,
                     x_field=x_field,
