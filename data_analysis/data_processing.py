@@ -691,7 +691,7 @@ class AfterpulsingFilter:
 
         # prepare filter input if afterpulsing filter is supplied
         filter = self.filter[int(get_afterpulsing)]
-        # create a filter for genuine fluorscene (ignoring afterpulsing)
+        # create a filter for genuine fluorscence (ignoring afterpulsing)
         bin_num = np.digitize(split_dt, self.fine_bins)
         # adding a final zero value for NaNs (which are put in the last bin by np.digitize)
         filter = np.hstack(([0], filter, [0]))  # TODO: should the filter be created like this?
@@ -852,7 +852,9 @@ class TDCPhotonFileData:
         all_split_edges = np.array([split_edges[:-1], split_edges[1:]]).T
 
         # return the splits as a generator
-        return (dt_prt_in[:, start_idx:end_idx] for start_idx, end_idx in all_split_edges)
+        ts_out = np.hstack(([0], np.diff(dt_prt_in[1])))
+        dt_ts_out = np.vstack((dt_prt_in[0], ts_out))
+        return (dt_ts_out[start_idx:end_idx] for start_idx, end_idx in all_split_edges)
 
     def _add_validity(
         self,
@@ -895,14 +897,13 @@ class TDCPhotonFileData:
                     dt_ts_out = dt_ts_out[:, : j_end_last + 1]
                     valid = valid[: j_end_last + 1]
 
-            # back to prt
-            prt = dt_ts_out[1:].cumsum()
-            dt_prt_out = np.vstack((dt_ts_out[0], prt, valid))
+            # combine delay times, time-stamps and validity
+            dt_ts_valid_out = np.vstack((dt_ts_out, valid))
 
         else:
-            dt_prt_out = np.vstack(([], []))
+            dt_ts_valid_out = np.vstack(([], [], []))
 
-        return dt_prt_out
+        return dt_ts_valid_out
 
 
 class TDCPhotonMeasurementData(list):
@@ -914,9 +915,7 @@ class TDCPhotonMeasurementData(list):
     def __init__(self):
         super().__init__()
 
-    def prepare_corr_split_list(
-        self, gate_ns=Gate(), **kwargs
-    ) -> Generator[np.ndarray, None, None]:
+    def generate_splits(self, gate_ns=Gate(), **kwargs) -> Generator[np.ndarray, None, None]:
         """
         Prepare SoftwareCorrelator input from complete measurement data.
         """

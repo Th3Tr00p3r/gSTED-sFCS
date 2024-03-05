@@ -1155,43 +1155,31 @@ class SolutionSFCSMeasurement:
         self,
         input_gen,
         subtract_spatial_bg_corr=False,
-        gate_ns=None,
         is_filtered=False,
         get_afterpulsing=False,
         is_verbose=False,
     ):
         """Using the memory-mapped 'input_gen', build, prepare and optionally gate splits for the correlator, as well as optional corresponsding filter splits"""
 
-        for split_idx, dt_prt_split in enumerate(input_gen):
+        for split_idx, split in enumerate(input_gen):
             # skipping empty splits
-            if not dt_prt_split.size:
+            if not split.size:
                 if is_verbose:
                     print(f"Empty split encountered! Skipping split {split_idx}... ", end="")
                 yield None, None
                 continue
 
-            valid_idxs = gate_ns.valid_indices(dt_prt_split[0]) if gate_ns else slice(None)
-
             # Generate final_corr_section_input
-            if gate_ns:
-                ts = np.hstack(([0], np.diff(dt_prt_split[1][valid_idxs])))
-                final_split = np.vstack((ts, dt_prt_split[2:][:, valid_idxs]))
-                final_corr_section_input = np.squeeze(final_split.astype(np.int32))
-            else:
-                ts = np.hstack(([0], np.diff(dt_prt_split[1])))
-                final_split = np.vstack((ts, dt_prt_split[2:]))
-                final_corr_section_input = np.squeeze(final_split.astype(np.int32))
+            final_split = np.squeeze(split[1:].astype(np.int32))
 
-            # Generate final_filter_input
+            # Generate split filter correlator input
             split_filter = (
-                self.afterpulsing_filter.get_split_filter_input(
-                    dt_prt_split[0][valid_idxs], get_afterpulsing
-                )
+                self.afterpulsing_filter.get_split_filter_input(split[0], get_afterpulsing)
                 if is_filtered
                 else None
             )
 
-            yield final_corr_section_input, split_filter
+            yield final_split, split_filter
 
     def correlate_data(  # NOQA C901
         self,
@@ -1290,11 +1278,10 @@ class SolutionSFCSMeasurement:
             duration_min=self.duration_min,
         )
         CF.correlate_measurement(
-            # TODO: perhaps both 'generate_combined_inputs' and 'data.prepare_corr_split_list' can be united in data_processing.py
+            # TODO: perhaps both 'generate_combined_inputs' and 'data.generate_splits' can be united in data_processing.py
             self.generate_combined_inputs(
-                self.data.prepare_corr_split_list(**corr_options),
+                self.data.generate_splits(gate_ns, **corr_options),
                 subtract_spatial_bg_corr,
-                gate_ns,
                 is_filtered,
                 get_afterpulsing,
                 corr_options.get("is_verbose", False),
@@ -1676,8 +1663,7 @@ class SolutionSFCSExperiment:
                     measurement = self.load_measurement(
                         meas_type=meas_type,
                         file_path_template=meas_template,
-                        **meas_kwargs,
-                        **kwargs,
+                        **{**kwargs, **meas_kwargs},
                     )
                 else:  # Use empty measuremnt by default
                     setattr(self, meas_type, SolutionSFCSMeasurement(meas_type))
