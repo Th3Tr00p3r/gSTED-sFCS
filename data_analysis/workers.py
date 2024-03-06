@@ -30,11 +30,8 @@ def io_worker(
             data_processing_queue.put(
                 (
                     data_processor.process_data,
-                    {
-                        "file_idx": file_idx,
-                        "full_data": file_dict["full_data"],
-                        "byte_data_path": byte_data_path,
-                    },
+                    (file_idx, file_dict["full_data"]),
+                    {"byte_data_path": byte_data_path},
                 )
             )
             n_loads += 1
@@ -76,10 +73,10 @@ def data_processing_worker(idx: int, data_processing_queue, io_queue, **proc_opt
     print(f"\n[WORKER {idx}] Initialized.")
     sys.stdout.flush()
     files_processed = 0
-    for func, kwargs in iter(data_processing_queue.get, "STOP"):
-        print(f"\n[WORKER {idx}] Processing file {kwargs['file_idx']}")
+    for func, args, kwargs in iter(data_processing_queue.get, "STOP"):
+        print(f"\n[WORKER {idx}] Processing file {args[0]}")
         sys.stdout.flush()
-        p = func(**{**kwargs, **proc_options})
+        p = func(*args, **{**kwargs, **proc_options})
         print(f"\n[WORKER {idx}] Placing processed file in IO Queue")
         sys.stdout.flush()
         io_queue.put((dump_data_file, p))
