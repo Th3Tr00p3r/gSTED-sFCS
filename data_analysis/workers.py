@@ -44,7 +44,7 @@ def io_worker(
                 func(arg)  # raw.dump()
                 processed_queue.put(arg)
             n_saves += 1
-            print("\n[IO WORKER] processed file saved to disk.")
+            print("\n[IO WORKER] Processed file saved to disk.")
             sys.stdout.flush()
 
             if n_saves == n_files:
@@ -55,7 +55,11 @@ def io_worker(
                     data_processing_queue.put("STOP")
                 break
 
-    print(f"\n[IO WORKER] Stopping. Saved {n_saves}/{n_files} files.")
+    # cleaning up
+    io_queue.close()
+    io_queue.join_thread()
+
+    print(f"\n[IO WORKER] Stopped. Saved {n_saves}/{n_files} files.")
     sys.stdout.flush()
 
 
