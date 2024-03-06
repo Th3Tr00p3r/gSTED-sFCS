@@ -968,10 +968,10 @@ class SolutionSFCSMeasurement:
             # do not print anything inside processes (slows things down) - if you want to know what's going on, put the text in the results queue
             proc_options["is_verbose"] = False
             # initialize the data processing workers (N_RAM_PROCESSES processes)
-            for _ in range(N_RAM_PROCESSES):
+            for worker_idx in range(N_RAM_PROCESSES):
                 data_processing_process = mp.Process(
                     target=data_processing_worker,
-                    args=(data_processing_queue, io_queue),
+                    args=(worker_idx, data_processing_queue, io_queue),
                     kwargs=proc_options,
                 )
                 data_processing_process.start()

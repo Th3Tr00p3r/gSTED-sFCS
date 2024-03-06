@@ -14,44 +14,46 @@ def io_worker(
     n_files,
     n_processors,
 ):
+    """Doc."""
+
+    print("\n[IO WORKER] Initialized.")
     n_saves = 0
     n_loads = 0
-    #    print("IO WORKER: INITIALIZED.")  # TESTESTEST
     for func, arg in iter(io_queue.get, "STOP"):
-        #        print("IO WORKER: LOADING DATA... ", end="")  # TESTESTEST
-        # func was load task - place processing task in data_processing_queue queue
-        # arg is file_path
+        # func was load task - place processing task in data_processing_queue queue (arg is file_path)
         if func.__name__ == "load_file_dict":  # args is the file_path
             file_idx = int(re.split("_(\\d+)\\.", str(arg))[1])
-            file_dict = func(arg)
+            file_dict = func(arg)  # load file dict from disk
             byte_data_path = arg.with_name(arg.name.replace(".pkl", "_byte_data.npy"))
             data_processing_queue.put(
                 (
                     data_processor.process_data,
-                    (file_idx, file_dict["full_data"]),
-                    {"byte_data_path": byte_data_path},
+                    {
+                        "file_idx": file_idx,
+                        "full_data": file_dict["full_data"],
+                        "byte_data_path": byte_data_path,
+                    },
                 )
             )
             n_loads += 1
-        # func was save task - no further tasks
-        else:  # args is a 'TDCPhotonFileData' object (p)
+            print("\n[IO WORKER] file loaded from disk, placed in processing queue.")
+
+        # func was save task - no further tasks (args is a 'TDCPhotonFileData' object (p))
+        else:
             if arg is not None:
-                #                print(f"SAVING RAW DATA {arg.idx}... ", end="")  # TESTESTEST
                 func(arg)  # raw.dump()
                 processed_queue.put(arg)
-                #                print("Done!") # TESTESTEST
             n_saves += 1
-            #            print(f"saved {n_saves} files!")  # TESTESTEST
+            print("\n[IO WORKER] processed file saved to disk.")
+
             if n_saves == n_files:
                 # issue as many stop commands as there are processing workers, then stop self
+                print("\n[IO WORKER] Saved all files. Stopping processing workers.")
                 for _ in range(n_processors):
                     data_processing_queue.put("STOP")
-                #                print("STOPPING IO WORKER!")  # TESTESTEST
-                #                io_queue.put("STOP")
                 break
 
-
-#    print(f"IO WORKER: TERMINATED! SAVED {n_saves}/{n_files} FILES.")  # TESTESTEST
+    print(f"\n[IO WORKER] Stopping. Saved {n_saves}/{n_files} files.")
 
 
 def dump_data_file(p):
@@ -62,16 +64,16 @@ def _get_section_splits(p, **kwargs):
     return p._get_section_splits(**kwargs)
 
 
-def data_processing_worker(data_processing_queue, io_queue, **proc_options):
-    #    print("PROCESSING WORKER: INITIALIZED.")  # TESTESTEST
-    files_processed = 0  # TESTESTEST
-    for func, args, kwargs in iter(data_processing_queue.get, "STOP"):
-        #        print(F"\nPROCESSING WORKER: args={args}, kwargs={kwargs.keys()}\n") # TESTESTEST
-        #        print("PROCESSING WORKER: PROCESSING... ", end="")  # TESTESTEST
-        p = func(*args, **{**kwargs, **proc_options})
-        #        print(f"FILE {p.idx} PROCESSED.")  # TESTESTEST
+def data_processing_worker(idx: int, data_processing_queue, io_queue, **proc_options):
+    """Doc."""
+
+    print(f"\n[WORKER {idx}] Initialized.")
+    files_processed = 0
+    for func, kwargs in iter(data_processing_queue.get, "STOP"):
+        print(f"\n[WORKER {idx}] Processing file {kwargs['file_idx']}")
+        p = func(**{**kwargs, **proc_options})
+        print(f"\n[WORKER {idx}] Placing processed file in IO Queue")
         io_queue.put((dump_data_file, p))
         files_processed += 1
 
-
-#    print(f"PROCESSING WORKER: TERMINATED! PROCESSED {files_processed} FILES.")  # TESTESTEST
+    print(f"\n[WORKER {idx}] Done! {files_processed} files processed!")
