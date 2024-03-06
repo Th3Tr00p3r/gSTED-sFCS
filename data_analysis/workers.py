@@ -2,6 +2,7 @@
 
 import multiprocessing as mp
 import re
+import sys
 
 N_CPU_CORES = mp.cpu_count() // 2  # /2 due to hyperthreading,
 
@@ -17,6 +18,7 @@ def io_worker(
     """Doc."""
 
     print("\n[IO WORKER] Initialized.")
+    sys.stdout.flush()
     n_saves = 0
     n_loads = 0
     for func, arg in iter(io_queue.get, "STOP"):
@@ -37,6 +39,7 @@ def io_worker(
             )
             n_loads += 1
             print("\n[IO WORKER] file loaded from disk, placed in processing queue.")
+            sys.stdout.flush()
 
         # func was save task - no further tasks (args is a 'TDCPhotonFileData' object (p))
         else:
@@ -45,15 +48,18 @@ def io_worker(
                 processed_queue.put(arg)
             n_saves += 1
             print("\n[IO WORKER] processed file saved to disk.")
+            sys.stdout.flush()
 
             if n_saves == n_files:
                 # issue as many stop commands as there are processing workers, then stop self
                 print("\n[IO WORKER] Saved all files. Stopping processing workers.")
+                sys.stdout.flush()
                 for _ in range(n_processors):
                     data_processing_queue.put("STOP")
                 break
 
     print(f"\n[IO WORKER] Stopping. Saved {n_saves}/{n_files} files.")
+    sys.stdout.flush()
 
 
 def dump_data_file(p):
@@ -68,12 +74,16 @@ def data_processing_worker(idx: int, data_processing_queue, io_queue, **proc_opt
     """Doc."""
 
     print(f"\n[WORKER {idx}] Initialized.")
+    sys.stdout.flush()
     files_processed = 0
     for func, kwargs in iter(data_processing_queue.get, "STOP"):
         print(f"\n[WORKER {idx}] Processing file {kwargs['file_idx']}")
+        sys.stdout.flush()
         p = func(**{**kwargs, **proc_options})
         print(f"\n[WORKER {idx}] Placing processed file in IO Queue")
+        sys.stdout.flush()
         io_queue.put((dump_data_file, p))
         files_processed += 1
 
     print(f"\n[WORKER {idx}] Done! {files_processed} files processed!")
+    sys.stdout.flush()
