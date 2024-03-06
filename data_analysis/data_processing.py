@@ -854,7 +854,7 @@ class TDCPhotonFileData:
         # return the splits as a generator
         ts_out = np.hstack(([0], np.diff(dt_prt_in[1])))
         dt_ts_out = np.vstack((dt_prt_in[0], ts_out))
-        return (dt_ts_out[start_idx:end_idx] for start_idx, end_idx in all_split_edges)
+        return (dt_ts_out[:, start_idx:end_idx] for start_idx, end_idx in all_split_edges)
 
     def _add_validity(
         self,
