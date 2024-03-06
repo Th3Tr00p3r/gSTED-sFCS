@@ -2159,11 +2159,11 @@ class SolutionSFCSExperiment:
                 kwargs.pop("parent_ax")
 
             if confocal_only:
-                meas_types = {"confocal"}
+                meas_types = ["confocal"]
             elif sted_only:
-                meas_types = {"sted"}
+                meas_types = ["sted"]
             else:
-                meas_types = {"confocal", "sted"}
+                meas_types = ["confocal", "sted"]
 
             for meas_type in meas_types:
                 getattr(self, meas_type).plot_correlation_functions(
