@@ -927,9 +927,8 @@ class SolutionSFCSMeasurement:
         )  # TESTESTEST
         if (
             should_parallel_process
-            and ((n_files := len(file_paths)) >= 0)
-            #            and ((n_files := len(file_paths)) >= 5) # TESTESTEST
-            #            and (total_byte_data_size_estimate_mb > 2000) # TESTESTEST
+            and ((n_files := len(file_paths)) >= 5)
+            and (total_byte_data_size_estimate_mb > 2000)
         ):
             # -2 is one CPU left to OS and one for I/O
             N_RAM_PROCESSES = N_CPU_CORES - 2
@@ -939,59 +938,59 @@ class SolutionSFCSMeasurement:
                 end="",
             )
 
-            # initialize 3 queues managed by a Manager
-            manager = mp.Manager()
-            io_queue = manager.Queue()
-            data_processing_queue = manager.Queue()
-            processed_queue = manager.Queue()
+            # initialize 2 queues and a list managed by a multiprocessing.Manager, to share between processes
+            with mp.Manager() as manager:
+                io_queue = manager.Queue()
+                data_processing_queue = manager.Queue()
+                processed_list = manager.list()
 
-            # initialize a list to keep track of processes
-            process_list = []
+                # initialize a list to keep track of processes
+                process_list = []
 
-            # initialize IO worker (one process)
-            io_process = mp.Process(
-                target=io_worker,
-                name="IO",
-                args=(
-                    io_queue,
-                    data_processing_queue,
-                    processed_queue,
-                    self.data_processor,
-                    n_files,
-                    N_RAM_PROCESSES,
-                ),
-            )
-            io_process.start()
-            process_list.append(io_process)
-
-            # cancel auto-dumping upon processing, to leave the dumping to IO process
-            proc_options["should_dump"] = False
-            # do not print anything inside processes (slows things down) - if you want to know what's going on, put the text in the results queue
-            proc_options["is_verbose"] = False
-            # initialize the data processing workers (N_RAM_PROCESSES processes)
-            for worker_idx in range(N_RAM_PROCESSES):
-                data_processing_process = mp.Process(
-                    target=data_processing_worker,
-                    args=(worker_idx, data_processing_queue, io_queue),
-                    kwargs=proc_options,
+                # initialize IO worker (one process)
+                io_process = mp.Process(
+                    target=io_worker,
+                    name="IO",
+                    args=(
+                        io_queue,
+                        data_processing_queue,
+                        processed_list,
+                        self.data_processor,
+                        n_files,
+                        N_RAM_PROCESSES,
+                    ),
                 )
-                data_processing_process.start()
-                process_list.append(data_processing_process)
+                io_process.start()
+                process_list.append(io_process)
 
-            # fill IO queue with loading tasks for the IO worker
-            file_dict_load_tasks = [(load_file_dict, file_path) for file_path in file_paths]
-            for task in file_dict_load_tasks:
-                io_queue.put(task)
+                # cancel auto-dumping upon processing, to leave the dumping to IO process
+                proc_options["should_dump"] = False
+                # do not print anything inside processes (slows things down) - if you want to know what's going on, put the text in the results queue
+                proc_options["is_verbose"] = False
+                # initialize the data processing workers (N_RAM_PROCESSES processes)
+                for worker_idx in range(N_RAM_PROCESSES):
+                    data_processing_process = mp.Process(
+                        target=data_processing_worker,
+                        args=(worker_idx, data_processing_queue, io_queue),
+                        kwargs=proc_options,
+                    )
+                    data_processing_process.start()
+                    process_list.append(data_processing_process)
 
-            # join then close each process to block untill all are finished and immediately release resources
-            for process in process_list:
-                process.join()
-            for process in process_list:
-                process.close()
+                # fill IO queue with loading tasks for the IO worker
+                file_dict_load_tasks = [(load_file_dict, file_path) for file_path in file_paths]
+                for task in file_dict_load_tasks:
+                    io_queue.put(task)
 
-            # finally, collect the file data objects
-            for _ in range(n_files):
-                self.data.append(processed_queue.get())
+                # join then close each process to block untill all are finished and immediately release resources
+                for process in process_list:
+                    process.join()
+                for process in process_list:
+                    process.close()
+
+                # keep the list after manager is closed (should be a more straightforward way to do this)
+                for p in processed_list:
+                    self.data.append(p)
 
             print("\nMultiprocessing complete!")
 

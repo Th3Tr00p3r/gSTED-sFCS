@@ -10,7 +10,7 @@ N_CPU_CORES = mp.cpu_count() // 2  # /2 due to hyperthreading,
 def io_worker(
     io_queue,
     data_processing_queue,
-    processed_queue,
+    processed_list,
     data_processor,
     n_files,
     n_processors,
@@ -42,7 +42,7 @@ def io_worker(
         else:
             if arg is not None:
                 func(arg)  # raw.dump()
-                processed_queue.put(arg)
+                processed_list.append(arg)
             n_saves += 1
             print("\n[IO WORKER] Processed file saved to disk.")
             sys.stdout.flush()
