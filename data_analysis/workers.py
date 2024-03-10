@@ -55,10 +55,6 @@ def io_worker(
                     data_processing_queue.put("STOP")
                 break
 
-    # cleaning up
-    io_queue.close()
-    io_queue.join_thread()
-
     print(f"\n[IO WORKER] Stopped. Saved {n_saves}/{n_files} files.")
     sys.stdout.flush()
 
