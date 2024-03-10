@@ -986,6 +986,7 @@ class SolutionSFCSMeasurement:
             # join then close each process to block untill all are finished and immediately release resources
             for process in process_list:
                 process.join()
+            for process in process_list:
                 process.close()
 
             # finally, collect the file data objects

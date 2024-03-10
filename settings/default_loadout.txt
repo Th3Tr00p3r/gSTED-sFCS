@@ -1,7 +1,7 @@
 imgScanFileTemplate,gb
 solScanFileTemplate,
-newTemplate,bp300_angular_sted
-solImportFileSelectionPattern,1
+newTemplate,YOYO1kbp_13uW_angular_exc
+solImportFileSelectionPattern,1-4
 searchQuery,
 lineEdit,
 experimentName,test
@@ -61,10 +61,10 @@ solMeasPreset,Standard Static
 solScanStagePattern,None
 solScanType,static
 solScanDurUnits,seconds
-dataMonth,5
-dataYear,2018
-dataDay,10
-dataTemplate1,bp300_angular_sted_000000_*.mat
+dataMonth,2
+dataYear,2024
+dataDay,28
+dataTemplate1,YOYO1kbp_13uW_angular_exc_113653_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
