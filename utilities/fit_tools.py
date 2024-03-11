@@ -44,7 +44,7 @@ class FitParams:
             self.sigma = self.ys_errors[self.valid_idxs]
         except TypeError:
             self.sigma = 1
-        self.fitted_y = self.fit_func(self.x, *self.beta.values())
+        self.fitted_y = self.fit_func(self.x.astype(np.float64), *self.beta.values())
 
     def interpolate_y(self, x):
         """Doc."""
@@ -82,7 +82,7 @@ class FitParams:
                 )
             ax.plot(
                 self.x,
-                self.fit_func(self.x, *self.beta.values()),
+                self.fitted_y,
                 "--",
                 label=fit_label,
                 zorder=3,

@@ -13,7 +13,7 @@ subtractBgCorr,True
 shouldUniteStartTimes,False
 ignoreHardGate,False
 useDefaultSysInfo,False
-useMultiProcessing,True
+useMultiProcessing,False
 weightedFits,False
 dataSlice,False
 fixShift,True

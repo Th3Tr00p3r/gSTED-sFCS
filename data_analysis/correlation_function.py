@@ -1888,7 +1888,7 @@ class SolutionSFCSExperiment:
 
         beta0 = (h_max, 4, h_max * 1e-3)
 
-        fit_range = fit_range or Limits(t_max + 3, 40)
+        fit_range = fit_range or Limits(t_max + 0.1, 40)
         param_estimates = param_estimates or beta0
 
         conf_params = conf.tdc_calib.fit_lifetime_hist(
