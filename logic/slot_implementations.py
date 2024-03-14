@@ -1938,7 +1938,7 @@ class MainWin:
 
                 mask = meas.data[file_idx].general.image_bw_mask
                 img = meas.scan_images_dstack[:, :, file_idx].copy()
-                roi = meas.roi_list[file_idx]
+                sec_roi_list = meas.rois[file_idx]
 
                 if should_normalize_rows:
                     img = helper.normalize_scan_img_rows(img, mask)
@@ -1947,7 +1947,8 @@ class MainWin:
 
                 scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
-                scan_image_disp.plot(roi["col"], roi["row"], color="white")
+                for sec_roi in sec_roi_list:
+                    scan_image_disp.plot(sec_roi["col"], sec_roi["row"], color="white", lw=0.4)
                 scan_image_disp.entitle_and_label("Pixel Index", "Line Index")
 
     def display_patterns(self, imported_template: str = None):

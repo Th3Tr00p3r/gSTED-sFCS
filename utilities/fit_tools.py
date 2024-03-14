@@ -44,7 +44,11 @@ class FitParams:
             self.sigma = self.ys_errors[self.valid_idxs]
         except TypeError:
             self.sigma = 1
-        self.fitted_y = self.fit_func(self.x.astype(np.float64), *self.beta.values())
+        try:
+            self.fitted_y = self.fit_func(self.x.astype(np.float64), *self.beta.values())
+        except AttributeError:
+            # self.x is a tuple - this class really only makes sense for 1D data fitting! should be changed or called FitParams1D
+            pass
 
     def interpolate_y(self, x):
         """Doc."""

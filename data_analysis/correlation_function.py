@@ -870,7 +870,7 @@ class SolutionSFCSMeasurement:
         if self.scan_type == "angular":
             # aggregate images and ROIs for angular sFCS
             self.scan_images_dstack = np.dstack(tuple(p.general.image for p in self.data))
-            self.roi_list = [p.general.roi for p in self.data]
+            self.rois = [p.general.sec_roi_list for p in self.data]
             # aggregate line background corrfuncs - each line in each section of each file has one background corrfunc
             self.bg_line_corr_list = [
                 bg_line_corr
@@ -1332,14 +1332,15 @@ class SolutionSFCSMeasurement:
                         axes, "size"
                     ):  # if axes is not an ndarray (only happens if reading just one file)
                         axes = np.array([axes])
-                    for file_idx, ax, image, roi in zip(
-                        img_idxs, axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.roi_list
+                    for file_idx, ax, image, sec_roi_list in zip(
+                        img_idxs, axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.rois
                     ):
                         ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
                         ax.set_xlabel("Pixel Index")
                         ax.set_ylabel("Line Index")
                         ax.imshow(image, interpolation="none")
-                        ax.plot(roi["col"], roi["row"], color="white")
+                        for sec_roi in sec_roi_list:
+                            ax.plot(sec_roi["col"], sec_roi["row"], color="white", lw=0.4)
 
             elif self.scan_type == "circle":
                 with Plotter(fontsize=8, should_force_aspect=True) as ax:

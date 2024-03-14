@@ -661,7 +661,7 @@ class GeneralFileData:
     valid_lines: np.ndarray = None
     samples_per_line: int = None
     n_lines: int = None
-    roi: Dict[str, deque] = None
+    sec_roi_list: List[Dict[str, deque]] = None
     bw_mask: np.ndarray = None
     image_bw_mask: np.ndarray = None
     normalized_masked_alleviated_image: np.ndarray = None
@@ -1252,8 +1252,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     f"Found {len(section_slices) - 1:,} removeable discontinuities, potentially causing sections of lengths: {', '.join([str(round(sec_len * 1e-3)) for sec_len in section_lengths])} Kb.",
                     end=" ",
                 )
-                # TODO: why the second condition? is it even what actually happens?
-                if should_use_all_sections and len(section_slices) > len(section_runtime_slices):
+                # TODO: Define 'len(section_slices)' and 'len(section_runtime_slices)' - what do they stand for? Why is the second condition necessary?
+                if should_use_all_sections and len(section_slices) >= len(section_runtime_slices):
                     print(
                         f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_slices)}/{len(section_slices)}).",
                         end=" ",
@@ -1347,7 +1347,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         pulse_runtime: np.ndarray,
         time_stamps: np.ndarray,
         max_time_stamp=300_000,  # TESTESTEST
-        max_outliers=3,  # TESTESTEST
+        max_outliers=100,  # TESTESTEST was 3
         #        max_outlier_prob=1e-9,
         len_factor=0.01,
         **kwargs,
@@ -1367,7 +1367,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         if n_outliers := len(jump_idxs):
             if n_outliers > max_outliers:
                 raise RuntimeError(
-                    f"Too many jumps in runtime (found {n_outliers:,}, {max_outliers:,} allowed)."
+                    f"Too many jumps in runtime (found: {n_outliers:,}, allowed: {max_outliers:,})."
                 )
             if kwargs.get("is_verbose"):
                 print(f"Found {n_outliers + 1:,} sections caused by jumps in runtime. ", end="")
@@ -1637,6 +1637,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # initialize the total scan image and the ROI mask
         img = np.zeros((p.general.n_lines + 1, p.general.samples_per_line), dtype=np.uint16)
         img_bw = np.full(img.shape, False, dtype=bool)
+        roi_list = []
 
         pulse_runtime_list = []
         coarse_list = []
@@ -1916,6 +1917,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             img += sec_image
             img_bw += sec_image_mask
 
+            # keep all section ROIs
+            roi_list.append(sec_roi)
+
         # combine sections
         pulse_runtime = np.hstack(pulse_runtime_list)
         line_num = np.hstack(line_num_list)
@@ -1940,9 +1944,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         )
         p.general.image = img
         p.general.image_bw_mask = img_bw
-        p.general.roi = (
-            sec_roi  # TODO: THIS IS THE LAST ROI, NEED TO COMBINE THEM (IMAGE IS COMBINED)
-        )
+        p.general.sec_roi_list = roi_list
 
         return p
 
