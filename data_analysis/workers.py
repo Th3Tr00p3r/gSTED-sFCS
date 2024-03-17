@@ -1,10 +1,11 @@
 """Multiprocessing stuff"""
 
-import multiprocessing as mp
 import re
 import sys
 
-N_CPU_CORES = mp.cpu_count() // 2  # /2 due to hyperthreading,
+import psutil
+
+N_CPU_CORES = psutil.cpu_count(logical=False)
 
 
 def io_worker(
@@ -40,11 +41,11 @@ def io_worker(
 
         # func was save task - no further tasks (args is a 'TDCPhotonFileData' object (p))
         else:
-            func(arg)  # raw.dump()
-            print(f"\n[IO WORKER] Processed file {arg.idx} saved to disk.")
-            sys.stdout.flush()
-            processed_list.append(arg)
-            #                errors += 1
+            if arg is not None:
+                func(arg)  # raw.dump()
+                print(f"\n[IO WORKER] Processed file {arg.idx} saved to disk.")
+                sys.stdout.flush()
+                processed_list.append(arg)
             n_saves += 1
 
             if n_saves == n_files:
@@ -79,15 +80,15 @@ def data_processing_worker(idx: int, data_processing_queue, io_queue, **proc_opt
         try:
             p = func(*args, **{**kwargs, **proc_options})
             if p is None:
-                raise RuntimeError("Processing returned None (error)")
+                raise RuntimeError(f"Processing file {idx} returned 'None'")
         except Exception as exc:
             # TODO: this catches all, in order to avoid ruining the entire operation. Should work out each individual exception for each file.
-            print(f"\n[WORKER {idx}] Error encountered: {exc}. file skipped.")
+            print(f"\n[WORKER {idx}] Error encountered: {exc}. Placing 'None' in IO Queue.")
             sys.stdout.flush()
         else:
             print(f"\n[WORKER {idx}] Placing processed file in IO Queue")
             sys.stdout.flush()
-            io_queue.put((dump_data_file, p))
+        io_queue.put((dump_data_file, p))
         files_processed += 1
 
     print(f"\n[WORKER {idx}] Done! {files_processed} files processed!")

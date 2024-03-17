@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Tuple, Union
 
 import numpy as np
-import psutil
 import scipy
 import skimage
 
+from data_analysis.workers import N_CPU_CORES
 from utilities.display import Plotter
 from utilities.file_utilities import load_object, save_object
 from utilities.fit_tools import (
@@ -2137,17 +2137,16 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             t_weight = t_weight[j_sorted]
 
         # assign time delays to all photons
-        N_CORES = psutil.cpu_count(logical=False)
         if kwargs.get("is_verbose"):
             print(
-                f"Assigning delay times (multiprocessing using {N_CORES-1}/{N_CORES} available cores)... ",
+                f"Assigning delay times (multiprocessing using {N_CPU_CORES-1}/{N_CPU_CORES} available cores)... ",
                 end="",
             )
         total_laser_pulses = 0
         first_coarse_bin, *_, last_coarse_bin = coarse_bins
 
         # Create a pool of worker processes
-        with multiprocessing.Pool(N_CORES - 1) as pool:
+        with multiprocessing.Pool(N_CPU_CORES - 1) as pool:
             # Create argument tuples for each process
             args_list = [
                 (
