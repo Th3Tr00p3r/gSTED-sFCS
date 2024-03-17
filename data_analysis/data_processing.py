@@ -1991,11 +1991,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / fpga_freq_hz * 1e9
             )
         except IndexError as exc:
-            print(f"\n[WORKER] Error in file {p.idx}: {exc}")
-            print("t_calib.shape: ", t_calib.shape)
-            print("p.raw.fine.max(): ", p.raw.fine.max())
-            sys.stdout.flush()
-            return
+            print(
+                f"\n[WORKER] Error in file {p.idx}: {exc}. Please remove/fix the file, and re-run the processing."
+            )
         p.raw.delay_time = _delay_time
         return _delay_time[photon_idxs]
 
