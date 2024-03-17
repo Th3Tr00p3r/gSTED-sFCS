@@ -1898,7 +1898,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 sec_sorted_idxs
             ]
             if (sec_fine >= 128).any():  # TESTESTEST
-                print("PROBLEM HERE!")  # TESTESTEST
+                print(f"PROBLEM HERE! (file {idx})")  # TESTESTEST
                 sys.stdout.flush()  # TESTESTEST
 
             # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
