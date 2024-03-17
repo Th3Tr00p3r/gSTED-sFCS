@@ -1986,16 +1986,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         photon_idxs = p.raw.fine != NAN_PLACEBO
         try:
-            print("t_calib.shape: ", t_calib.shape)
-            sys.stdout.flush()
-            print("p.raw.fine.max(): ", p.raw.fine.max())
-            sys.stdout.flush()
             _delay_time[photon_idxs] = (
                 t_calib[p.raw.fine[photon_idxs]]
                 + (crs[photon_idxs] + delta_coarse[photon_idxs]) / fpga_freq_hz * 1e9
             )
         except IndexError as exc:
             print(f"\n[WORKER] Error in file {p.idx}: {exc}")
+            print("t_calib.shape: ", t_calib.shape)
+            print("p.raw.fine.max(): ", p.raw.fine.max())
             sys.stdout.flush()
             return
         p.raw.delay_time = _delay_time
