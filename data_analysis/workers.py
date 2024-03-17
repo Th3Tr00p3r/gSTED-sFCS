@@ -80,13 +80,13 @@ def data_processing_worker(idx: int, data_processing_queue, io_queue, **proc_opt
         try:
             p = func(*args, **{**kwargs, **proc_options})
             if p is None:
-                raise RuntimeError(f"Processing file {idx} returned 'None'")
+                raise RuntimeError("Processing returned 'None'")
         except Exception as exc:
             # TODO: this catches all, in order to avoid ruining the entire operation. Should work out each individual exception for each file.
             print(f"\n[WORKER {idx}] Error encountered: {exc}. Placing 'None' in IO Queue.")
             sys.stdout.flush()
         else:
-            print(f"\n[WORKER {idx}] Placing processed file in IO Queue")
+            print(f"\n[WORKER {idx}] Placing processed file {p.idx} in IO Queue")
             sys.stdout.flush()
         io_queue.put((dump_data_file, p))
         files_processed += 1

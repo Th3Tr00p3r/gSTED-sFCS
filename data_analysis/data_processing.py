@@ -1897,6 +1897,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             sec_fine = np.hstack((sec_line_starts_nans, sec_line_stops_nans, sec_fine))[
                 sec_sorted_idxs
             ]
+            if sec_fine >= 128:  # TESTESTEST
+                print("PROBLEM HERE!")  # TESTESTEST
+                sys.stdout.flush()  # TESTESTEST
 
             # initialize delay times with lower detector gate (nans at line edges) - filled-in during TDC calibration
             sec_delay_time = np.full(
@@ -1965,9 +1968,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             NAN_PLACEBO,
         ) = args
 
-        print(f"\n[WORKER] Working on file {p.idx}.")
-        sys.stdout.flush()
-
         _delay_time = np.full(p.raw.coarse.shape, np.nan, dtype=np.float64)
         crs = np.minimum(p.raw.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
         crs[crs < 0] += last_coarse_bin - first_coarse_bin + 1
@@ -1985,10 +1985,19 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         delta_coarse[on_left_tdc] -= 1
 
         photon_idxs = p.raw.fine != NAN_PLACEBO
-        _delay_time[photon_idxs] = (
-            t_calib[p.raw.fine[photon_idxs]]
-            + (crs[photon_idxs] + delta_coarse[photon_idxs]) / fpga_freq_hz * 1e9
-        )
+        try:
+            print("t_calib.shape: ", t_calib.shape)
+            sys.stdout.flush()
+            print("p.raw.fine.max(): ", p.raw.fine.max())
+            sys.stdout.flush()
+            _delay_time[photon_idxs] = (
+                t_calib[p.raw.fine[photon_idxs]]
+                + (crs[photon_idxs] + delta_coarse[photon_idxs]) / fpga_freq_hz * 1e9
+            )
+        except IndexError as exc:
+            print(f"\n[WORKER] Error in file {p.idx}: {exc}")
+            sys.stdout.flush()
+            return
         p.raw.delay_time = _delay_time
         return _delay_time[photon_idxs]
 
