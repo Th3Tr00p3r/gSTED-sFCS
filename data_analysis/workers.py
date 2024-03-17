@@ -83,6 +83,7 @@ def data_processing_worker(idx: int, data_processing_queue, io_queue, **proc_opt
                 raise RuntimeError("Processing returned 'None'")
         except Exception as exc:
             # TODO: this catches all, in order to avoid ruining the entire operation. Should work out each individual exception for each file.
+            p = None
             print(f"\n[WORKER {idx}] Error encountered: {exc}. Placing 'None' in IO Queue.")
             sys.stdout.flush()
         else:
