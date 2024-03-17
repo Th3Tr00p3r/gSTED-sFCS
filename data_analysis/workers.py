@@ -40,15 +40,12 @@ def io_worker(
 
         # func was save task - no further tasks (args is a 'TDCPhotonFileData' object (p))
         else:
-            if arg is not None:
-                func(arg)  # raw.dump()
-                print(f"\n[IO WORKER] Processed file {file_idx} saved to disk.")
-                processed_list.append(arg)
-            else:
-                print(f"\n[IO WORKER] Error in file {file_idx} processing - not saved.")
+            func(arg)  # raw.dump()
+            print(f"\n[IO WORKER] Processed file {arg.idx} saved to disk.")
+            sys.stdout.flush()
+            processed_list.append(arg)
             #                errors += 1
             n_saves += 1
-            sys.stdout.flush()
 
             if n_saves == n_files:
                 # issue as many stop commands as there are processing workers, then stop self
@@ -81,6 +78,8 @@ def data_processing_worker(idx: int, data_processing_queue, io_queue, **proc_opt
         sys.stdout.flush()
         try:
             p = func(*args, **{**kwargs, **proc_options})
+            if p is None:
+                raise RuntimeError("Processing returned None (error)")
         except Exception as exc:
             # TODO: this catches all, in order to avoid ruining the entire operation. Should work out each individual exception for each file.
             print(f"\n[WORKER {idx}] Error encountered: {exc}. file skipped.")

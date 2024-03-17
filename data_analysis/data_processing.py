@@ -1,6 +1,7 @@
 """Data Processing."""
 
 import multiprocessing
+import sys
 from collections import deque
 from contextlib import suppress
 from copy import copy
@@ -1963,6 +1964,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             fpga_freq_hz,
             NAN_PLACEBO,
         ) = args
+
+        print(f"\n[WORKER] Working on file {p.idx}.")
+        sys.stdout.flush()
 
         _delay_time = np.full(p.raw.coarse.shape, np.nan, dtype=np.float64)
         crs = np.minimum(p.raw.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
