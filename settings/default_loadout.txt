@@ -73,8 +73,8 @@ gateUnits,lifetimes
 assignedGates,
 gateMeasType,STED
 availableGates,
-importedSolDataTemplates2,YOYO30kbp_SC_1uW_angular_exc_152625_*.pkl
-importedSolDataTemplates1,YOYO30kbp_SC_1uW_angular_exc_152625_*.pkl
+importedSolDataTemplates2,
+importedSolDataTemplates1,
 avgInterval,5
 posAxis,X
 solScanParamsStacked,2
@@ -86,8 +86,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,False
-solImportUse,True
+solImportUseAll,True
+solImportUse,False
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveDbscan,True

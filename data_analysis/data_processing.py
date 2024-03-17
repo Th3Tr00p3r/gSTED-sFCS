@@ -1824,7 +1824,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
                 # label all photon in the bad lines as IGNORED_LINE
                 # TODO: why does this happen? Possibly due to jumps in the runtime?
-                while bad_line_idxs[-1] >= sec_line_starts_prt.size:
+                while bad_line_idxs and bad_line_idxs[-1] >= sec_line_starts_prt.size:
                     print(
                         f"last bad index: {bad_line_idxs[-1]}\nsec_line_starts_prt.size: {sec_line_starts_prt.size}"
                     )  # TESTESTEST

@@ -42,9 +42,12 @@ def io_worker(
         else:
             if arg is not None:
                 func(arg)  # raw.dump()
+                print(f"\n[IO WORKER] Processed file {file_idx} saved to disk.")
                 processed_list.append(arg)
+            else:
+                print(f"\n[IO WORKER] Error in file {file_idx} processing - not saved.")
+            #                errors += 1
             n_saves += 1
-            print("\n[IO WORKER] Processed file saved to disk.")
             sys.stdout.flush()
 
             if n_saves == n_files:
@@ -76,10 +79,16 @@ def data_processing_worker(idx: int, data_processing_queue, io_queue, **proc_opt
     for func, args, kwargs in iter(data_processing_queue.get, "STOP"):
         print(f"\n[WORKER {idx}] Processing file {args[0]}")
         sys.stdout.flush()
-        p = func(*args, **{**kwargs, **proc_options})
-        print(f"\n[WORKER {idx}] Placing processed file in IO Queue")
-        sys.stdout.flush()
-        io_queue.put((dump_data_file, p))
+        try:
+            p = func(*args, **{**kwargs, **proc_options})
+        except Exception as exc:
+            # TODO: this catches all, in order to avoid ruining the entire operation. Should work out each individual exception for each file.
+            print(f"\n[WORKER {idx}] Error encountered: {exc}. file skipped.")
+            sys.stdout.flush()
+        else:
+            print(f"\n[WORKER {idx}] Placing processed file in IO Queue")
+            sys.stdout.flush()
+            io_queue.put((dump_data_file, p))
         files_processed += 1
 
     print(f"\n[WORKER {idx}] Done! {files_processed} files processed!")

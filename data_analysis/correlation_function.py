@@ -425,12 +425,6 @@ class CorrFunc:
                 self.cf_cr, label=self.name, min_noise_thresh=min_noise_thresh, **kwargs
             )
             delete_list = np.nonzero(delete_idxs)[0]
-        #            # fallback in case too many points are considered noise
-        #            if len(delete_list)/total_n_rows > 0.9:
-        #                print(
-        #                    f"Clustering discrimination: {len(delete_list)/total_n_rows:.2%} of rows are in 'delete_list'! Using score insted."
-        #                )
-        #                delete_list = np.where(self.score >= self.rejection)[0]
         elif reject_n_worst:
             delete_list = np.argsort(self.score)[-reject_n_worst:]
         elif rejection is not None:
@@ -1155,12 +1149,11 @@ class SolutionSFCSMeasurement:
     def generate_combined_inputs(
         self,
         input_gen,
-        subtract_spatial_bg_corr=False,
         is_filtered=False,
         get_afterpulsing=False,
         is_verbose=False,
     ):
-        """Using the memory-mapped 'input_gen', build, prepare and optionally gate splits for the correlator, as well as optional corresponsding filter splits"""
+        """Using the memory-mapped 'input_gen', build and prepare splits for the correlator, as well as optional corresponsding filter splits"""
 
         for split_idx, split in enumerate(input_gen):
             # skipping empty splits
@@ -1282,7 +1275,6 @@ class SolutionSFCSMeasurement:
             # TODO: perhaps both 'generate_combined_inputs' and 'data.generate_splits' can be united in data_processing.py
             self.generate_combined_inputs(
                 self.data.generate_splits(gate_ns, **corr_options),
-                subtract_spatial_bg_corr,
                 is_filtered,
                 get_afterpulsing,
                 corr_options.get("is_verbose", False),
