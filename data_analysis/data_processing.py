@@ -1897,7 +1897,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             sec_fine = np.hstack((sec_line_starts_nans, sec_line_stops_nans, sec_fine))[
                 sec_sorted_idxs
             ]
-            if sec_fine >= 128:  # TESTESTEST
+            if (sec_fine >= 128).any():  # TESTESTEST
                 print("PROBLEM HERE!")  # TESTESTEST
                 sys.stdout.flush()  # TESTESTEST
 
