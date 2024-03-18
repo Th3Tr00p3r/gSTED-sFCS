@@ -1159,7 +1159,7 @@ class SolutionSFCSMeasurement:
             # skipping empty splits
             if not split.size:
                 if is_verbose:
-                    print(f"Empty split encountered! Skipping split {split_idx}... ", end="")
+                    print(f" Empty split encountered! Skipping split {split_idx}...", end="")
                 yield None, None
                 continue
 

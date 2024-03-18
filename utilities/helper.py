@@ -560,6 +560,10 @@ def dbscan_noise_thresholding(
 ):
     """Doc."""
 
+    n_nan_rows = (np.isnan(X).sum(axis=1) > 0).sum()
+    if n_nan_rows:
+        print(f"Warning: {n_nan_rows}/{X.shape[0]} ACFs contain NaNs!")
+
     # Standardize the data
     X_std = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
