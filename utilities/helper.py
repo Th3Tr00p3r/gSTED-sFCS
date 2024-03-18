@@ -567,6 +567,10 @@ def dbscan_noise_thresholding(
             f"The bad rows contain {', '.join([str(nans) for nans in nan_per_row])}NaNs."
         )  # TESTESTEST
 
+        # interpolate over NaNs
+        nans, x = nan_helper(X)  # get nans and a way to interpolate over them later
+        X[nans] = np.interp(x(nans), x(~nans), X[~nans])
+
     # Standardize the data
     X_std = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
