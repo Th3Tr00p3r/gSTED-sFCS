@@ -2202,9 +2202,9 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         if kwargs.get("is_verbose"):
             print("Calculating 'all_hist'...  ", end="")
 
-        all_hist = np.zeros(fine_bins.size - 1, dtype=np.uint32)
+        all_hist = np.zeros(fine_bins.size - 1, dtype=np.float64)
         for delay_time in delay_time_list:
-            all_hist += np.histogram(delay_time, bins=fine_bins)[0].astype(np.uint32)
+            all_hist += np.histogram(delay_time, bins=fine_bins)[0]
 
         all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)
         error_all_hist_norm = np.full(all_hist.shape, np.nan, dtype=np.float64)

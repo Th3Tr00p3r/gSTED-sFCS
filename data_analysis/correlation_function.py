@@ -1332,7 +1332,7 @@ class SolutionSFCSMeasurement:
                         ax.set_ylabel("Line Index")
                         ax.imshow(image, interpolation="none")
                         for sec_roi in sec_roi_list:
-                            ax.plot(sec_roi["col"], sec_roi["row"], color="white", lw=0.4)
+                            ax.plot(sec_roi["col"], sec_roi["row"], color="white", lw=0.6)
 
             elif self.scan_type == "circle":
                 with Plotter(fontsize=8, should_force_aspect=True) as ax:

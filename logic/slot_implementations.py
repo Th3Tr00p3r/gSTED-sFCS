@@ -1948,7 +1948,7 @@ class MainWin:
                 scan_image_disp = wdgts.SOL_MEAS_ANALYSIS_COLL.scan_image_disp.obj
                 scan_image_disp.display_image(img)
                 for sec_roi in sec_roi_list:
-                    scan_image_disp.plot(sec_roi["col"], sec_roi["row"], color="white", lw=0.4)
+                    scan_image_disp.plot(sec_roi["col"], sec_roi["row"], color="white", lw=0.6)
                 scan_image_disp.entitle_and_label("Pixel Index", "Line Index")
 
     def display_patterns(self, imported_template: str = None):
