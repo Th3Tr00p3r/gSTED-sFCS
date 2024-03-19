@@ -561,11 +561,9 @@ def dbscan_noise_thresholding(
     """Doc."""
 
     if np.isnan(X).any():
-        nan_per_row = np.isnan(X).sum(axis=1)  # TESTESTEST
-        print(f"Warning: {(nan_per_row>0).sum()}/{X.shape[0]} ACFs contain NaNs!")  # TESTESTEST
-        print(
-            f"The bad rows contain {', '.join([str(nans) for nans in nan_per_row])}NaNs."
-        )  # TESTESTEST
+        nan_per_row = np.isnan(X).sum(axis=1)
+        print(f"Warning: {(nan_per_row>0).sum()}/{X.shape[0]} ACFs contain NaNs!")
+        print(f"The bad rows contain {', '.join([str(nans) for nans in nan_per_row])}NaNs.")
 
         # interpolate over NaNs
         nans, x = nan_helper(X)  # get nans and a way to interpolate over them later
@@ -674,15 +672,25 @@ def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
 
-def chunked_bincount(arr_mmap: MemMapping, n_chunks=10):
+def chunked_bincount(arr_mmap: MemMapping, max_val=None, n_chunks=10):
     """Performes 'bincount' in series on disk-loaded array chunks using a MemMapping object"""
 
-    sz = arr_mmap.size
-    max_val = arr_mmap.max
+    max_val = max_val or arr_mmap.max
     bins = np.zeros(max_val + 1)
-    for i in range(n_chunks):
-        bins += np.bincount(arr_mmap.read()[i * sz : (i + 1) * sz], minlength=max_val + 1)
+    for arr_chunk in chunks(arr_mmap.read(), int(arr_mmap.size / n_chunks)):
+        arr_chunk = arr_chunk[arr_chunk <= max_val]
+        bins += np.bincount(arr_chunk, minlength=max_val + 1)
     return bins
+
+
+def chunks(arr, n: int):
+    """
+    Generate n-sized chunks from arr.
+    https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks?page=1&tab=votes#tab-top
+    """
+
+    for i in range(0, len(arr), n):
+        yield arr[i : i + n]
 
 
 def largest_n(arr: np.ndarray, n: int):

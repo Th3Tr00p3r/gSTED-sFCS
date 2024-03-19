@@ -1,7 +1,7 @@
 solScanFileTemplate,
 imgScanFileTemplate,gb
-newTemplate,YOYO30kbp_SC_angular_dep_260mW
-solImportFileSelectionPattern,1
+newTemplate,YOYO30kbp_SC_2uW_angular_sted_260mW
+solImportFileSelectionPattern,76, 77
 searchQuery,
 lineEdit,
 experimentName,test
@@ -64,7 +64,7 @@ imgShowMethod,Forward scan - normalized
 dataMonth,3
 dataYear,2024
 dataDay,12
-dataTemplate1,YOYO30kbp_SC_angular_dep_260mW_151319_*.pkl
+dataTemplate1,YOYO30kbp_SC_2uW_angular_sted_260mW_160513_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -86,8 +86,8 @@ repeatSolMeas,True
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,True
-solImportUse,False
+solImportUseAll,False
+solImportUse,True
 assignLoadedMeas,False
 assignRawData,True
 solAnalysisRemoveDbscan,False

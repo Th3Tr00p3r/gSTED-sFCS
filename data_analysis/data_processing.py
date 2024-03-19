@@ -2014,16 +2014,18 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         if kwargs.get("is_verbose"):
             print("Uniting coarse/fine data... ", end="")
-        coarse_mmap, fine_mmap = self._unite_coarse_fine_data(data, scan_type)
+        coarse_mmap, fine_mmap, coarse_lims = self._unite_coarse_fine_data(data, scan_type)
 
         if kwargs.get("is_verbose"):
             print("Binning coarse data... ", end="")
-        h_all = chunked_bincount(coarse_mmap).astype(np.uint32)
+        h_all = chunked_bincount(coarse_mmap, max_val=coarse_lims.upper, n_chunks=len(data)).astype(
+            np.uint32
+        )
         x_all = np.arange(coarse_mmap.max + 1, dtype=np.uint8)
 
         if pick_valid_bins_according_to is None:
-            h_all = h_all[coarse_mmap.min :]
-            x_all = np.arange(coarse_mmap.min, coarse_mmap.max + 1, dtype=np.uint8)
+            h_all = h_all[coarse_lims.lower :]
+            x_all = np.arange(coarse_lims.lower, coarse_lims.upper + 1, dtype=np.uint8)
             coarse_bins = x_all
             h = h_all
         elif isinstance(pick_valid_bins_according_to, np.ndarray):
@@ -2189,15 +2191,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             print("Binning 'delay_times' into 'fine_bins'...  ", end="")
 
         t_hist = (fine_bins[:-1] + fine_bins[1:]) / 2
-        k = np.digitize(delay_times, fine_bins)
+        dt_fbins_idxs = np.digitize(delay_times, fine_bins)
 
         if kwargs.get("is_verbose"):
             print("Calculating 'hist_weight'...  ", end="")
 
-        hist_weight = np.empty_like(t_hist, dtype=np.float64)
-        for i in range(len(hist_weight)):
-            j = k == (i + 1)
-            hist_weight[i] = np.sum(t_weight[j])
+        hist_weight = np.array(
+            [t_weight[dt_fbins_idxs == i].sum() for i in range(1, len(t_hist) + 1)]
+        )
 
         if kwargs.get("is_verbose"):
             print("Calculating 'all_hist'...  ", end="")
@@ -2263,6 +2264,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # unite coarse and fine times from all files
         coarse = np.empty(shape=(n_elem[-1],), dtype=np.int16)
         fine = np.empty(shape=(n_elem[-1],), dtype=np.int16)
+        coarse_lims = Limits()
         for i, p in enumerate(data):
             if scan_type == "angular":
                 # remove line starts/ends from angular scan data
@@ -2270,13 +2272,15 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             else:
                 # otherwise, treat all elements as photons
                 photon_idxs = slice(None)
-            coarse[n_elem[i] : n_elem[i + 1]] = p.raw.coarse[photon_idxs]
+            coarse[n_elem[i] : n_elem[i + 1]] = (valid_file_coarse := p.raw.coarse[photon_idxs])
             fine[n_elem[i] : n_elem[i + 1]] = p.raw.fine[photon_idxs]
+            # keep the minimal coarse range to ensure all files use the same coarse bins
+            coarse_lims = coarse_lims & Limits(valid_file_coarse.min(), valid_file_coarse.max())
         coarse_mmap = MemMapping(coarse, "coarse.npy")
         fine_mmap = MemMapping(fine, "fine.npy")
 
         # return the MemMapping instances
-        return coarse_mmap, fine_mmap
+        return coarse_mmap, fine_mmap, coarse_lims
 
 
 @dataclass

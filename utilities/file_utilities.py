@@ -16,7 +16,7 @@ import bloscpack
 import numpy as np
 import scipy.io as spio
 
-from utilities.helper import Gate, Limits, reverse_dict, timer
+from utilities.helper import Gate, Limits, chunks, reverse_dict, timer
 
 DUMP_PATH = Path("D:/temp_sfcs_data/")
 
@@ -185,16 +185,6 @@ def search_database(data_root: Path, str_list: List[str]) -> str:
         return "No matches found!"
 
 
-def _chunks(list_: list, n: int):
-    """
-    Generate n-sized chunks from list_.
-    https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks?page=1&tab=votes#tab-top
-    """
-
-    for i in range(0, len(list_), n):
-        yield list_[i : i + n]
-
-
 def estimate_bytes(obj) -> int:
     """Returns the estimated size in bytes."""
 
@@ -278,12 +268,12 @@ def save_object(
         MAX_CHUNK_MB = 500
         if element_size_estimate_mb is not None:
             n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
-            chunked_obj = list(_chunks(obj, n_elem_per_chunk))
+            chunked_obj = list(chunks(obj, n_elem_per_chunk))
         else:
             try:  # attempt to estimate using the first object
                 element_size_estimate_mb = estimate_bytes(obj[0])
                 n_elem_per_chunk = max(int(MAX_CHUNK_MB / element_size_estimate_mb), 1)
-                chunked_obj = list(_chunks(obj, n_elem_per_chunk))
+                chunked_obj = list(chunks(obj, n_elem_per_chunk))
             except (TypeError, KeyError):  # obj isn't iterable - treat as a single chunk
                 chunked_obj = [obj]
 
