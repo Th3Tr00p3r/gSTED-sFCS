@@ -456,7 +456,7 @@ def force_aspect(ax, aspect=1) -> None:
 
 
 def get_gradient_colormap(
-    n_lines, color_list: List[str | Tuple[int | float]] = ["magenta", "lime", "cyan"]
+    n_lines, color_list: List[str | Tuple[int | float]] = ["magenta", "lime", "cyan"], **kwargs
 ) -> np.ndarray:
     """Create a multicolor gradient colormap."""
 
@@ -513,7 +513,7 @@ def plot_acfs(
             if j_good:
                 cf_cr = cf_cr[j_good]
             cf_cr = helper.batch_mean_rows(cf_cr, n_lines)
-            cmap = get_gradient_colormap(cf_cr.shape[0])
+            cmap = get_gradient_colormap(cf_cr.shape[0], **kwargs)
             ax.set_prop_cycle(color=cmap)
             ax.plot(x, cf_cr.T, lw=0.4)
             # Add a colorbar (colors only)

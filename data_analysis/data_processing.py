@@ -1347,8 +1347,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self,
         pulse_runtime: np.ndarray,
         time_stamps: np.ndarray,
-        max_time_stamp=300_000,  # TESTESTEST
-        max_outliers=100,  # TESTESTEST was 3
+        max_time_stamp=100_000,  # TESTESTEST was 300_000
+        max_outliers=100,  # TESTESTEST
         #        max_outlier_prob=1e-9,
         len_factor=0.01,
         **kwargs,
@@ -1817,20 +1817,22 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                         np.array(all_scan_idxs) + (image_idx * lines_per_image)
                     ).tolist()
 
+                # TODO: why does this happen? Possibly due to jumps in the runtime?
+                bad_line_idxs = sorted(bad_line_idxs)
+                print(
+                    f"GETTING RID OF ALL INDICES ABOVE 'sec_line_starts_prt.size - 1' ({sec_line_starts_prt.size}):"
+                )  # TESTESTEST
+                while bad_line_idxs and bad_line_idxs[-1] >= sec_line_starts_prt.size:
+                    print(f"last bad index: {bad_line_idxs[-1]}")  # TESTESTEST
+                    bad_line_idxs.pop()
+
+                # label all photon in the bad lines as IGNORED_LINE
                 if kwargs.get("is_verbose"):
                     print(
                         f"marking {len(bad_line_idxs)}/{(n_lines_total := int(n_rows_in_scan * total_scans))} ({len(bad_line_idxs)/n_lines_total:.1%}) 'bad lines'... ",
                         end="",
                     )
 
-                # label all photon in the bad lines as IGNORED_LINE
-                # TODO: why does this happen? Possibly due to jumps in the runtime?
-                while bad_line_idxs and bad_line_idxs[-1] >= sec_line_starts_prt.size:
-                    print(
-                        f"last bad index: {bad_line_idxs[-1]}\nsec_line_starts_prt.size: {sec_line_starts_prt.size}"
-                    )  # TESTESTEST
-                    print("GETTING RID OF ALL INDICES ABOVE 'sec_line_starts_prt.size - 1'")
-                    bad_line_idxs.pop()
                 for bad_line_edges in zip(
                     sec_line_starts_prt[bad_line_idxs], sec_line_stops_prt[bad_line_idxs]
                 ):

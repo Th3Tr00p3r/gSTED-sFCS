@@ -560,15 +560,6 @@ def dbscan_noise_thresholding(
 ):
     """Doc."""
 
-    if np.isnan(X).any():
-        nan_per_row = np.isnan(X).sum(axis=1)
-        print(f"Warning: {(nan_per_row>0).sum()}/{X.shape[0]} ACFs contain NaNs!")
-        print(f"The bad rows contain {', '.join([str(nans) for nans in nan_per_row])}NaNs.")
-
-        # interpolate over NaNs
-        nans, x = nan_helper(X)  # get nans and a way to interpolate over them later
-        X[nans] = np.interp(x(nans), x(~nans), X[~nans])
-
     # Standardize the data
     X_std = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 

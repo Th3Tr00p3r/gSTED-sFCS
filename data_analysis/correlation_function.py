@@ -49,6 +49,7 @@ from utilities.helper import (
     Limits,
     dbscan_noise_thresholding,
     extrapolate_over_noise,
+    nan_helper,
     unify_length,
 )
 
@@ -381,6 +382,16 @@ class CorrFunc:
 
         # keep all countrates
         self.countrate_list = corr_output.countrate_list
+
+        # TESTESTEST - interpolate over NaNs
+        if np.isnan(self.cf_cr).any():
+            nan_per_row = np.isnan(self.cf_cr).sum(axis=1)
+            print(f"Warning: {(nan_per_row>0).sum()}/{self.cf_cr.shape[0]} ACFs contain NaNs!")
+            print(f"The bad rows contain {', '.join([str(nans) for nans in nan_per_row])} NaNs.")
+
+            # interpolate over NaNs
+            nans, x = nan_helper(self.cf_cr)  # get nans and a way to interpolate over them later
+            self.cf_cr[nans] = np.interp(x(nans), x(~nans), self.cf_cr[~nans])
 
     def average_correlation(
         self,
