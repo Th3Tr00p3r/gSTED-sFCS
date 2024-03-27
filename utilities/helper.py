@@ -561,7 +561,7 @@ def dbscan_noise_thresholding(
     """Doc."""
 
     # Standardize the data
-    X_std = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+    X_std = (X - np.mean(X, axis=0)) / (np.std(X, axis=0) + EPS)
 
     eps = eps0
     for _ in range(max_tries):
