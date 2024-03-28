@@ -1002,9 +1002,11 @@ class SolutionSFCSMeasurement:
         # serial processing (default)
         else:
             proc_options["is_verbose"] = True
-            for file_idx, file_path in enumerate(file_paths):
+            for file_path in file_paths:
+                # get file number
+                file_num = int(re.findall(r"\d+", str(file_path))[-1])
                 # Processing data
-                p = self.process_data_file(file_path, file_idx + 1, **proc_options)
+                p = self.process_data_file(file_path, file_num, **proc_options)
                 print("Done.\n")
                 # Appending data to self
                 if p is not None:
@@ -1084,7 +1086,7 @@ class SolutionSFCSMeasurement:
             self.scan_type = "static"
 
     def process_data_file(
-        self, file_path: Path = None, file_idx: int = None, file_dict: dict = None, **proc_options
+        self, file_path: Path = None, file_num: int = None, file_dict: dict = None, **proc_options
     ) -> TDCPhotonFileData:
         """Doc."""
 
@@ -1094,14 +1096,14 @@ class SolutionSFCSMeasurement:
         # if using existing file_dict - usually during alignment measurements
         if file_dict is not None:
             self._get_general_properties(file_dict=file_dict, **proc_options)
-            file_idx = 1
+            file_num = 1
             self.dump_path = DUMP_PATH / "temp_meas"
 
         # File Data Loading
         if file_path is not None:  # Loading file from disk
             *_, template = file_path.parts
             print(
-                f"Loading and processing file No. {file_idx} ({self.n_paths} files): '{template}'...",
+                f"Loading and processing file No. {file_num} ({self.n_paths} files): '{template}'...",
                 end=" ",
             )
             try:
@@ -1127,7 +1129,7 @@ class SolutionSFCSMeasurement:
 
         # TODO: all relevant properties from 'file_dict' should have been imported to the 'SolutionSFCSMeasurement' object at this point.
         # It makes no sense to send the 'file_dict' as an argument - send what's relevant.
-        return self.data_processor.process_data(file_idx, file_dict["full_data"], **proc_options)
+        return self.data_processor.process_data(file_num, file_dict["full_data"], **proc_options)
 
     def calibrate_tdc(self, force_processing=True, **kwargs) -> None:
         """Doc."""

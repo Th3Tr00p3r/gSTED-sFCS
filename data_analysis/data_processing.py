@@ -398,7 +398,7 @@ class RawFileData:
 
     def __init__(
         self,
-        idx: int,
+        file_num: int,
         dump_path: Path,
         coarse: np.ndarray = None,
         coarse2: np.ndarray = None,
@@ -415,8 +415,8 @@ class RawFileData:
         From now on will be accessed via memory mapping.
         """
 
-        self._idx = idx
-        self._file_name = f"raw_data_{idx}.npy"
+        self._file_num = file_num
+        self._file_name = f"raw_data_{file_num}.npy"
         self._dump_path = dump_path
         self.dump_file_path = self._dump_path / self._file_name
         self.should_avoid_dumping = should_avoid_dumping
@@ -773,13 +773,13 @@ class AfterpulsingFilter:
 class TDCPhotonFileData:
     """Holds the total processed data of a single measurement file."""
 
-    idx: int
+    file_num: int
     general: GeneralFileData
     raw: RawFileData
     dump_path: Path
 
     def __repr__(self):
-        return f"TDCPhotonFileData(idx={self.idx}, dump_path={self.dump_path})"
+        return f"TDCPhotonFileData(idx={self.file_num}, dump_path={self.dump_path})"
 
     def get_section_line_splits(
         self,
@@ -838,7 +838,7 @@ class TDCPhotonFileData:
         # trim the split duration to maximum possible (minus 5%), and warn user about it
         if self.general.split_duration_s > t_photon[-1]:
             print(
-                f"File #{self.idx}: Split duration ({self.general.split_duration_s:.2f} s) is longer than the entire section ({t_photon[-1]:.2f} s)... reducing split duration... ",
+                f"File #{self.file_num}: Split duration ({self.general.split_duration_s:.2f} s) is longer than the entire section ({t_photon[-1]:.2f} s)... reducing split duration... ",
                 end="",
             )
             self.general.split_duration_s = t_photon[-1] * 0.95
@@ -1127,14 +1127,14 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self.detector_gate_ns = detector_gate_ns
 
     def process_data(
-        self, idx, full_data, should_dump=True, force_processing: bool = True, **proc_options
+        self, file_num, full_data, should_dump=True, force_processing: bool = True, **proc_options
     ) -> TDCPhotonFileData:
         """Doc."""
 
         # if is allowed and able to use dumped pre-processed data
         if (
             not force_processing
-            and (dumped_fpath := self.dump_path / f"raw_data_{idx}.npy").exists()
+            and (dumped_fpath := self.dump_path / f"raw_data_{file_num}.npy").exists()
         ):
             raise NotImplementedError(
                 f"I still need to save/dump the GeneralFileData to '{dumped_fpath.parent}', alongside the raw data (used for memory-mapping arrays) so that I can load it as well, as some of its properties are necessary downstream (e.g. correlation."
@@ -1166,16 +1166,16 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             # sFCS
             if scan_settings := full_data.get("scan_settings"):
                 if (scan_type := scan_settings["pattern"]) == "circle":  # Circular sFCS
-                    p = self._process_circular_scan_data_file(idx, full_data, **proc_options)
+                    p = self._process_circular_scan_data_file(file_num, full_data, **proc_options)
                 elif scan_type == "angular":  # Angular sFCS
-                    p = self._process_angular_scan_data_file(idx, full_data, **proc_options)
+                    p = self._process_angular_scan_data_file(file_num, full_data, **proc_options)
                 elif scan_type == "image":  # image sFCS
-                    p = self._process_image_scan_plane_data(idx, full_data, **proc_options)
+                    p = self._process_image_scan_plane_data(file_num, full_data, **proc_options)
             # FCS
             else:
                 scan_type = "static"
                 p = self._convert_fpga_data_to_photons(
-                    idx,
+                    file_num,
                     **proc_options,
                 )
 
@@ -1196,7 +1196,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
     def _convert_fpga_data_to_photons(
         self,
-        idx,
+        file_num,
         byte_data_path=None,
         byte_data=None,
         should_use_all_sections=True,
@@ -1317,7 +1317,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         return TDCPhotonFileData(
             # TODO: using properties, I can ignore the fact that some attributes are 'raw' and some are 'general' and get less code
-            idx,
+            file_num,
             GeneralFileData(
                 # general
                 laser_freq_hz=self.laser_freq_hz,
@@ -1329,7 +1329,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 split_duration_s=split_duration_s,
             ),
             RawFileData(
-                idx=idx,
+                file_num=file_num,
                 dump_path=self.dump_path,
                 coarse=coarse,
                 coarse2=coarse2,
@@ -1935,7 +1935,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         # replace the raw data after angular scan changes made
         p.raw = RawFileData(
-            p.idx,
+            p.file_num,
             p.dump_path,
             coarse,
             coarse2,
@@ -1991,7 +1991,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             )
         except IndexError as exc:
             print(
-                f"\n[WORKER] Error in file {p.idx}: {exc}. Please remove/fix the file, and re-run the processing."
+                f"\n[WORKER] Error in file {p.file_num}: {exc}. Please remove/fix the file, and re-run the processing."
             )
             sys.stdout.flush()
         p.raw.delay_time = _delay_time
