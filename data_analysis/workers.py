@@ -87,7 +87,7 @@ def data_processing_worker(idx: int, data_processing_queue, io_queue, **proc_opt
             print(f"\n[WORKER {idx}] Error encountered: {exc}. Placing 'None' in IO Queue.")
             sys.stdout.flush()
         else:
-            print(f"\n[WORKER {idx}] Placing processed file {p.idx} in IO Queue")
+            print(f"\n[WORKER {idx}] Placing processed file {p.file_num} in IO Queue")
             sys.stdout.flush()
         io_queue.put((dump_data_file, p))
         files_processed += 1

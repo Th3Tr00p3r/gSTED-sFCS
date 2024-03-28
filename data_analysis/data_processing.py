@@ -143,8 +143,6 @@ class AngularScanDataMixin:
 
         # in case initial attempt fails, limit shift to the flattened size of the image
         if (outer_half_sum > inner_half_sum) or return_row_idx != height - 1:
-            if return_row_idx != height - 1 and kwargs.get("is_verbose"):
-                print("Data is heavily shifted, check it out!", end=" ")
             min_pix_shift = -round(cnt.size / 2)
             max_pix_shift = min_pix_shift + cnt.size + 1
             pix_shift = get_best_pix_shift(cnt, min_pix_shift, max_pix_shift, step)
