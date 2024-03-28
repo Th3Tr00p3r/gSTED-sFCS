@@ -43,7 +43,7 @@ def io_worker(
         else:
             if arg is not None:
                 func(arg)  # raw.dump()
-                print(f"\n[IO WORKER] Processed file {arg.idx} saved to disk.")
+                print(f"\n[IO WORKER] Processed file {arg.file_num} saved to disk.")
                 sys.stdout.flush()
                 processed_list.append(arg)
             n_saves += 1
