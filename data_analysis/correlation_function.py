@@ -933,7 +933,7 @@ class SolutionSFCSMeasurement:
         if (
             should_parallel_process
             and ((n_files := len(file_paths)) >= 5)
-            and (total_byte_data_size_estimate_mb > 500)
+            #            and (total_byte_data_size_estimate_mb > 500)
         ):
             # -2 is one CPU left to OS and one for I/O
             N_RAM_PROCESSES = N_CPU_CORES - 2
@@ -998,7 +998,7 @@ class SolutionSFCSMeasurement:
                     self.data.append(p)
 
             # sort the data by file number
-            self.data = sorted(self.data)
+            self.data.sort()
 
             print("\nMultiprocessing complete!")
 
