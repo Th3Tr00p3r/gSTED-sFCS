@@ -997,6 +997,9 @@ class SolutionSFCSMeasurement:
                 for p in processed_list:
                     self.data.append(p)
 
+            # sort the data by file number
+            self.data = sorted(self.data)
+
             print("\nMultiprocessing complete!")
 
         # serial processing (default)

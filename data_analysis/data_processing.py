@@ -779,6 +779,9 @@ class TDCPhotonFileData:
     def __repr__(self):
         return f"TDCPhotonFileData(idx={self.file_num}, dump_path={self.dump_path})"
 
+    def __lt__(self, other):
+        return self.file_num < other.file_num
+
     def get_section_line_splits(
         self,
         sec_slice: slice,
