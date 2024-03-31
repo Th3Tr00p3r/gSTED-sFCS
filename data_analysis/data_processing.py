@@ -776,9 +776,6 @@ class TDCPhotonFileData:
     raw: RawFileData
     dump_path: Path
 
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls)
-
     def __repr__(self):
         return f"TDCPhotonFileData(idx={self.file_num}, dump_path={self.dump_path})"
 
@@ -919,6 +916,9 @@ class TDCPhotonMeasurementData(list):
 
     def __init__(self):
         super().__init__()
+
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls)
 
     def generate_splits(self, gate_ns=Gate(), **kwargs) -> Generator[np.ndarray, None, None]:
         """
