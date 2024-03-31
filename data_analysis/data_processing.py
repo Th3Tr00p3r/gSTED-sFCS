@@ -917,8 +917,14 @@ class TDCPhotonMeasurementData(list):
     def __init__(self):
         super().__init__()
 
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls)
+    def sort(self):
+        """Sort in-place according to file numbers"""
+
+        # create a sorted list (by file number)
+        sorted_list = sorted(self)
+        # replace with sorted list
+        self.clear()
+        self += sorted_list
 
     def generate_splits(self, gate_ns=Gate(), **kwargs) -> Generator[np.ndarray, None, None]:
         """
