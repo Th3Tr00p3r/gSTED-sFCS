@@ -593,7 +593,7 @@ def dbscan_noise_thresholding(
     return noise_mask
 
 
-def batch_mean_rows(arr: np.ndarray, n_rows: int):
+def batch_mean_rows(arr: np.ndarray, n_rows: int = None, row_slices: List[slice] = None):
     """
     Compute the mean of batches of rows from a 2D numpy array.
 
@@ -621,7 +621,14 @@ def batch_mean_rows(arr: np.ndarray, n_rows: int):
         # array([[ 4. ,  5. ,  6. ],
         #        [11.5, 12.5, 13.5]])
     """
-    return np.vstack([arr.mean(axis=0) for arr in np.array_split(arr, n_rows) if arr.any()])
+    if n_rows:
+        return np.vstack(
+            [sub_arr.mean(axis=0) for sub_arr in np.array_split(arr, n_rows) if sub_arr.any()]
+        )
+    elif row_slices:
+        return np.vstack([arr[s].mean(axis=0) for s in row_slices if arr[s].any()])
+    else:
+        raise ValueError("Either 'n_rows' or 'row_slices' must be supplied!")
 
 
 def get_encompassing_rectangle_dims(

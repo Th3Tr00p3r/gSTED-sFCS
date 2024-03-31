@@ -481,7 +481,6 @@ def get_gradient_colormap(
     return cmap
 
 
-# TODO: I think this should be eventually a method of CorrFunc!
 def plot_acfs(
     x: np.ndarray,
     avg_cf_cr: np.ndarray = None,
@@ -489,6 +488,7 @@ def plot_acfs(
     cf_cr: np.ndarray = None,
     j_good: list = [],
     n_lines=1000,  # was 14
+    row_slices=None,
     **kwargs,
 ):
     """Doc."""
@@ -512,7 +512,11 @@ def plot_acfs(
         if cf_cr is not None:
             if j_good:
                 cf_cr = cf_cr[j_good]
-            cf_cr = helper.batch_mean_rows(cf_cr, n_lines)
+            cf_cr = (
+                helper.batch_mean_rows(cf_cr, row_slices=row_slices)
+                if row_slices
+                else helper.batch_mean_rows(cf_cr, n_lines)
+            )
             cmap = get_gradient_colormap(cf_cr.shape[0], **kwargs)
             ax.set_prop_cycle(color=cmap)
             ax.plot(x, cf_cr.T, lw=0.4)
