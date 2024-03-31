@@ -665,8 +665,9 @@ class GeneralFileData:
     image_bw_mask: np.ndarray = None
     normalized_masked_alleviated_image: np.ndarray = None
 
-    def __post_init__(self):
-        self.n_corr_splits = sum(
+    @property
+    def n_corr_splits(self):
+        return sum(
             [len(self.valid_lines[sec_idx]) for sec_idx in range(len(self.all_section_slices))]
         )
 
