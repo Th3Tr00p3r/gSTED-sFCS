@@ -593,7 +593,7 @@ def dbscan_noise_thresholding(
     return noise_mask
 
 
-def batch_mean_rows(arr: np.ndarray, n_rows: int = None, row_slices: List[slice] = None):
+def batch_mean_rows(arr: np.ndarray, batch_size: int = None, batch_sizes: List[int] = None):
     """
     Compute the mean of batches of rows from a 2D numpy array.
 
@@ -621,14 +621,33 @@ def batch_mean_rows(arr: np.ndarray, n_rows: int = None, row_slices: List[slice]
         # array([[ 4. ,  5. ,  6. ],
         #        [11.5, 12.5, 13.5]])
     """
-    if n_rows:
+
+    def split_array_by_batch(arr, batch_sizes):
+        start = 0
+        result = []
+        for size in batch_sizes:
+            result.append(arr[start : start + size])
+            start += size
+        return result
+
+    if batch_size:
         return np.vstack(
-            [sub_arr.mean(axis=0) for sub_arr in np.array_split(arr, n_rows) if sub_arr.any()]
+            [
+                arr_batch.mean(axis=0)
+                for arr_batch in np.array_split(arr, batch_size)
+                if arr_batch.any()
+            ]
         )
-    elif row_slices:
-        return np.vstack([arr[s].mean(axis=0) for s in row_slices if arr[s].any()])
+    elif batch_sizes:
+        return np.vstack(
+            [
+                arr_batch.mean(axis=0)
+                for arr_batch in split_array_by_batch(arr, batch_sizes)
+                if arr_batch.any()
+            ]
+        )
     else:
-        raise ValueError("Either 'n_rows' or 'row_slices' must be supplied!")
+        raise ValueError("Either 'batch_size' or 'batch_sizes' must be supplied!")
 
 
 def get_encompassing_rectangle_dims(
