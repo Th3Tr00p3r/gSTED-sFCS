@@ -777,7 +777,7 @@ class TDCPhotonFileData:
     dump_path: Path
 
     def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls)
 
     def __repr__(self):
         return f"TDCPhotonFileData(idx={self.file_num}, dump_path={self.dump_path})"
