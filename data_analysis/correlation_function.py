@@ -407,9 +407,9 @@ class CorrFunc:
         self.norm_range = Limits(norm_range)
         self.average_all_cf_cr = (self.cf_cr * self.weights).sum(0) / self.weights.sum(0)
         self.median_all_cf_cr = np.median(self.cf_cr, axis=0)
-        jj = Limits(self.norm_range.upper, np.inf).valid_indices(
+        jj = Limits(self.norm_range.upper, 1).valid_indices(
             self.lag
-        )  # work in the relevant part
+        )  # work in the relevant part (up to 1 ms)
 
         try:
             self.score = (
