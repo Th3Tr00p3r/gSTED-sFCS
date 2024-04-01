@@ -141,6 +141,8 @@ class SoftwareCorrelator:
                 split_durations_s.append(
                     ts_split[0 if ts_split.ndim != 1 else slice(None)].sum() / laser_freq_hz
                 )
+            else:
+                split_durations_s.append(0)
 
         lag_list = [output.lag for output in correlator_output_list]
         corrfunc_list = [output.corrfunc for output in correlator_output_list]
