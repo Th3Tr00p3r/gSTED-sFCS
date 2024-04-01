@@ -352,38 +352,37 @@ class CorrFunc:
 
         # zero-pad and generate cf_cr
         lag_len = len(self.lag)
-        n_corrfuncs = len(corr_output.corrfunc_list)
-        shape = (n_corrfuncs, lag_len)
+        shape = (len(valid_idxs), lag_len)
         self.corrfunc = np.empty(shape=shape, dtype=np.float64)
         self.weights = np.empty(shape=shape, dtype=np.float64)
         self.cf_cr = np.empty(shape=shape, dtype=np.float64)
-        for idx in range(n_corrfuncs):
-            pad_len = lag_len - len(corr_output.corrfunc_list[idx])
-            self.corrfunc[idx] = np.pad(corr_output.corrfunc_list[idx], (0, pad_len))
-            self.weights[idx] = np.pad(corr_output.weights_list[idx], (0, pad_len))
+        for idx, valid_idx in enumerate(valid_idxs):
+            pad_len = lag_len - len(corr_output.corrfunc_list[valid_idx])
+            self.corrfunc[idx] = np.pad(corr_output.corrfunc_list[valid_idx], (0, pad_len))
+            self.weights[idx] = np.pad(corr_output.weights_list[valid_idx], (0, pad_len))
             try:
-                self.cf_cr[idx] = corr_output.countrate_list[idx] * self.corrfunc[idx]
+                self.cf_cr[idx] = corr_output.countrate_list[valid_idx] * self.corrfunc[idx]
             except ValueError:  # Cross-correlation - countrate is a 2-tuple
-                self.cf_cr[idx] = corr_output.countrate_list[idx].a * self.corrfunc[idx]
+                self.cf_cr[idx] = corr_output.countrate_list[valid_idx].a * self.corrfunc[idx]
             with suppress(AttributeError):  # no .subtracted_afterpulsing attribute
                 # ext. afterpulse might be shorter/longer
                 self.cf_cr[idx] -= unify_length(self.subtracted_afterpulsing, (lag_len,))
 
         # countrates
         try:  # xcorr
-            self.countrate_a = np.mean(
+            self.countrate_a = np.nanmean(
                 [countrate_pair.a for countrate_pair in corr_output.countrate_list]
             )
-            self.countrate_b = np.mean(
+            self.countrate_b = np.nanmean(
                 [countrate_pair.b for countrate_pair in corr_output.countrate_list]
             )
         except AttributeError:  # autocorr
-            self.countrate = np.mean([countrate for countrate in corr_output.countrate_list])
+            self.countrate = np.nanmean([countrate for countrate in corr_output.countrate_list])
 
         # keep all countrates
         self.countrate_list = corr_output.countrate_list
 
-        # TESTESTEST - interpolate over NaNs
+        # TESTESTEST - interpolate over NaNs - THIS SHOULD NOT HAPPEN!
         if np.isnan(self.cf_cr).any():
             nan_per_row = np.isnan(self.cf_cr).sum(axis=1)
             print(f"Warning: {(nan_per_row>0).sum()}/{self.cf_cr.shape[0]} ACFs contain NaNs!")

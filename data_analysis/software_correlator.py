@@ -135,6 +135,15 @@ class SoftwareCorrelator:
                 if kwargs.get("is_verbose"):
                     print(idx + 1, end="")
                 valid_idxs.append(idx)
+            else:  # bad split
+                correlator_output_list.append(
+                    SoftwareCorrelatorOutput(
+                        np.array([np.nan]),
+                        np.array([np.nan]),
+                        np.array([np.nan]),
+                        np.nan,
+                    )
+                )
 
             # calculate split duration
             if ts_split is not None and ts_split.shape != ():
