@@ -299,9 +299,6 @@ class CorrFunc:
     ) -> None:
         """Doc."""
 
-        if kwargs.get("is_verbose"):
-            print("Correlating splits -", end=" ")
-
         output, self.split_durations_s, valid_idxs = self.SC.correlate_list(
             split_gen,
             self.laser_freq_hz,
@@ -819,14 +816,14 @@ class SolutionSFCSMeasurement:
         """Calculate the mean effective (in sample) countrate using the first CorrFunc object in .cf"""
 
         in_sample_countrate_list = list(self.cf.values())[0].countrate_list
-        return np.mean(in_sample_countrate_list) * 1e-3
+        return np.nanmean(in_sample_countrate_list) * 1e-3
 
     @property
     def std_cnt_rate_khz(self):
         """Calculate the standard deviation from mean effective (in sample) countrate using the first CorrFunc object in .cf"""
 
         in_sample_countrate_list = list(self.cf.values())[0].countrate_list
-        return np.std(in_sample_countrate_list, ddof=1) * 1e-3
+        return np.nanstd(in_sample_countrate_list, ddof=1) * 1e-3
 
     def read_fpga_data(
         self,
@@ -1275,7 +1272,10 @@ class SolutionSFCSMeasurement:
                 correlator_option = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
         if corr_options.get("is_verbose"):
-            print(f"Correlating {self.scan_type} data ({cf_name}):", end=" ")
+            print(
+                f"Correlating {self.scan_type} data ({cf_name}) ({sum([p.general.n_corr_splits for p in self.data])} splits):",
+                end=" ",
+            )
 
         # Correlate data
         CF = CorrFunc(
@@ -1329,6 +1329,7 @@ class SolutionSFCSMeasurement:
 
         # get a maximum of 10 images along the whole measurement
         img_idxs = np.arange(self.n_files, step=int(np.ceil(self.n_files / 10)))
+        # TODO: the file numbers should match the actual file numbers (p.file_num)
 
         try:
             if self.scan_type == "angular":
@@ -2420,7 +2421,7 @@ class ImageSFCSMeasurement:
         self.laser_mode = full_data.get("laser_mode")
         self.scan_settings = full_data.get("scan_settings")
 
-        # get countrate estimate (for multiprocessing threshod). calculated more precisely in the end of processing.ArithmeticError
+        # get countrate estimate (for multiprocessing threshod). calculated more precisely in the end of processing.
         self.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
         self.afterpulse_params = self._file_dict["system_info"]["afterpulse_params"]

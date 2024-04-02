@@ -686,7 +686,10 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
         # NOTE: why is the next line correct? explain and use a constant for 1.5E-7. ask Oleg
-        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params["dt"] - 1.5e-7))
+        #        self.ai_conv_rate = 6 * 2 * (1 / (self.scan_params["dt"] - 1.5e-7))
+        self.ai_conv_rate = (
+            6 * 4 * (1 / (self.scan_params["dt"] - 1.5e-7))
+        )  # TESTESTEST - factor of 2 is now 4
 
     def disp_ACF(self):
         """Doc."""
@@ -835,7 +838,9 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                     #                        self.setup_scan()
 
                     self.scanners_dvc.init_ai_buffer(size=self.ao_buffer.shape[1])
+                    #                    self.scanners_dvc.init_ai_buffer("inf", size=self.ao_buffer.shape[1]) # TESTESTEST
                     self.init_scan_tasks("CONTINUOUS")
+                    #                    self.init_scan_tasks("FINITE") # TESTESTEST
                     self.scanners_dvc.start_tasks("ao")
                 else:
                     self.scanners_dvc.init_ai_buffer()
