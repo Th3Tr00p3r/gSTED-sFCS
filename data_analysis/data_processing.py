@@ -1215,7 +1215,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         file_num,
         byte_data_path=None,
         byte_data=None,
-        should_use_all_sections=True,
         len_factor=0.01,
         byte_data_slice=None,
         split_duration_s: float = 1.0,
@@ -1243,25 +1242,17 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         section_slices, tot_single_errors = self._find_all_section_edges(byte_data)
         section_lengths = [sec_slice.stop - sec_slice.start for sec_slice in section_slices]
 
-        if should_use_all_sections:
-            photon_idxs_list: List[int] = []
-            section_runtime_slices = []
-            for sec_slice in section_slices:
-                if sec_slice.stop - sec_slice.start > sum(section_lengths) * len_factor:
-                    section_runtime_start = len(photon_idxs_list)
-                    section_photon_indxs = list(
-                        range(sec_slice.start, sec_slice.stop, self.GROUP_LEN)
-                    )
-                    section_runtime_end = section_runtime_start + len(section_photon_indxs)
-                    photon_idxs_list += section_photon_indxs
-                    section_runtime_slices.append(slice(section_runtime_start, section_runtime_end))
+        photon_idxs_list: List[int] = []
+        section_runtime_slices = []
+        for sec_slice in section_slices:
+            if sec_slice.stop - sec_slice.start > sum(section_lengths) * len_factor:
+                section_runtime_start = len(photon_idxs_list)
+                section_photon_indxs = list(range(sec_slice.start, sec_slice.stop, self.GROUP_LEN))
+                section_runtime_end = section_runtime_start + len(section_photon_indxs)
+                photon_idxs_list += section_photon_indxs
+                section_runtime_slices.append(slice(section_runtime_start, section_runtime_end))
 
-            photon_idxs = np.array(photon_idxs_list)
-
-        else:  # using largest section only
-            max_sec_slice = section_slices[np.argmax(section_lengths)]
-            photon_idxs = np.arange(max_sec_slice.start, max_sec_slice.stop, self.GROUP_LEN)
-            section_runtime_slices = [slice(0, len(photon_idxs))]
+        photon_idxs = np.array(photon_idxs_list)
 
         if proc_options.get("is_verbose"):
             if len(section_slices) > 1:
@@ -1269,14 +1260,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     f"Found {len(section_slices) - 1:,} removeable discontinuities, potentially causing sections of lengths: {', '.join([str(round(sec_len * 1e-3)) for sec_len in section_lengths])} Kb.",
                     end=" ",
                 )
-                # TODO: Define 'len(section_slices)' and 'len(section_runtime_slices)' - what do they stand for? Why is the second condition necessary?
-                if should_use_all_sections and len(section_slices) >= len(section_runtime_slices):
-                    print(
-                        f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_slices)}/{len(section_slices)}).",
-                        end=" ",
-                    )
-                else:  # Use largest section only
-                    print(f"Using largest (section num.{np.argmax(section_lengths)+1}).", end=" ")
+                print(
+                    f"Using all valid (> {len_factor:.1%}) sections ({len(section_runtime_slices)}/{len(section_slices)}).",
+                    end=" ",
+                )
             else:
                 print(
                     f"Found a single section of length: {section_lengths[0]*1e-6:.1f} Mb.", end=" "
@@ -1363,22 +1350,13 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self,
         pulse_runtime: np.ndarray,
         time_stamps: np.ndarray,
-        max_time_stamp=100_000,  # TESTESTEST was 300_000
+        max_time_stamp=75_000,  # TODO: this could be found heuristically based on the timestamp histogram (where it drops to 0)
         max_outliers=100,  # TESTESTEST
-        #        max_outlier_prob=1e-9,
         len_factor=0.01,
+        should_use_all_sections=True,
         **kwargs,
     ):
         """Find outliers and create sections seperated by them. Short sections are discarded"""
-
-        # find additional outliers (improbably large time_stamps) and break into
-        # additional sections if they exist.
-        # for exponential distribution MEDIAN and MAD are the same, but for
-        #        # biexponential MAD seems more sensitive
-        #        mu = max(np.median(time_stamps), np.abs(time_stamps - time_stamps.mean()).mean()) / np.log(
-        #            2
-        #        )
-        #        max_time_stamp = scipy.stats.expon.ppf(1 - max_outlier_prob / len(time_stamps), scale=mu)
 
         jump_idxs = (time_stamps > max_time_stamp).nonzero()[0]
         if n_outliers := len(jump_idxs):
@@ -1400,24 +1378,27 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 pulse_runtime[sec_slice.stop - 1] - pulse_runtime[sec_slice.start]
                 for sec_slice in all_section_slices
             ]
-            all_section_slices = [
-                sec_slice
-                for sec_slice, sec_len in zip(all_section_slices, sec_lens)
-                if sec_len > sum(sec_lens) * len_factor
+            valid_sec_idxs = [
+                idx for idx, sec_len in enumerate(sec_lens) if sec_len > sum(sec_lens) * len_factor
             ]
+            all_section_slices = [all_section_slices[idx] for idx in valid_sec_idxs]
             if (n_outliers + 1) > len(all_section_slices) and kwargs.get("is_verbose"):
                 print(
-                    f"Using all valid (> {len_factor:.1%}) sections ({len(all_section_slices)}/{n_outliers + 1}). ",
+                    f"Using all valid (> {len_factor:.1%}) sections: {', '.join([str(idx+1) for idx in valid_sec_idxs])} ({len(all_section_slices)}/{n_outliers + 1}). ",
                     end="",
                 )
 
             # find lost duration
-            section_lengths = [sec_slice.stop - sec_slice.start for sec_slice in all_section_slices]
-            skipped_duration = pulse_runtime.size - sum(section_lengths)
+            skipped_duration = pulse_runtime.size - sum(sec_lens)
 
         else:
             skipped_duration = 0
             all_section_slices = [slice(0, pulse_runtime.size)]
+
+        if not should_use_all_sections:  # using largest section only
+            all_section_slices = [all_section_slices[(largest_sec_idx := np.argmax(sec_lens))]]
+            skipped_duration = max(sec_lens)
+            print(f"Using largest (section num.{largest_sec_idx+1}).", end=" ")
 
         return all_section_slices, skipped_duration
 

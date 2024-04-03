@@ -1,15 +1,11 @@
-imgScanFileTemplate,gb
 solScanFileTemplate,YOYO1kbp_13uW
-newTemplate,YOYO1kbp_13uW_angular_sted_260mW
-solImportFileSelectionPattern,1
+imgScanFileTemplate,gb
+newTemplate,YOYO30kbp_L_Dilute_7uW_angular_exc
+solImportFileSelectionPattern,2
 searchQuery,
 lineEdit,
 experimentName,test
 spadMode,free running
-imgScanNumLines,80
-imgScanPPL,1000
-imgScanLineFreq,20
-imgScanNumPlanes,1
 solScanFloatingAmp,0
 circAoSampFreq,10000
 circDiameter,25
@@ -24,6 +20,10 @@ maxWidth,42
 solPointsPerLine,102
 solTotPointsPerLine,125
 solNumLines,22
+imgScanNumLines,80
+imgScanPPL,1000
+imgScanLineFreq,20
+imgScanNumPlanes,1
 scanImgFileNum,1
 solAnalysisRemoveWorstSpinner,0
 tdcCalibGating,40
@@ -33,16 +33,16 @@ depPow,260
 stageSteps,250
 spadGateWidth,98
 spadEffGateWidth,98
-imgScanDim1,15.0
-imgScanDim2,15.0
-imgScanDim3,0.0
-imgScanLinFrac,0.9
 solScanMaxFileSize,100.0
 solScanStageDwell,5.0
 solLinFrac,0.9
 solAngActualSpeed,8800.0
 solActualScanFreq,40.0
 solScanDur,1.9
+imgScanDim1,15.0
+imgScanDim2,15.0
+imgScanDim3,0.0
+imgScanLinFrac,0.9
 solAnalysisRemoveDbscanSpinner,0.1
 solAnalysisRemoveOverSpinner,2.0
 customGateLifetimesLower,0.5
@@ -54,17 +54,17 @@ zAOV,5.0
 axisMoveUm,5.0
 psdDelay,2.0
 psdEffDelay,51.61
-imgScanPreset,Locate Plane - YZ Coarse
-imgScanType,YZ
-imgShowMethod,Forward scan - normalized
 solMeasPreset,Standard Angular
 solScanStagePattern,Snake
 solScanType,angular
 solScanDurUnits,hours
-dataMonth,3
+imgScanPreset,Locate Plane - YZ Coarse
+imgScanType,YZ
+imgShowMethod,Forward scan - normalized
+dataMonth,4
 dataYear,2024
-dataDay,25
-dataTemplate1,YOYO1kbp_13uW_angular_sted_260mW_125754_*.pkl
+dataDay,1
+dataTemplate1,YOYO30kbp_L_Dilute_7uW_angular_exc_145103_*.pkl
 solImportUseDontUse,Use
 importedSolDataTemplates_2,
 importedSolDataTemplates_3,
@@ -86,8 +86,8 @@ repeatSolMeas,False
 finalSolMeas,False
 imageDataImport,False
 solDataImport,True
-solImportUseAll,True
-solImportUse,False
+solImportUseAll,False
+solImportUse,True
 solAnalysisRemoveDbscan,False
 solAnalysisRemoveOver,True
 solAnalysisRemoveWorst,False
@@ -109,12 +109,12 @@ tabWidget_2,1
 tabWidget_5,1
 tabWidget_4,0
 tabWidget_3,0
-autoCrosshair,True
-alwaysSaveImg,False
 circShouldPrecess,True
 shouldPlot,False
 shouldFit,False
 accumAcf,True
+autoCrosshair,True
+alwaysSaveImg,False
 solImportReCorrelate,False
 solImportAutoLoadProcessed,False
 bwMask,False
