@@ -1272,10 +1272,13 @@ class SolutionSFCSMeasurement:
                 correlator_option = CorrelatorType.PH_DELAY_CORRELATOR_LINES
 
         if corr_options.get("is_verbose"):
-            print(
-                f"Correlating {self.scan_type} data ({cf_name}) ({sum([p.general.n_corr_splits for p in self.data])} splits):",
-                end=" ",
-            )
+            try:
+                print(
+                    f"Correlating {self.scan_type} {cf_name} data ({sum([p.general.n_corr_splits for p in self.data])} splits):",
+                    end=" ",
+                )
+            except TypeError:
+                print("Implement this - find number of splits for continuous/static scans...")
 
         # Correlate data
         CF = CorrFunc(

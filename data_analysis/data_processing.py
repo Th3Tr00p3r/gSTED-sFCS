@@ -667,9 +667,13 @@ class GeneralFileData:
 
     @property
     def n_corr_splits(self):
-        return sum(
-            [len(self.valid_lines[sec_idx]) for sec_idx in range(len(self.all_section_slices))]
-        )
+        # angular scan
+        if self.valid_lines:
+            return sum(
+                [len(self.valid_lines[sec_idx]) for sec_idx in range(len(self.all_section_slices))]
+            )
+        else:
+            return "Implement this - find number of splits for continuous/static scans..."
 
 
 @dataclass
@@ -1153,7 +1157,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             and (dumped_fpath := self.dump_path / f"raw_data_{file_num}.npy").exists()
         ):
             raise NotImplementedError(
-                f"I still need to save/dump the GeneralFileData to '{dumped_fpath.parent}', alongside the raw data (used for memory-mapping arrays) so that I can load it as well, as some of its properties are necessary downstream (e.g. correlation."
+                f"I still need to save/dump the GeneralFileData to '{dumped_fpath.parent}', alongside the raw data (used for memory-mapping arrays) so that I can load it as well, as some of its properties are necessary downstream (e.g. correlation.)"
             )
         #            p = TDCPhotonFileData(
         #                idx,
@@ -1383,6 +1387,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             ]
             all_section_slices = [all_section_slices[idx] for idx in valid_sec_idxs]
             if (n_outliers + 1) > len(all_section_slices) and kwargs.get("is_verbose"):
+                # TODO: when this happens, it causes an issue with line markers. this sometimes happens in the first timestamps of a file, resulting in a short section - needs to be solved generally
+                # currently, we are just ignoring the first few data elements using 'byte_data_slice' kwarg.
                 print(
                     f"Using all valid (> {len_factor:.1%}) sections: {', '.join([str(idx+1) for idx in valid_sec_idxs])} ({len(all_section_slices)}/{n_outliers + 1}). ",
                     end="",

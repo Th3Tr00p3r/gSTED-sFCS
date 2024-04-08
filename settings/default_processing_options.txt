@@ -1,4 +1,4 @@
-startIndex,0
+startIndex,21
 stopIndex,0
 ImgGateWidth,15
 splitDuration,1.0
@@ -15,7 +15,7 @@ ignoreHardGate,False
 useDefaultSysInfo,False
 useMultiProcessing,True
 weightedFits,False
-dataSlice,False
+dataSlice,True
 fixShift,True
 alleviateBrightPixels,False
 ImgAutoGating,True
