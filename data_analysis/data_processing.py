@@ -1354,22 +1354,26 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self,
         pulse_runtime: np.ndarray,
         time_stamps: np.ndarray,
-        max_time_stamp=300_000,  # 75_000,  # TODO: this could be found heuristically based on the timestamp histogram (where it drops to 0)
-        max_outliers=100,  # TESTESTEST
+        max_time_stamp=None,  # was 300_000, now heuristically auto-selected
         len_factor=0.01,
         should_use_all_sections=True,
         **kwargs,
     ):
         """Find outliers and create sections seperated by them. Short sections are discarded"""
 
+        # select the max time stamp based on the histogram
+        if max_time_stamp is None:
+            bin_edges = np.hstack((np.arange(-0.5, 10.5), np.logspace(np.log10(10.5), 8, 100)))
+            ts_hist, _ = np.histogram(time_stamps, bins=bin_edges)
+            ts_bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
+            empty_ts_bin_centers = ts_bin_centers[ts_hist == 0]
+            max_time_stamp = empty_ts_bin_centers[empty_ts_bin_centers > 1e3][
+                0
+            ]  # get the first empty bin center for timestamps larger than 1000
+
         jump_idxs = (time_stamps > max_time_stamp).nonzero()[0]
-        if n_outliers := len(jump_idxs):
-            if n_outliers > max_outliers:
-                raise RuntimeError(
-                    f"Too many jumps in runtime (found: {n_outliers:,}, allowed: {max_outliers:,})."
-                )
-            if kwargs.get("is_verbose"):
-                print(f"Found {n_outliers + 1:,} sections caused by jumps in runtime. ", end="")
+        if kwargs.get("is_verbose") and (n_outliers := len(jump_idxs)):
+            print(f"Found {n_outliers + 1:,} sections caused by jumps in runtime. ", end="")
 
             # find all section edges
             sec_edges = np.hstack(([0], jump_idxs, [pulse_runtime.size]))
