@@ -1521,7 +1521,10 @@ class StepperStage(BaseDevice, PyVISA, metaclass=DeviceCheckerMetaClass):
                 attempts_left -= 1
 
         if not attempts_left:
-            logging.info(f"{self.log_ref} is already in motion! This should not occur!")
+            logging.info(
+                f"{self.log_ref} is already in motion! This should not occur! Setting as 'not moving'..."
+            )
+            self.is_moving = False
 
     def set_origin(self) -> None:
         """Set current position as the new origin"""

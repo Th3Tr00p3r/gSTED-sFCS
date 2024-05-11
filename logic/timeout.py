@@ -249,7 +249,7 @@ class Timeout:
                         temp, _ = await delayer_dvc.mpd_command(("RT", None))
                         self.main_gui.psdTemp.setValue(
                             float(temp)
-                        )  # TODO: move this within the device
+                        )  # TODO: move this (widget) within the device
 
             await asyncio.sleep(delayer_dvc.update_interval_s)
 

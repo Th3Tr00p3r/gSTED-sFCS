@@ -277,7 +277,7 @@ class Plotter:
                 self.gui_display.canvas.draw_idle()
             else:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
-                self.fig.show()
+                #                self.fig.show() # TODO: something causes duplicate showing of figures in Jupyter Notebook 7 - perhaps this is the line?
                 self.fig.canvas.draw_idle()
 
     def _quadratic_xscale_backwards(self, x):

@@ -1,12 +1,6 @@
 sysScanSetup,STED with galvos
 afterpulsingFitType,multi_exponent_fit
 afterpulsingFitParams, 2.26707493e01, 2.10619289e-01, 1.95406751e06,
-dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
-solSubdirName,solution
-imgSubdirName,image
-camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
-logDataPath,./log/
-tempDataPath,C:/temp_sfcs_folder/
 spadDescription,FT232R USB UART
 spadModelQuery,AQ
 psdDescription,FT230X Basic UART
@@ -28,6 +22,7 @@ pixelClockCounterAddress,Dev3/ctr0
 pixelClockSrcOfTicks,/Dev3/PFI3
 pixelClockOutput,/Dev3/PFI12
 pixelClockOutputExt,/Dev1/PFI5
+arduinoAddr,COM3
 excMod,PicoQuant
 excTriggerExtAddr,Dev1/port0/line6
 excTriggerIntAddr,Dev3/port0/
@@ -46,7 +41,12 @@ AIXaddr,Dev3/ai23
 AIYaddr,Dev3/ai7
 AIZaddr,Dev3/ai9
 AIlaserMonAddr,Dev3/ai3
-arduinoAddr,COM3
+dataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/
+solSubdirName,solution
+imgSubdirName,image
+camDataPath,D:\OneDrive - post.bgu.ac.il\gSTED_sFCS_Data/camera photos/
+logDataPath,./log/
+tempDataPath,C:/temp_sfcs_folder/
 spadBaudRate,115200
 spadTimeout,100
 psdBaudRate,115200
@@ -63,10 +63,11 @@ TDCversion,3
 pixelClockFreq,4
 pixelClockHighTicks,2
 pixelClockLowTicks,10
+stepperStageStepsPerSampleDrop,500
 maxScanFreq,40
 AIclkDiv,100
-stepperStageStepsPerSampleDrop,700
 syncDelay,49.61
+stepperStageStepsPerUm,1.6
 excIdleTimer,60.0
 depIdleTimer,60.0
 xOrigin,0.0
@@ -75,7 +76,6 @@ zOrigin,5.0
 xConv,59.01
 yConv,70.67
 zConv,10.0
-stepperStageStepsPerUm,1.6
 counterTriggerEdge,Rising
 excTriggerSrc,External (TDC)
 AOtriggerEdge,Rising

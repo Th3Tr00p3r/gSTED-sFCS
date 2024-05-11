@@ -799,11 +799,13 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         # setup detector
         await self.ready_detector()
 
-        # Initialize the stage and move to first stage position (optional)
+        # Turn ON the stage and move to first stage position (optional)
+        if not self.stage_dvc.is_on:
+            self.stage_dvc.toggle(True)
         if self.stage_pattern:
-            if not self.stage_dvc.is_on:
-                self.stage_dvc.toggle(True)
             await self.stage_dvc.move(next(self.stage_pattern), relative=False)
+        else:
+            await self.stage_dvc.move(self.initial_stage_pos_steps, relative=False)
 
         # Lastly - turn on lasers
         try:

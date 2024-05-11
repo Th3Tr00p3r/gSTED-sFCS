@@ -1354,7 +1354,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         self,
         pulse_runtime: np.ndarray,
         time_stamps: np.ndarray,
-        max_time_stamp=75_000,  # TODO: this could be found heuristically based on the timestamp histogram (where it drops to 0)
+        max_time_stamp=300_000,  # 75_000,  # TODO: this could be found heuristically based on the timestamp histogram (where it drops to 0)
         max_outliers=100,  # TESTESTEST
         len_factor=0.01,
         should_use_all_sections=True,
