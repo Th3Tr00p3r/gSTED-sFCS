@@ -379,11 +379,13 @@ class CorrFunc:
         # keep all countrates
         self.countrate_list = corr_output.countrate_list
 
-        # TESTESTEST - interpolate over NaNs - THIS SHOULD NOT HAPPEN!
+        # TODO: - interpolate over NaNs - THIS SHOULD NOT HAPPEN! Check out why it sometimes does.
         if np.isnan(self.cf_cr).any():
             nan_per_row = np.isnan(self.cf_cr).sum(axis=1)
             print(f"Warning: {(nan_per_row>0).sum()}/{self.cf_cr.shape[0]} ACFs contain NaNs!")
-            print(f"The bad rows contain {', '.join([str(nans) for nans in nan_per_row])} NaNs.")
+            print(
+                f"The bad rows contain {', '.join([str(nans) for nans in nan_per_row if nans])} NaNs."
+            )
 
             # interpolate over NaNs
             nans, x = nan_helper(self.cf_cr)  # get nans and a way to interpolate over them later
@@ -810,6 +812,9 @@ class SolutionSFCSMeasurement:
         self._was_corr_input_built: bool = False
         self.afterpulsing_filter: AfterpulsingFilter = None
         self.lifetime_params: LifeTimeParams = None
+
+    def __repr__(self):
+        return f"SolutionSFCSMeasurement({self.type}, {self.n_files} files, '{self.template}')"
 
     @property
     def avg_cnt_rate_khz(self):
@@ -1627,6 +1632,10 @@ class SolutionSFCSExperiment:
         self.confocal: SolutionSFCSMeasurement
         self.sted: SolutionSFCSMeasurement
 
+    def __repr__(self):
+        return f"""SolutionSFCSExperiment({self.name}, confocal={f"'{self.confocal.template}'" if self.confocal.is_loaded else None}, sted='{f"'{self.sted.template}'" if self.sted.is_loaded else None})
+        """
+
     @property
     def cf_dict(self):
         """unite all CorrFunc objects from both 'confocal' and 'sted' measurements in a single dictionary."""
@@ -2345,6 +2354,9 @@ class ImageSFCSMeasurement:
         self.tdc_image_data = None
         self.lifetime_image_data = None
         self.ci_image_data = None
+
+    def __repr__(self):
+        return f"ImageSFCSMeasurement({self.type}, {len(self.data)} files, '{self.file_path}')"
 
     def read_fpga_data(
         self,
