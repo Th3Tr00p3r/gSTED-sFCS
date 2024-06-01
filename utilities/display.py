@@ -13,7 +13,7 @@ from skimage.filters import threshold_yen
 
 import utilities.helper as helper
 
-plt.rcParams.update({"figure.max_open_warning": 100})
+plt.rcParams.update({"figure.max_open_warning": 300})
 default_colors = tuple(plt.rcParams["axes.prop_cycle"].by_key()["color"])
 
 
