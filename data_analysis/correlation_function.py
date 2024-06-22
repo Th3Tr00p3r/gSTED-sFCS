@@ -905,7 +905,7 @@ class SolutionSFCSMeasurement:
 
         # plotting of scan image and ROI
         if proc_options.get("should_plot"):
-            self.display_scan_images()
+            self.display_scan_images(3)
 
     def _process_all_data(
         self,
@@ -1332,26 +1332,51 @@ class SolutionSFCSMeasurement:
         for cf in self.cf.values():
             cf.remove_background()
 
-    def display_scan_images(self) -> None:
+    def display_scan_images(self, n_images, **kwargs) -> None:
         """Doc."""
 
-        # get a maximum of 10 images along the whole measurement
-        img_idxs = np.arange(self.n_files, step=int(np.ceil(self.n_files / 10)))
-        # TODO: the file numbers should match the actual file numbers (p.file_num)
+        def spread_elements(input_list, n):
+            length = len(input_list)
+            if n >= length:
+                return input_list[:]  # Return a copy of the entire input list if n >= length
+
+            # Calculate the step size
+            step = length / float(n)
+
+            # Initialize the output list
+            output_list = []
+
+            # Iterate through indices and add elements to output_list
+            for i in range(n):
+                index = int(round(i * step))  # Round to the nearest integer index
+                output_list.append(input_list[index])
+
+            return output_list
+
+        # get a fraction of the images along the whole measurement
+        file_idxs = spread_elements(np.arange(self.n_files), n_images)
+        print("file_idxs: ", file_idxs)  # TESTESTEST
+        file_numbers = np.array([p.file_num for p in self.data])
+        print("file_numbers: ", file_numbers)  # TESTESTEST
+        images = np.moveaxis(self.scan_images_dstack, -1, 0)
 
         try:
             if self.scan_type == "angular":
                 with Plotter(
-                    subplots=(1, len(img_idxs)), fontsize=8, should_force_aspect=True
+                    subplots=(1, len(file_idxs)),
+                    fontsize=8,
+                    should_force_aspect=True,
+                    **kwargs,
                 ) as axes:
                     if not hasattr(
                         axes, "size"
                     ):  # if axes is not an ndarray (only happens if reading just one file)
                         axes = np.array([axes])
-                    for file_idx, ax, image, sec_roi_list in zip(
-                        img_idxs, axes, np.moveaxis(self.scan_images_dstack, -1, 0), self.rois
-                    ):
-                        ax.set_title(f"file #{file_idx+1} of\n'{self.type}' measurement")
+                    for file_idx, ax in zip(file_idxs, axes):
+                        file_num = file_numbers[file_idx]
+                        sec_roi_list = self.rois[file_idx]
+                        image = images[file_idx]
+                        ax.set_title(f"file #{file_num} of\n'{self.type}' measurement")
                         ax.set_xlabel("Pixel Index")
                         ax.set_ylabel("Line Index")
                         ax.imshow(image, interpolation="none")
@@ -1359,7 +1384,7 @@ class SolutionSFCSMeasurement:
                             ax.plot(sec_roi["col"], sec_roi["row"], color="white", lw=0.6)
 
             elif self.scan_type == "circle":
-                with Plotter(fontsize=8, should_force_aspect=True) as ax:
+                with Plotter(fontsize=8, should_force_aspect=True, **kwargs) as ax:
                     ax.imshow(self.scan_image, interpolation="none")
 
             else:
