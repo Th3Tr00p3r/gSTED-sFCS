@@ -722,7 +722,7 @@ class CorrFunc:
 
         return self.hankel_transforms
 
-    def plot_hankel_transforms(self, **kwargs):
+    def plot_hankel_transforms(self, label_prefix="", **kwargs):
         """Doc."""
 
         # get interpolations types
@@ -734,7 +734,11 @@ class CorrFunc:
             for HT, ax_row in zip(
                 self.hankel_transforms.values(), axes if n_interps > 1 else [axes]
             ):
-                HT.plot(parent_ax=ax_row, label_prefix=f"{self.name}: ", **kwargs)
+                HT.plot(
+                    parent_ax=ax_row,
+                    label_prefix=f"{label_prefix}{': ' if label_prefix else ''}{self.name}: ",
+                    **kwargs,
+                )
 
     def calculate_structure_factor(
         self,
@@ -784,7 +788,7 @@ class CorrFunc:
         if is_verbose:
             print("Done.")
 
-    def plot_structure_factor(self, **kwargs):
+    def plot_structure_factor(self, label_prefix="", **kwargs):
         """Doc."""
 
         # get interpolations types
@@ -796,7 +800,11 @@ class CorrFunc:
             for (interp_type, structure_factor), ax in zip(
                 self.structure_factors.items(), (axes if n_interps > 1 else [axes])
             ):
-                structure_factor.plot(parent_ax=ax, label_prefix=f"{self.name}: ", **kwargs)
+                structure_factor.plot(
+                    parent_ax=ax,
+                    label_prefix=f"{label_prefix}{': ' if label_prefix else ''}{self.name}: ",
+                    **kwargs,
+                )
 
 
 class SolutionSFCSMeasurement:
@@ -1513,7 +1521,7 @@ class SolutionSFCSMeasurement:
             ax.set_ylabel("Frequency")
             ax.legend()
 
-    def plot_hankel_transforms(self, **kwargs):
+    def plot_hankel_transforms(self, label_prefix="", **kwargs):
         """Doc."""
 
         # get interpolations types
@@ -1527,7 +1535,11 @@ class SolutionSFCSMeasurement:
         ) as axes:
             kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
             for cf in self.cf.values():
-                cf.plot_hankel_transforms(parent_ax=axes, **kwargs)
+                cf.plot_hankel_transforms(
+                    parent_ax=axes,
+                    label_prefix=f"{label_prefix}{': ' if label_prefix else ''}{self.name}",
+                    **kwargs,
+                )
 
     def calculate_structure_factors(
         self,
@@ -1570,7 +1582,7 @@ class SolutionSFCSMeasurement:
             elif is_verbose:
                 print("Using existing... Done.")
 
-    def plot_structure_factors(self, **kwargs):
+    def plot_structure_factors(self, label_prefix="", **kwargs):
         """Doc."""
 
         # get interpolations types
@@ -1584,7 +1596,11 @@ class SolutionSFCSMeasurement:
         ) as axes:
             for CF in self.cf.values():
                 kwargs.pop("parent_ax", None)
-                CF.plot_structure_factor(parent_ax=axes, **kwargs)
+                CF.plot_structure_factor(
+                    parent_ax=axes,
+                    label_prefix=f"{label_prefix}{': ' if label_prefix else ''}{self.name}",
+                    **kwargs,
+                )
             for ax, interp_type in zip(axes if n_interps > 1 else [axes], interp_types):
                 ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
 
@@ -2326,7 +2342,7 @@ class SolutionSFCSExperiment:
         # keep reference to calibration experiment
         self.cal_exp = cal_exp
 
-    def plot_structure_factors(self, plot_ht=False, **kwargs):
+    def plot_structure_factors(self, plot_ht=False, label_prefix="", **kwargs):
         """Doc."""
 
         # get interpolations types
