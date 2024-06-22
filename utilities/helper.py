@@ -483,7 +483,7 @@ class InterpExtrap1D:
                 self.y_interp,
                 "-",
                 markersize=4,
-                label=f"{label_prefix}",
+                label=label_prefix,
                 color=color,
             )
             ax.axvline(x=self.x_lims.lower, color=color, lw=1, ls="--")

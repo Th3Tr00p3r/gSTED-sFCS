@@ -82,7 +82,7 @@ class HankelTransform:
             axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
             axes[0].legend()
 
-            axes[1].plot(self.q, self.fq, label=f"{label_prefix}Hankel transform")
+            axes[1].plot(self.q, self.fq, label=f"{label_prefix}")
             axes[1].set_xscale("log")
             axes[1].set_ylim(1e-4, 2)
             axes[1].set_title("Hankel Transforms")
