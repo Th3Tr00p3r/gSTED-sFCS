@@ -2326,23 +2326,24 @@ class SolutionSFCSExperiment:
         # keep reference to calibration experiment
         self.cal_exp = cal_exp
 
-    def plot_structure_factors(self, **kwargs):
+    def plot_structure_factors(self, plot_ht=False, **kwargs):
         """Doc."""
 
         # get interpolations types
         interp_types = list(list(self.confocal.cf.values())[0].structure_factors.keys())
         n_interps = len(interp_types)
 
-        # plot all transforms of all corrfuncs of all measurements in a single figure (for self and calibration)
-        for exp in (self, self.cal_exp):
-            with Plotter(
-                subplots=(n_interps, 2),
-                super_title=f"Experiment '{exp.name}': Hankel Transforms",
-                **kwargs,
-            ) as axes:
-                for meas in [getattr(exp, meas_type) for meas_type in ("confocal", "sted")]:
-                    if meas.is_loaded:
-                        meas.plot_hankel_transforms(parent_ax=axes, **kwargs)
+        # optionally plot all transforms of all corrfuncs of all measurements in a single figure (for self and calibration)
+        if plot_ht:
+            for exp in (self, self.cal_exp):
+                with Plotter(
+                    subplots=(n_interps, 2),
+                    super_title=f"Experiment '{exp.name}': Hankel Transforms",
+                    **kwargs,
+                ) as axes:
+                    for meas in [getattr(exp, meas_type) for meas_type in ("confocal", "sted")]:
+                        if meas.is_loaded:
+                            meas.plot_hankel_transforms(parent_ax=axes, **kwargs)
 
         # plot the structure factors in another figure
         with Plotter(
