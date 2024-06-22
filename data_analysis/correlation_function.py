@@ -741,6 +741,7 @@ class CorrFunc:
         cal_cf,
         interp_types: List[str],
         parent_ax=None,
+        should_force=False,
         should_plot=False,
         is_verbose=True,
         **kwargs,
@@ -759,12 +760,19 @@ class CorrFunc:
         if parent_names := kwargs.pop("parent_names", None):
             parent_name, cal_parent_name = parent_names
 
-        self.calculate_hankel_transform(
-            interp_types, is_verbose=False, parent_name=parent_name, **kwargs
-        )
-        cal_cf.calculate_hankel_transform(
-            interp_types, is_verbose=False, parent_name=cal_parent_name, **kwargs
-        )
+        # calculate Hankel transforms if forced or at least one of them is missing
+        if should_force or sum(
+            [interp_type in self.hankel_transforms for interp_type in interp_types]
+        ) == len(interp_types):
+            self.calculate_hankel_transform(
+                interp_types, is_verbose=False, parent_name=parent_name, **kwargs
+            )
+        if should_force or sum(
+            [interp_type in cal_cf.hankel_transforms for interp_type in interp_types]
+        ) == len(interp_types):
+            cal_cf.calculate_hankel_transform(
+                interp_types, is_verbose=False, parent_name=cal_parent_name, **kwargs
+            )
 
         # get the structure factors by dividing the Hankel transforms
         self.structure_factors = {}
