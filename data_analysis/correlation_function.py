@@ -1537,7 +1537,7 @@ class SolutionSFCSMeasurement:
             for cf in self.cf.values():
                 cf.plot_hankel_transforms(
                     parent_ax=axes,
-                    label_prefix=f"{label_prefix}{': ' if label_prefix else ''}",
+                    label_prefix=label_prefix,
                     **kwargs,
                 )
 
@@ -1598,7 +1598,7 @@ class SolutionSFCSMeasurement:
                 kwargs.pop("parent_ax", None)
                 CF.plot_structure_factor(
                     parent_ax=axes,
-                    label_prefix=f"{label_prefix}{': ' if label_prefix else ''}",
+                    label_prefix=label_prefix,
                     **kwargs,
                 )
             for ax, interp_type in zip(axes if n_interps > 1 else [axes], interp_types):
@@ -2359,7 +2359,9 @@ class SolutionSFCSExperiment:
                 ) as axes:
                     for meas in [getattr(exp, meas_type) for meas_type in ("confocal", "sted")]:
                         if meas.is_loaded:
-                            meas.plot_hankel_transforms(parent_ax=axes, **kwargs)
+                            meas.plot_hankel_transforms(
+                                parent_ax=axes, label_prefix=self.name, **kwargs
+                            )
 
         # plot the structure factors in another figure
         with Plotter(
