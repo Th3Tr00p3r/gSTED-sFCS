@@ -2342,7 +2342,7 @@ class SolutionSFCSExperiment:
         # keep reference to calibration experiment
         self.cal_exp = cal_exp
 
-    def plot_structure_factors(self, plot_ht=False, label_prefix="", **kwargs):
+    def plot_structure_factors(self, plot_ht=False, **kwargs):
         """Doc."""
 
         # get interpolations types
@@ -2372,6 +2372,7 @@ class SolutionSFCSExperiment:
                 if meas.is_loaded:
                     meas.plot_structure_factors(
                         parent_ax=axes,
+                        label_prefix=self.name,
                         **kwargs,
                     )
             for ax, interp_type in zip(axes if len(interp_types) > 1 else [axes], interp_types):
