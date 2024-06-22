@@ -66,7 +66,7 @@ class HankelTransform:
         # normalize to 1
         self.fq /= self.fq.max()
 
-    def plot(self, label_prefix="", **kwargs):
+    def plot(self, label="", **kwargs):
         """Display the transform's results"""
 
         with Plotter(
@@ -75,14 +75,14 @@ class HankelTransform:
             **kwargs,
         ) as axes:
             kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
-            self.IE.plot(parent_ax=axes[0], label_prefix=label_prefix, **kwargs)
+            self.IE.plot(parent_ax=axes[0], label=label, **kwargs)
             axes[0].set_xscale("function", functions=(lambda x: x**2, lambda x: x ** (1 / 2)))
             axes[0].set_title("Interp./Extrap. Testing")
             axes[0].set_xlabel("vt_um")
             axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
             axes[0].legend()
 
-            axes[1].plot(self.q, self.fq, label=f"{label_prefix}Hankel transform")
+            axes[1].plot(self.q, self.fq, label=label)
             axes[1].set_xscale("log")
             axes[1].set_ylim(1e-4, 2)
             axes[1].set_title("Hankel Transforms")
@@ -102,7 +102,7 @@ class StructureFactor:
         self.q = HT.q
         self.sq = HT.fq / cal_HT.fq
 
-    def plot(self, label_prefix="", **kwargs):
+    def plot(self, label="", **kwargs):
         """
         Plot a single structure factor. Built to be used for hierarchical plotting
         from a measurement or an experiment.
@@ -113,7 +113,7 @@ class StructureFactor:
             y_scale="log",
             **kwargs,
         ) as ax:
-            ax.plot(self.q, self.sq / self.sq[0], label=label_prefix)
+            ax.plot(self.q, self.sq / self.sq[0], label=label)
             ax.set_xscale("log")
             ax.set_ylim(1e-4, 2)
             ax.set_xlabel("$q\\ \\left(\\mu m^{-1}\\right)$")
