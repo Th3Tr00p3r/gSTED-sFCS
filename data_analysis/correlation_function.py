@@ -2351,6 +2351,7 @@ class SolutionSFCSExperiment:
             super_title=f"Experiment '{self.name}': Structure factors",
             **kwargs,
         ) as axes:
+            kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
             for meas in [getattr(self, meas_type) for meas_type in ("confocal", "sted")]:
                 if meas.is_loaded:
                     meas.plot_structure_factors(
