@@ -1355,9 +1355,7 @@ class SolutionSFCSMeasurement:
 
         # get a fraction of the images along the whole measurement
         file_idxs = spread_elements(np.arange(self.n_files), n_images)
-        print("file_idxs: ", file_idxs)  # TESTESTEST
         file_numbers = np.array([p.file_num for p in self.data])
-        print("file_numbers: ", file_numbers)  # TESTESTEST
         images = np.moveaxis(self.scan_images_dstack, -1, 0)
 
         try:
