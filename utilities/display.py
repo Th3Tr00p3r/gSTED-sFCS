@@ -262,7 +262,7 @@ class Plotter:
                     self.selection_limits(self.selection_limits.lower, min(x_coords))
                 elif self.selection_type == "lower":  # select lower bound
                     self.selection_limits(max(x_coords), self.selection_limits.upper)
-                elif self.selection_limits == "both":  # select both bounds
+                elif self.selection_type == "both":  # select both bounds
                     self.selection_limits(min(x_coords), max(x_coords))
                 else:
                     raise ValueError("'selection_type' must be of 'upper', 'lower' or 'both'.")
