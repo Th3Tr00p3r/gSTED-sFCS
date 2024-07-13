@@ -159,6 +159,7 @@ class CorrFunc:
         self.gate_ns = gate_ns
         self.afterpulsing_filter = kwargs.get("afterpulsing_filter")
         self.duration_min = kwargs.get("duration_min")
+        self.hankel_transforms: Dict[str, HankelTransform] = {}
         self.structure_factors: Dict[str, StructureFactor] = {}
 
     def __add__(self, other):
@@ -765,15 +766,17 @@ class CorrFunc:
             parent_name, cal_parent_name = parent_names
 
         # calculate Hankel transforms if forced or at least one of them is missing
+        # for self (cf)
         if should_force or sum(
             [interp_type in self.hankel_transforms for interp_type in interp_types]
-        ) == len(interp_types):
+        ) < len(interp_types):
             self.calculate_hankel_transform(
                 interp_types, is_verbose=False, parent_name=parent_name, **kwargs
             )
+        # for cal_cf
         if should_force or sum(
             [interp_type in cal_cf.hankel_transforms for interp_type in interp_types]
-        ) == len(interp_types):
+        ) < len(interp_types):
             cal_cf.calculate_hankel_transform(
                 interp_types, is_verbose=False, parent_name=cal_parent_name, **kwargs
             )

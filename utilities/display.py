@@ -158,6 +158,7 @@ class Plotter:
         self.sharey: bool = kwargs.get("sharey", False)
         self.should_autoscale = kwargs.get("should_autoscale", False)
         self.selection_limits: helper.Limits = kwargs.get("selection_limits")
+        self.selection_type: str = kwargs.get("selection_type", "both")
         self.should_close_after_selection = kwargs.get("should_close_after_selection", False)
         self.subplot_kw = kwargs.get("subplot_kw", {})  # dict(projection='3d')
         self.should_show = kwargs.get("should_show", False)  # show on exit
@@ -249,18 +250,22 @@ class Plotter:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
                 x_coords = []
-                while not x_coords:  # enforce at least one point selection
+                while True:
                     selected_points_list = self.fig.ginput(n=-1, timeout=-1)
                     x_coords = [x for (x, y) in selected_points_list]
-                    if x_coords:
-                        break
-                    print(
-                        "Must select at least 1 point! (left button to set, right to erase last, middle or Enter to confirm)"
+                    stop_condition = (
+                        len(x_coords) >= 2 if self.selection_type == "both" else x_coords
                     )
-                if len(x_coords) == 1:  # select max only
-                    self.selection_limits(self.selection_limits.lower, max(x_coords))
-                else:  # select min and max
+                    if stop_condition:
+                        break
+                if self.selection_type == "upper":  # select upper bound
+                    self.selection_limits(self.selection_limits.lower, min(x_coords))
+                elif self.selection_type == "lower":  # select lower bound
+                    self.selection_limits(max(x_coords), self.selection_limits.upper)
+                elif self.selection_limits == "both":  # select both bounds
                     self.selection_limits(min(x_coords), max(x_coords))
+                else:
+                    raise ValueError("'selection_type' must be of 'upper', 'lower' or 'both'.")
                 if self.should_close_after_selection:
                     plt.close(self.fig)
                 return

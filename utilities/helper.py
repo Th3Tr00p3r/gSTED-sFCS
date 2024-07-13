@@ -885,6 +885,7 @@ def extrapolate_over_noise(
         with display.Plotter(
             super_title="Interactive Selection of Noise Level\n(One point)",
             selection_limits=x_lims,
+            selection_type="upper",
             should_close_after_selection=True,
             xlim=(0, min(x[(y < 1e-3) & (x > 0.1)][0], x[(x < 2)][-1])),
             x_scale="quadratic",
