@@ -1626,7 +1626,7 @@ class SolutionSFCSMeasurement:
         )
 
     def save_processed(
-        self, should_save_data=True, should_force=False, is_verbose=False, **kwargs
+        self, data_root=None, should_save_data=True, should_force=False, is_verbose=False, **kwargs
     ) -> bool:
         """
         Save a processed measurement, including the '.data' attribute.
@@ -1635,12 +1635,18 @@ class SolutionSFCSMeasurement:
 
         was_saved = False
 
-        # save the measurement
-        dir_path = (
-            cast(Path, self.file_path_template).parent
-            / "processed"
-            / cast(Path, self.file_path_template).stem.replace("_*", "")
-        )
+        original_filepath_template = cast(Path, self.file_path_template)
+        # if no data root supplied, use the originally saved path (will not work well across systems)
+        if data_root is None:
+            dir_path = (
+                original_filepath_template.parent
+                / "processed"
+                / original_filepath_template.stem.replace("_*", "")
+            )
+        # use supplied data root
+        else:
+            *_, date_dir, type_dir, _ = original_filepath_template.parts
+            dir_path = data_root / date_dir / type_dir / "processed"
         meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
             # don't save correlator inputs (re-built when loaded)
@@ -1784,7 +1790,7 @@ class SolutionSFCSExperiment:
                 dir_path = dir_path / "processed" / re.sub("_[*].(pkl|mat)", "", file_template)
                 measurement = load_processed_solution_measurement(
                     dir_path,
-                    file_template,
+                    "SolutionSFCSMeasurement.blosc",
                     #                    should_load_data=should_re_correlate,
                 )
                 measurement.type = meas_type

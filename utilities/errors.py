@@ -78,7 +78,7 @@ def err_hndlr(exc, func_frame, func_locals, dvc=None, lvl="error", disp=False) -
 
 def device_error_checker(func) -> Callable:
     """
-    Decorator for clean handeling of GUI interactions with errorneous devices.
+    Decorator for clean handling of GUI interactions with errorneous devices.
     Checks for errors in devices associated with 'func' and shows error box
     if exist.
     """
