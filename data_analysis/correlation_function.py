@@ -144,7 +144,11 @@ class CorrFunc:
     """Doc."""
 
     # Initialize the software correlator once (for all instances)
-    SC = SoftwareCorrelator()
+    try:
+        SC = SoftwareCorrelator()
+    except OSError as exc:
+        SC = None
+        print(f"Warning: software correalator not initialized - cannot correalate! ({exc})")
 
     afterpulse: np.ndarray
     vt_um: np.ndarray
