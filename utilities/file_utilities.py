@@ -9,6 +9,7 @@ import logging
 import pickle
 import re
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,9 +23,9 @@ from utilities.helper import Gate, Limits, chunks, reverse_dict, timer
 
 # use different paths for different types systems (windows, mac) - check for darwin or win32
 if sys.platform == "darwin":
-    DUMP_PATH = Path("/Users/ido.michealovich/tmp/")
+    DUMP_ROOT = Path("/Users/ido.michealovich/tmp/")
 else:  # win32
-    DUMP_PATH = Path("D:/temp_sfcs_data/")
+    DUMP_ROOT = Path("D:/temp_sfcs_data/")
 
 # TODO: this should be defined elsewhere (devices? app?)
 with open("FastGatedSPAD_AP.pkl", "rb") as f:
@@ -168,23 +169,18 @@ class MemMapping:
     Can be used as a context manager to ensure deletion of on-disk file (single-use).
     """
 
-    def __init__(
-        self,
-        arr: np.ndarray,
-        file_name: str = "temp.npy",
-        dump_path: Path = DUMP_PATH,
-    ):
-        self._file_name = file_name
-        self._dump_path = dump_path
-        self._dump_file_path = self._dump_path / self._file_name
+    def __init__(self, arr: np.ndarray):
+        # Create a temporary file
+        self._temp_file = tempfile.NamedTemporaryFile(suffix=".npy", delete=False)
+        self._dump_file_path = Path(self._temp_file.name)
         # dump
-        Path.mkdir(self._dump_path, parents=True, exist_ok=True)
         np.save(
             self._dump_file_path,
             arr,
             allow_pickle=False,
             fix_imports=False,
         )
+        self._temp_file.close()  # Close the file handle
 
         # keep some useful attributes for quick access
         self.shape = arr.shape
@@ -194,10 +190,8 @@ class MemMapping:
 
     def read(self):
         """
-        Access the data from disk by memory-mapping, and get the 'row_idx' row.
-        each read should take about 1 ms, therefore unnoticeable.
+        Access the data from disk by memory-mapping.
         """
-
         return np.load(
             self._dump_file_path,
             mmap_mode="r",
@@ -207,10 +201,8 @@ class MemMapping:
 
     def write1d(self, arr: np.ndarray, start_idx=0, stop_idx=None):
         """
-        Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
-        each write should take about ~100 ms.
+        Write to the memory-mapped array.
         """
-
         if stop_idx is None:
             stop_idx = arr.size
 
@@ -229,21 +221,23 @@ class MemMapping:
         self.max = mmap_sub_arr.max()
         self.min = mmap_sub_arr.min()
 
+    def chunked_bincount(self, max_val=None, n_chunks=10):
+        """Perform 'bincount' in series on disk-loaded array chunks."""
+        max_val = max_val or self.max
+        bins = np.zeros(max_val + 1)
+        for arr_chunk in chunks(self.read(), int(self.size / n_chunks)):
+            arr_chunk = arr_chunk[arr_chunk <= max_val]
+            bins += np.bincount(arr_chunk, minlength=max_val + 1)
+
+        return bins
+
+    def __del__(self):
+        """Ensure the temporary file is deleted when the object is no longer in use."""
+        self._dump_file_path.unlink(missing_ok=True)
+
     def delete(self):
-        """Delete the on-disk array"""
-
-        self._dump_file_path.unlink()
-
-
-def chunked_bincount(arr_mmap: MemMapping, max_val=None, n_chunks=10):
-    """Performes 'bincount' in series on disk-loaded array chunks using a MemMapping object"""
-
-    max_val = max_val or arr_mmap.max
-    bins = np.zeros(max_val + 1)
-    for arr_chunk in chunks(arr_mmap.read(), int(arr_mmap.size / n_chunks)):
-        arr_chunk = arr_chunk[arr_chunk <= max_val]
-        bins += np.bincount(arr_chunk, minlength=max_val + 1)
-    return bins
+        """Delete the on-disk array explicitly if needed before the object is garbage collected."""
+        self.__del__()
 
 
 def search_database(data_root: Path, str_list: List[str]) -> str:
@@ -473,7 +467,7 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
 
 
 def load_processed_solution_measurement(
-    dir_path: Path, file_template: str, should_load_data=True, **proc_options
+    dir_path: Path, dump_root: Path = DUMP_ROOT, should_load_data=True, **proc_options
 ):
     """Doc."""
     # TODO: this should be a method of SolutionSFCSExperiment class
@@ -495,7 +489,7 @@ def load_processed_solution_measurement(
             if idx > 0:
                 print(", ", end="")
             # redefining the dump path to the temp folder of the current system
-            p.dump_path = DUMP_PATH / p.dump_path.parts[-1]
+            p.dump_path = dump_root / p.dump_path.parts[-1]
             p.raw._dump_path = p.dump_path
             if not p.raw.dump_path.exists():
                 try:

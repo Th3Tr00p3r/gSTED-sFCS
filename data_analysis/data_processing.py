@@ -16,12 +16,7 @@ import skimage
 
 from data_analysis.workers import N_CPU_CORES
 from utilities.display import Plotter
-from utilities.file_utilities import (
-    MemMapping,
-    chunked_bincount,
-    load_object,
-    save_object,
-)
+from utilities.file_utilities import MemMapping, load_object, save_object
 from utilities.fit_tools import (
     FitParams,
     curve_fit_lims,
@@ -2033,7 +2028,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
 
         if kwargs.get("is_verbose"):
             print("Binning coarse data... ", end="")
-        h_all = chunked_bincount(coarse_mmap, max_val=coarse_lims.upper, n_chunks=len(data)).astype(
+        h_all = coarse_mmap.chunked_bincount(max_val=coarse_lims.upper, n_chunks=len(data)).astype(
             np.uint32
         )
         x_all = np.arange(coarse_mmap.max + 1, dtype=np.uint8)
@@ -2235,10 +2230,6 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             / total_laser_pulses
         )
 
-        # delete temp files
-        coarse_mmap.delete()
-        fine_mmap.delete()
-
         if kwargs.get("is_verbose"):
             print("Done.")
 
@@ -2291,8 +2282,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             fine[n_elem[i] : n_elem[i + 1]] = p.raw.fine[photon_idxs]
             # keep the minimal coarse range to ensure all files use the same coarse bins
             coarse_lims = coarse_lims & Limits(valid_file_coarse.min(), valid_file_coarse.max())
-        coarse_mmap = MemMapping(coarse, "coarse.npy")
-        fine_mmap = MemMapping(fine, "fine.npy")
+        coarse_mmap = MemMapping(coarse)
+        fine_mmap = MemMapping(fine)
 
         # return the MemMapping instances
         return coarse_mmap, fine_mmap, coarse_lims

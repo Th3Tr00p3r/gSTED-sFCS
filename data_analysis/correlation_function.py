@@ -26,7 +26,7 @@ from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from data_analysis.workers import N_CPU_CORES, data_processing_worker, io_worker
 from utilities.display import Plotter, default_colors, plot_acfs
 from utilities.file_utilities import (
-    DUMP_PATH,
+    DUMP_ROOT,
     default_system_info,
     load_file_dict,
     load_processed_solution_measurement,
@@ -866,7 +866,7 @@ class SolutionSFCSMeasurement:
         self.file_path_template = file_path_template
         *_, self.template = Path(file_path_template).parts
 
-        self.dump_path = DUMP_PATH / re.sub("\\*", "", re.sub("_[*].pkl", "", self.template))
+        self.dump_path = DUMP_ROOT / re.sub("\\*", "", re.sub("_[*].pkl", "", self.template))
 
         print("\nLoading FPGA data from disk -")
         print(f"Template path: '{file_path_template}'")
@@ -1122,7 +1122,7 @@ class SolutionSFCSMeasurement:
         if file_dict is not None:
             self._get_general_properties(file_dict=file_dict, **proc_options)
             file_num = 1
-            self.dump_path = DUMP_PATH / "temp_meas"
+            self.dump_path = DUMP_ROOT / "temp_meas"
         else:
             # get file number from file path
             file_num = int(re.findall(r"\d+", str(file_path))[-1])
@@ -1792,7 +1792,6 @@ class SolutionSFCSExperiment:
                 dir_path = dir_path / "processed" / re.sub("_[*].(pkl|mat)", "", file_template)
                 measurement = load_processed_solution_measurement(
                     dir_path,
-                    "SolutionSFCSMeasurement.blosc",
                     #                    should_load_data=should_re_correlate,
                     **kwargs,
                 )
@@ -2447,7 +2446,7 @@ class ImageSFCSMeasurement:
         self._get_general_properties()
 
         # initialize data processor
-        self.dump_path = DUMP_PATH / self.file_path.stem
+        self.dump_path = DUMP_ROOT / self.file_path.stem
         self.data_processor = TDCPhotonDataProcessor(
             self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
         )
