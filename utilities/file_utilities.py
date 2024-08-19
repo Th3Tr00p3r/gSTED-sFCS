@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import copy
 import gzip
+import io
 import logging
 import pickle
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -18,7 +20,11 @@ import scipy.io as spio
 
 from utilities.helper import Gate, Limits, chunks, reverse_dict, timer
 
-DUMP_PATH = Path("D:/temp_sfcs_data/")
+# use different paths for different types systems (windows, mac) - check for darwin or win32
+if sys.platform == "darwin":
+    DUMP_PATH = Path("/Users/ido.michealovich/tmp/")
+else:  # win32
+    DUMP_PATH = Path("D:/temp_sfcs_data/")
 
 # TODO: this should be defined elsewhere (devices? app?)
 with open("FastGatedSPAD_AP.pkl", "rb") as f:
@@ -147,6 +153,97 @@ legacy_python_trans_dict = {
     "scan_params": "scan_settings",
     "after_pulse_param": "afterpulse_params",
 }
+
+
+class PathFixUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if name in ("WindowsPath", "PosixPath"):
+            return Path
+        return super().find_class(module, name)
+
+
+class MemMapping:
+    """
+    A convenience class working with Numpy memory-mapping.
+    Can be used as a context manager to ensure deletion of on-disk file (single-use).
+    """
+
+    def __init__(
+        self,
+        arr: np.ndarray,
+        file_name: str = "temp.npy",
+        dump_path: Path = DUMP_PATH,
+    ):
+        self._file_name = file_name
+        self._dump_path = dump_path
+        self._dump_file_path = self._dump_path / self._file_name
+        # dump
+        Path.mkdir(self._dump_path, parents=True, exist_ok=True)
+        np.save(
+            self._dump_file_path,
+            arr,
+            allow_pickle=False,
+            fix_imports=False,
+        )
+
+        # keep some useful attributes for quick access
+        self.shape = arr.shape
+        self.size = arr.size
+        self.max = arr.max()
+        self.min = arr.min()
+
+    def read(self):
+        """
+        Access the data from disk by memory-mapping, and get the 'row_idx' row.
+        each read should take about 1 ms, therefore unnoticeable.
+        """
+
+        return np.load(
+            self._dump_file_path,
+            mmap_mode="r",
+            allow_pickle=True,
+            fix_imports=False,
+        )
+
+    def write1d(self, arr: np.ndarray, start_idx=0, stop_idx=None):
+        """
+        Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
+        each write should take about ~100 ms.
+        """
+
+        if stop_idx is None:
+            stop_idx = arr.size
+
+        mmap_sub_arr = np.load(
+            self._dump_file_path,
+            mmap_mode="r+",
+            allow_pickle=False,
+            fix_imports=False,
+        )
+        mmap_sub_arr[start_idx:stop_idx] = arr
+        mmap_sub_arr.flush()
+
+        # update useful attributes for quick access
+        self.shape = mmap_sub_arr.shape
+        self.size = mmap_sub_arr.size
+        self.max = mmap_sub_arr.max()
+        self.min = mmap_sub_arr.min()
+
+    def delete(self):
+        """Delete the on-disk array"""
+
+        self._dump_file_path.unlink()
+
+
+def chunked_bincount(arr_mmap: MemMapping, max_val=None, n_chunks=10):
+    """Performes 'bincount' in series on disk-loaded array chunks using a MemMapping object"""
+
+    max_val = max_val or arr_mmap.max
+    bins = np.zeros(max_val + 1)
+    for arr_chunk in chunks(arr_mmap.read(), int(arr_mmap.size / n_chunks)):
+        arr_chunk = arr_chunk[arr_chunk <= max_val]
+        bins += np.bincount(arr_chunk, minlength=max_val + 1)
+    return bins
 
 
 def search_database(data_root: Path, str_list: List[str]) -> str:
@@ -338,7 +435,7 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
             with gzip.open(file_path, "rb") as f_gzip_cmprsd:
                 loaded_data = []
                 while True:
-                    loaded_data.append(pickle.load(f_gzip_cmprsd))  # type: ignore
+                    loaded_data.append(PathFixUnpickler(f_gzip_cmprsd).load())  # type: ignore
                     if should_track_progress:
                         compression_method = "gzip"
                         print("O", end="")
@@ -350,7 +447,7 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
                     while True:
                         cmprsd_bytes = pickle.load(f_blosc_cmprsd)
                         p_bytes, _ = bloscpack.unpack_bytes_from_bytes(cmprsd_bytes)
-                        loaded_data.append(pickle.loads(p_bytes))
+                        loaded_data.append(PathFixUnpickler(io.BytesIO(p_bytes)).load())
                         if should_track_progress:
                             compression_method = "blosc"
                             print("O", end="")
@@ -359,7 +456,7 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
                     with open(file_path, "rb") as f_uncompressed:
                         loaded_data = []
                         while True:
-                            loaded_data.append(pickle.load(f_uncompressed))
+                            loaded_data.append(PathFixUnpickler(f_uncompressed).load())
                             if should_track_progress:
                                 print("O", end="")
 
@@ -375,8 +472,11 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
             return [item for chunk_ in loaded_data for item in chunk_]
 
 
-def load_processed_solution_measurement(dir_path: Path, file_template: str, should_load_data=True):
+def load_processed_solution_measurement(
+    dir_path: Path, file_template: str, should_load_data=True, **proc_options
+):
     """Doc."""
+    # TODO: this should be a method of SolutionSFCSExperiment class
 
     meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
 
@@ -394,8 +494,21 @@ def load_processed_solution_measurement(dir_path: Path, file_template: str, shou
         for idx, p in enumerate(meas.data):
             if idx > 0:
                 print(", ", end="")
-            if not p.raw.dump_file_path.exists():
-                p.raw.load_compressed(dir_path / "data")
+            # redefining the dump path to the temp folder of the current system
+            p.dump_path = DUMP_PATH / p.dump_path.parts[-1]
+            p.raw._dump_path = p.dump_path
+            if not p.raw.dump_path.exists():
+                try:
+                    p.raw.load_compressed(dir_path / "data")
+                except FileNotFoundError:
+                    meas.dump_path = p.dump_path
+                    meas.data_processor.dump_path = p.dump_path
+                    meas.file_path_template = dir_path.parent.parent / meas.template
+                    file_paths = prepare_file_paths(meas.file_path_template, **proc_options)
+                    data_filepath = file_paths[idx]
+                    print("Compressed data file not found! ", end="")
+                    p = meas.process_data_file(data_filepath, **proc_options)
+                    p.raw.dump()
             print(f"{idx+1}", end="")
         print(".")
     return meas

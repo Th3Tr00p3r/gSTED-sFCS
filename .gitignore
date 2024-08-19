@@ -19,6 +19,9 @@ yacctab.py
 .jedi
 *.epj
 
+# pycharm project folder & files (idomich)
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -16,7 +16,12 @@ import skimage
 
 from data_analysis.workers import N_CPU_CORES
 from utilities.display import Plotter
-from utilities.file_utilities import load_object, save_object
+from utilities.file_utilities import (
+    MemMapping,
+    chunked_bincount,
+    load_object,
+    save_object,
+)
 from utilities.fit_tools import (
     FitParams,
     curve_fit_lims,
@@ -26,8 +31,6 @@ from utilities.fit_tools import (
 from utilities.helper import (
     Gate,
     Limits,
-    MemMapping,
-    chunked_bincount,
     exclude_elements_by_indices_1d,
     nan_helper,
     unify_length,
@@ -416,7 +419,6 @@ class RawFileData:
         self._file_num = file_num
         self._file_name = f"raw_data_{file_num}.npy"
         self._dump_path = dump_path
-        self.dump_file_path = self._dump_path / self._file_name
         self.should_avoid_dumping = should_avoid_dumping
 
         # keep data until dumped
@@ -430,6 +432,10 @@ class RawFileData:
         # keep track
         self._was_data_dumped = was_data_dumped
         self.compressed_file_path: Path = None
+
+    @property
+    def dump_path(self):
+        return self._dump_path / self._file_name
 
     @property
     def coarse(self):
@@ -527,7 +533,7 @@ class RawFileData:
         """
 
         return np.load(
-            file_path if file_path is not None else self.dump_file_path,
+            file_path if file_path is not None else self.dump_path,
             mmap_mode="r",
             allow_pickle=True,
             fix_imports=False,
@@ -540,7 +546,7 @@ class RawFileData:
         """
 
         data = np.load(
-            self.dump_file_path,
+            self.dump_path,
             mmap_mode="r+",
             allow_pickle=False,
             fix_imports=False,
@@ -554,12 +560,12 @@ class RawFileData:
         # cancel dumping if not needed
         if (
             not self._was_data_dumped
-            and not (self.dump_file_path.exists() and self.should_avoid_dumping)
-            or not self.dump_file_path.exists()
+            and not (self.dump_path.exists() and self.should_avoid_dumping)
+            or not self.dump_path.exists()
         ):
 
             if is_verbose:
-                print(f"Dumping data to '{self.dump_file_path}' (Memory-Mapping).")
+                print(f"Dumping data to '{self.dump_path}' (Memory-Mapping).")
 
             # prepare data ndarray
             if self._line_num is None:
@@ -581,14 +587,14 @@ class RawFileData:
             # save
             Path.mkdir(self._dump_path, parents=True, exist_ok=True)
             np.save(
-                self.dump_file_path,
+                self.dump_path,
                 data,
                 allow_pickle=False,
                 fix_imports=False,
             )
 
         # keep track
-        if self.dump_file_path.exists():
+        if self.dump_path.exists():
             self._was_data_dumped = True
 
         # clear the RAM
@@ -625,10 +631,10 @@ class RawFileData:
             (dir_path / self._file_name).with_suffix(".blosc"), should_track_progress=True
         )
 
-        # resave (dump), creating the dumpt folder first if needed
+        # dump, creating the dump folder first if needed
         Path.mkdir(self._dump_path, parents=True, exist_ok=True)
         np.save(
-            self.dump_file_path,
+            self.dump_path,
             data,
             allow_pickle=False,
             fix_imports=False,

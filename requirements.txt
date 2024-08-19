@@ -1,20 +1,15 @@
-Instrumental_lib == 0.7
-<<<<<<< Updated upstream
-PyQt5_sip
+Instrumental_lib == 0.7  # lab only
 pyqt5
-=======
-pyqt5 == 5.15.9
->>>>>>> Stashed changes
-pyvisa == 1.13.0
-pyvisa-py == 0.6.3
-PyYAML == 5.4.1
-ftd2xx == 1.3.1
-matplotlib == 3.7.1
-nidaqmx == 0.6.5
-numpy == 1.22
-qasync == 0.22.0
+pyvisa == 1.13.0  # lab only
+pyvisa-py == 0.6.3  # lab only
+PyYAML
+ftd2xx == 1.3.1  # lab only
+matplotlib
+nidaqmx == 0.6.5  # lab only
+numpy
+qasync == 0.22.0  # lab only
 scikit-image
 scikit-learn
 scipy
-nicelib == 0.7.1
-bloscpack == 0.16.0
+nicelib == 0.7.1 # lab only
+bloscpack

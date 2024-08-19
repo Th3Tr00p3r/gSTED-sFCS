@@ -102,7 +102,7 @@ def fit_decaying_cosine(
     y,
     fit_range,
     y_errors=None,
-    y_limits=(np.NINF, np.inf),
+    y_limits=(-np.inf, np.inf),
     fit_param_estimate=None,
     should_plot=False,
     bounds=None,

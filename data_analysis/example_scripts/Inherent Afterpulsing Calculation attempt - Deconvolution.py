@@ -152,7 +152,7 @@ def deconvolve_afterpulse(
     lag,
     ap_signal_cf_cr,
     ap_cf_cr,
-    n_bins=2 ** 17,
+    n_bins=2**17,
     bin_size=1e-7,  # 100 ns (lag delta of first correlator)
     n_robust=0,
     ifft_x_lims=None,
@@ -264,7 +264,7 @@ def deconvolve_afterpulse(
         y_lims=ifft_y_lims,
         n_robust=n_robust,
         interp_type="gaussian",
-        extrap_x_lims=Limits(np.NINF, np.inf),
+        extrap_x_lims=Limits(-np.inf, np.inf),
         should_plot=should_plot,
     )
 
@@ -425,7 +425,7 @@ exp2.load_experiment(
 # %%
 clean_signal_old_t = np.copy(exp2.confocal.cf["confocal"].avg_cf_cr)
 
-n_bins = 2 ** 17
+n_bins = 2**17
 n_robust = 8
 x_lims = Limits(1e-6, 1e-3)  # (1 us to 1 ms)
 y_lims = Limits(50, np.inf)

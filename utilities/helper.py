@@ -104,85 +104,12 @@ class Vector:
         return Vector(self.x * mul_factor, self.y * mul_factor, units_str)
 
 
-class MemMapping:
-    """
-    A convenience class working with Numpy memory-mapping.
-    Can be used as a context manager to ensure deletion of on-disk file (single-use).
-    """
-
-    def __init__(
-        self,
-        arr: np.ndarray,
-        file_name: str = "temp.npy",
-        dump_path: Path = Path("C:/temp_sfcs_data/"),
-    ):
-        self._file_name = file_name
-        self._dump_path = dump_path
-        self._dump_file_path = self._dump_path / self._file_name
-        # dump
-        Path.mkdir(self._dump_path, parents=True, exist_ok=True)
-        np.save(
-            self._dump_file_path,
-            arr,
-            allow_pickle=False,
-            fix_imports=False,
-        )
-
-        # keep some useful attributes for quick access
-        self.shape = arr.shape
-        self.size = arr.size
-        self.max = arr.max()
-        self.min = arr.min()
-
-    def read(self):
-        """
-        Access the data from disk by memory-mapping, and get the 'row_idx' row.
-        each read should take about 1 ms, therefore unnoticeable.
-        """
-
-        return np.load(
-            self._dump_file_path,
-            mmap_mode="r",
-            allow_pickle=True,
-            fix_imports=False,
-        )
-
-    def write1d(self, arr: np.ndarray, start_idx=0, stop_idx=None):
-        """
-        Access the data from disk by memory-mapping, get the 'row_idx' row and write to it.
-        each write should take about ~100 ms.
-        """
-
-        if stop_idx is None:
-            stop_idx = arr.size
-
-        mmap_sub_arr = np.load(
-            self._dump_file_path,
-            mmap_mode="r+",
-            allow_pickle=False,
-            fix_imports=False,
-        )
-        mmap_sub_arr[start_idx:stop_idx] = arr
-        mmap_sub_arr.flush()
-
-        # update useful attributes for quick access
-        self.shape = mmap_sub_arr.shape
-        self.size = mmap_sub_arr.size
-        self.max = mmap_sub_arr.max()
-        self.min = mmap_sub_arr.min()
-
-    def delete(self):
-        """Delete the on-disk array"""
-
-        self._dump_file_path.unlink()
-
-
 class Limits:
     """Doc."""
 
     def __init__(
         self,
-        limits=(np.NINF, np.inf),
+        limits=(-np.inf, np.inf),
         upper=np.inf,
         dict_labels: Tuple[str, str] = None,
         from_string=False,
@@ -320,7 +247,7 @@ class Limits:
         return self_copy
 
     def __bool__(self):
-        return not ((self.lower == np.NINF) and (self.upper == np.inf))
+        return not ((self.lower == -np.inf) and (self.upper == np.inf))
 
     def valid_indices(self, arr: np.ndarray, as_bool=True):
         """
@@ -689,17 +616,6 @@ def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
 
-def chunked_bincount(arr_mmap: MemMapping, max_val=None, n_chunks=10):
-    """Performes 'bincount' in series on disk-loaded array chunks using a MemMapping object"""
-
-    max_val = max_val or arr_mmap.max
-    bins = np.zeros(max_val + 1)
-    for arr_chunk in chunks(arr_mmap.read(), int(arr_mmap.size / n_chunks)):
-        arr_chunk = arr_chunk[arr_chunk <= max_val]
-        bins += np.bincount(arr_chunk, minlength=max_val + 1)
-    return bins
-
-
 def chunks(arr, n: int):
     """
     Generate n-sized chunks from arr.
@@ -854,7 +770,7 @@ def extrapolate_over_noise(
     n_bins=2**17,
     n_robust=3,
     interp_type="gaussian",
-    extrap_x_lims=Limits(np.NINF, np.inf),
+    extrap_x_lims=Limits(-np.inf, np.inf),
     should_interactively_set_upper_x=True,
     **kwargs,
 ) -> InterpExtrap1D:

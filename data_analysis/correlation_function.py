@@ -576,7 +576,7 @@ class CorrFunc:
         fit_range=None,
         x_scale=None,
         y_scale=None,
-        bounds=(np.NINF, np.inf),
+        bounds=(-np.inf, np.inf),
         max_nfev=int(1e4),
         plot_kwargs: Dict[str, Any] = {},
         **kwargs,
@@ -610,7 +610,7 @@ class CorrFunc:
                 fit_range = fit_range or (1e-2, 100)
 
         elif fit_range is None:
-            fit_range = (np.NINF, np.inf)
+            fit_range = (-np.inf, np.inf)
 
         x = getattr(self, x_field)
         y = getattr(self, y_field)
@@ -956,7 +956,7 @@ class SolutionSFCSMeasurement:
         )  # TESTESTEST
         if (
             should_parallel_process
-            and ((n_files := len(file_paths)) >= 5)
+            and ((n_files := self.n_paths) >= 5)
             #            and (total_byte_data_size_estimate_mb > 500)
         ):
             # -2 is one CPU left to OS and one for I/O
@@ -1030,10 +1030,8 @@ class SolutionSFCSMeasurement:
         else:
             proc_options["is_verbose"] = True
             for file_path in file_paths:
-                # get file number
-                file_num = int(re.findall(r"\d+", str(file_path))[-1])
                 # Processing data
-                p = self.process_data_file(file_path, file_num, **proc_options)
+                p = self.process_data_file(file_path, **proc_options)
                 print("Done.\n")
                 # Appending data to self
                 if p is not None:
@@ -1113,7 +1111,7 @@ class SolutionSFCSMeasurement:
             self.scan_type = "static"
 
     def process_data_file(
-        self, file_path: Path = None, file_num: int = None, file_dict: dict = None, **proc_options
+        self, file_path: Path = None, file_dict: dict = None, **proc_options
     ) -> TDCPhotonFileData:
         """Doc."""
 
@@ -1125,6 +1123,9 @@ class SolutionSFCSMeasurement:
             self._get_general_properties(file_dict=file_dict, **proc_options)
             file_num = 1
             self.dump_path = DUMP_PATH / "temp_meas"
+        else:
+            # get file number from file path
+            file_num = int(re.findall(r"\d+", str(file_path))[-1])
 
         # File Data Loading
         if file_path is not None:  # Loading file from disk
@@ -1765,6 +1766,7 @@ class SolutionSFCSExperiment:
         should_re_correlate=False,
         afterpulsing_method="filter",
         should_save=False,
+        is_verbose=False,
         **kwargs,
     ) -> SolutionSFCSMeasurement:
         """Doc."""
@@ -1792,6 +1794,7 @@ class SolutionSFCSExperiment:
                     dir_path,
                     "SolutionSFCSMeasurement.blosc",
                     #                    should_load_data=should_re_correlate,
+                    **kwargs,
                 )
                 measurement.type = meas_type
                 measurement.was_processed_data_loaded = True
@@ -1818,17 +1821,13 @@ class SolutionSFCSExperiment:
 
         if not measurement.cf or should_re_correlate:  # Correlate and average data
             measurement.cf = {}
-            is_verbose = kwargs.pop(
-                "is_verbose", False
-            )  # avoid duplicate in following call # TODO: fix this
             cf = measurement.correlate_and_average(
                 is_verbose=True, afterpulsing_method=afterpulsing_method, **kwargs
             )
-            kwargs["is_verbose"] = is_verbose  # avoid duplicate in above call # TODO: fix this
 
             if should_save:
                 print(f"Saving {measurement.type} measurement to disk...", end=" ")
-                if measurement.save_processed(**kwargs):
+                if measurement.save_processed(**kwargs, is_verbose=is_verbose):
                     print("Done.")
                 else:
                     print("Measurement already exists! (set 'should_force = True' to override.)")

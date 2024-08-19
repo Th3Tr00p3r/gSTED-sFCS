@@ -52,7 +52,7 @@ class SoftwareCorrelator:
 
     def __init__(self):
         if sys.platform == "darwin":
-            LIB_NAME = "SoftCorrelatorDynamicLib.so"
+            LIB_NAME = "SoftCorrelatorDynamicLib_mac.so"
         else:  # win32
             LIB_NAME = "SoftCorrelatorDynamicLib_win32.so"
         self.LIB_PATH = self.LIB_DIR_PATH / LIB_NAME
