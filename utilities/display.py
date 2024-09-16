@@ -1,9 +1,10 @@
 """Plotting and image-showing utilities"""
 
 from collections import namedtuple
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from typing import List, Tuple
 
+import matplotlib as mpl
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
@@ -15,6 +16,28 @@ import utilities.helper as helper
 
 plt.rcParams.update({"figure.max_open_warning": 300})
 default_colors = tuple(plt.rcParams["axes.prop_cycle"].by_key()["color"])
+
+
+@contextmanager
+def mpl_backend_switcher(backend):
+    """Temporarily switch Matplotlib backend. For use in Jupyter notebooks."""
+
+    original_backend = mpl.get_backend()
+    if original_backend == backend:
+        yield
+        return
+    print(f"[MPL BACKEND] Switching Matplotlib backend from '{original_backend}' to '{backend}'...")
+    plt.close("all")
+    mpl.use(backend)
+    try:
+        yield
+    finally:
+        plt.pause(0.001)  # Give the event loop time to process
+        if backend == "Qt5Agg":
+            plt.show(block=True)  # Block until the window is closed
+        print(f"[MPL BACKEND] Switching Matplotlib backend back to '{original_backend}'...")
+        plt.close("all")
+        mpl.use(original_backend)
 
 
 class GuiDisplay:
@@ -282,7 +305,6 @@ class Plotter:
                 self.gui_display.canvas.draw_idle()
             else:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
-                #                self.fig.show() # TODO: something causes duplicate showing of figures in Jupyter Notebook 7 - perhaps this is the line?
                 self.fig.canvas.draw_idle()
 
     def _quadratic_xscale_backwards(self, x):

@@ -1650,9 +1650,6 @@ class SolutionSFCSMeasurement:
             dir_path = data_root / date_dir / type_dir / "processed"
         meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
-            # don't save correlator inputs (re-built when loaded)
-            self.filter_input_list = None
-
             # save the measurement object
             if is_verbose:
                 print("Saving SolutionSFCSMeasurement object... ", end="")
