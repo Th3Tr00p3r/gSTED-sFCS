@@ -437,7 +437,9 @@ class SolutionSFCSExperimentHandler:
 
     @skip_if_all_exp_filtered
     def re_average_acfs(self, force: bool = False):
-
+        """
+        Re-average the ACFs for a set of experiments.
+        """
         for label, exp in self.filtered_exp_dict.items():
             if self._data_config[label]["was_processed"] or force:
                 print(f"Re-averaging '{label}'...")
@@ -462,5 +464,26 @@ class SolutionSFCSExperimentHandler:
                         # plot kwargs
                         super_title=f"'{label}' - Split ACFs ({cf.name})",
                     )
+            else:
+                print(f"{label}: Using existing...")
+
+    @skip_if_all_exp_filtered
+    def calculate_hankel_transforms(self, force: bool = False):
+        """
+        Calculate the Hankel transforms for a set of experiments.
+        """
+        for label, exp in self.filtered_exp_dict.items():
+            if self._data_config[label]["was_processed"] or force:
+                for cf_name, cf in exp.cf_dict.items():
+                    with mpl_backend_switcher("Qt5Agg"):
+                        cf.calculate_hankel_transform(["gaussian"], rmax=200)
+
+                # save processed meas (data not re-saved - should be quick)
+                exp.save_processed_measurements(
+                    should_save_data=False,
+                    # processed files should already exist at this point, so need to force
+                    should_force=True,
+                )
+
             else:
                 print(f"{label}: Using existing...")
