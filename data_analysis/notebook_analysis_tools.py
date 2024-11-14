@@ -1,12 +1,23 @@
+import functools
+import os
 from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib as mpl
+import numpy as np
 from matplotlib import pyplot as plt
 
 from data_analysis.correlation_function import SolutionSFCSExperiment
-from utilities.display import Plotter
+from utilities.display import Plotter, plot_acfs
+
+try:
+    from winsound import Beep as beep  # type: ignore # Windows
+except ModuleNotFoundError:
+
+    def beep():
+        """Beep to notify that the script has finished"""
+        os.system('osascript -e "beep 3"')
 
 
 @contextmanager
@@ -127,6 +138,9 @@ class SolutionSFCSExperimentLoader:
                     should_save_data=False,
                 )
 
+        # beep to notify that the script has finished
+        beep()
+
         return exp_dict
 
 
@@ -135,10 +149,12 @@ class SolutionSFCSExperimentHandler:
     Class to handle Solution SFCS experiments.
     """
 
-    def __init__(self, exp_dict):
-        self.exp_dict = exp_dict
+    def __init__(self, exp_dict: Optional[Dict[str, SolutionSFCSExperiment]] = None, **kwargs):
+        self.exp_dict = exp_dict or {}
         self._positive_filters: Tuple[str, ...] = ("",)
         self._negative_filters: Tuple[str, ...] = ()
+        self._data_loader = SolutionSFCSExperimentLoader(**kwargs)
+        self._data_config: Dict[str, Dict[str, Any]] = {}
 
     @property
     def labels(self):
@@ -178,29 +194,45 @@ class SolutionSFCSExperimentHandler:
         self._negative_filters = tuple(filters) if filters else ()
         _ = self.filtered_exp_dict  # trigger warning if no experiments match the current filters
 
+    @staticmethod
+    def skip_if_all_exp_filtered(func):
+        """
+        Decorator to run a function only if there are filtered experiments.
+        """
+
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if self.filtered_exp_dict:
+                return func(self, *args, **kwargs)
+            else:
+                print("Skipping - no experiments match the current filter criteria.")
+
+        return wrapper
+
+    def load_experiments(self, data_config: Dict[str, Dict[str, Any]], **kwargs):
+        """
+        Load a set of experiments, and keep the data configuration.
+        """
+        self._data_config = data_config
+        self.exp_dict = self._data_loader.load_experiments(data_config, **kwargs)
+
+    @skip_if_all_exp_filtered
     def plot_afterpulsing_filters(self, backend="inline", **kwargs):
         """
         Plot the afterpulsing filters for a set of experiments.
         """
-        # Skip if no experiments match the current filters
-        if not self.filtered_exp_dict:
-            return
-
         with mpl_backend_switcher(backend):
             for label, exp in self.filtered_exp_dict.items():
                 print(f"{label}:")
                 exp.plot_afterpulsing_filters(**kwargs)
 
+    @skip_if_all_exp_filtered
     def plot_correlation_functions(
         self, confocal_only: bool = False, sted_only: bool = False, **kwargs
     ):
         """
         Plot the correlation functions for a set of experiments.
         """
-        # Skip if no experiments match the current filters
-        if not self.filtered_exp_dict:
-            return
-
         with Plotter(super_title="All Experiments, All ACFs", figsize=(8, 6)) as ax:
             for label, exp in self.filtered_exp_dict.items():
                 with suppress(AttributeError):
@@ -243,5 +275,192 @@ class SolutionSFCSExperimentHandler:
                 print(f"\n{label} countrates:\nConfocal - {exp.confocal.avg_cnt_rate_khz:.2f} kHz")
                 # print(f"\n{label} line frequency:\nConfocal - {exp.confocal.scan_settings['line_freq_hz']:.2f} Hz")
 
+    @skip_if_all_exp_filtered
+    def display_scan_images(self, n_images: int = 3, backend="inline"):
+        """
+        Display scan images for a set of experiments.
+        """
+        for label, exp in self.filtered_exp_dict.items():
+            print("Confocal scan images:")
+            with mpl_backend_switcher(backend):
+                exp.confocal.display_scan_images(n_images)
+            print("STED scan images:")
+            try:
+                with mpl_backend_switcher(backend):
+                    exp.sted.display_scan_images(n_images)
+            except AttributeError:
+                print("STED measurement not loaded!")
+            print()
+
+    @skip_if_all_exp_filtered
+    def display_lifetime(self, force: bool = False):
+        """
+        Display lifetime histograms for a set of experiments.
+        """
+        for label, exp in self.filtered_exp_dict.items():
+            # Calculate lifetime parameters if not already done (or forced)
+            if exp.lifetime_params is None or force:
+                with mpl_backend_switcher("Qt5Agg"):
+                    exp.get_lifetime_parameters()
+
+                # save (lifetime_params) if calculated
+                exp.save_processed_measurements(
+                    should_save_data=False,
+                    # NOTE: processed files should already exist at this point, so need to force
+                    should_force=True,
+                )
+
+            # print lifetime parameters
+            print(f"Lifetime: {exp.lifetime_params.lifetime_ns:.2f} ns")
+
+    @skip_if_all_exp_filtered
+    def plot_countrates(self, backend="inline"):
+        """
+        Plot the count rates for a set of experiments.
+        """
+        for label, exp in self.filtered_exp_dict.items():
+            with mpl_backend_switcher(backend), Plotter(
+                super_title=f"'{label}' - Countrate", xlabel="time (s)", ylabel="countrate"
+            ) as ax:
                 with suppress(IndexError):
-                    print(f"STED - {exp.sted.avg_cnt_rate_khz:.2f} kHz")
+                    cf_conf = list(exp.confocal.cf.values())[0]
+                    conf_split_countrate = cf_conf.countrate_list
+                    conf_split_time = np.cumsum(cf_conf.split_durations_s)
+                    ax.plot(conf_split_time, conf_split_countrate, label="confocal")
+
+                with suppress(IndexError):
+                    cf_sted = list(exp.sted.cf.values())[0]
+                    sted_split_countrate = cf_sted.countrate_list
+                    sted_split_time = np.cumsum(cf_sted.split_durations_s)
+                    ax.plot(sted_split_time, sted_split_countrate, label="STED")
+
+                ax.legend()
+
+    @skip_if_all_exp_filtered
+    def plot_split_acfs(self, backend="inline"):
+        """
+        Plot the split ACFs for a set of experiments.
+        """
+        for label, exp in self.filtered_exp_dict.items():
+            # Get the confocal and STED ACFs
+            cf_conf = list(exp.confocal.cf.values())[0]
+            cf_sted = list(exp.sted.cf.values())[0]
+
+            # Plot the split ACFs along with the mean ACF
+            with mpl_backend_switcher(backend), Plotter(subplots=(2, 2)) as axes:
+                conf_axes, sted_axes = axes[0], axes[1]
+
+                # plot confocal
+                with suppress(NameError):
+                    plot_acfs(
+                        cf_conf.lag,
+                        cf_conf.avg_cf_cr,
+                        cf_conf.g0,
+                        cf_conf.cf_cr,
+                        # plot kwargs
+                        parent_ax=conf_axes[0],
+                        ylabel="Confocal",
+                    )
+                    conf_axes[0].set_title(f"'{label}' - Split ACFs (All)")
+                    plot_acfs(
+                        cf_conf.lag,
+                        cf_conf.avg_cf_cr,
+                        cf_conf.g0,
+                        cf_conf.cf_cr,
+                        j_good=cf_conf.j_good,
+                        # plot kwargs
+                        parent_ax=conf_axes[1],
+                        super_title=f"'{label}' - Split ACFs (confocal)",
+                    )
+                    conf_axes[1].set_title(f"'{label}' - Split ACFs (Good)")
+
+                # plot STED
+                with suppress(NameError):
+                    plot_acfs(
+                        cf_sted.lag,
+                        cf_sted.avg_cf_cr,
+                        cf_sted.g0,
+                        cf_sted.cf_cr,
+                        # plot kwargs
+                        parent_ax=sted_axes[0],
+                        ylabel="STED",
+                    )
+                    plot_acfs(
+                        cf_sted.lag,
+                        cf_sted.avg_cf_cr,
+                        cf_sted.g0,
+                        cf_sted.cf_cr,
+                        j_good=cf_sted.j_good,
+                        # plot kwargs
+                        parent_ax=sted_axes[1],
+                        super_title=f"'{label}' - Split ACFs (STED)",
+                    )
+
+    @skip_if_all_exp_filtered
+    def print_fluorescence_properties(self):
+        """
+        Print the fluorescence properties for a set of experiments.
+        """
+        for label, exp in self.filtered_exp_dict.items():
+            conf_cr = exp.confocal.avg_cnt_rate_khz
+            sted_cr = exp.sted.avg_cnt_rate_khz
+
+            print(f"'{label}':")
+            print("".join(["-"] * (len(label) + 3)))
+            print(
+                f"    Confocal Fluorescence-per-Molecule: "
+                f"{list(exp.confocal.cf.values())[0].g0 / 1e3:.2f} kHz"
+            )
+            print(
+                f"    Confocal countrate: {conf_cr:.2f} +/- "
+                f"{exp.confocal.std_cnt_rate_khz:.2f} kHz"
+            )
+            print(
+                f"    Confocal Molecules in Sampling Volume: "
+                f"{conf_cr / (list(exp.confocal.cf.values())[0].g0 / 1e3):.2f}"
+            )
+            try:
+                print(
+                    f"\n    STED Fluorescence-per-Molecule: "
+                    f"{list(exp.sted.cf.values())[0].g0 / 1e3:.2f} kHz"
+                )
+                print(
+                    f"    STED countrate: {sted_cr:.2f} +/- " f"{exp.sted.std_cnt_rate_khz:.2f} kHz"
+                )
+                print(
+                    f"    STED Molecules in Sampling Volume: "
+                    f"{sted_cr / (list(exp.sted.cf.values())[0].g0 / 1e3):.2f}"
+                )
+            except IndexError:
+                print("STED measurement not loaded!")
+            print("\n")
+
+    @skip_if_all_exp_filtered
+    def re_average_acfs(self, force: bool = False):
+
+        for label, exp in self.filtered_exp_dict.items():
+            if self._data_config[label]["was_processed"] or force:
+                print(f"Re-averaging '{label}'...")
+                exp.re_average_all(
+                    norm_range=(2.7e-3, 3.7e-3),
+                    should_use_clustering=True,
+                    rejection=2,
+                    noise_thresh=0.5,
+                    should_plot=True,
+                )
+
+                cf_conf = list(exp.confocal.cf.values())[0]
+                #         cf_sted = list(exp.sted.cf.values())[0]
+                #         for cf in (cf_conf, cf_sted):
+                for cf in (cf_conf,):
+                    plot_acfs(
+                        cf.lag,
+                        cf.avg_cf_cr,
+                        cf.g0,
+                        cf.cf_cr,
+                        j_good=cf.j_good,
+                        # plot kwargs
+                        super_title=f"'{label}' - Split ACFs ({cf.name})",
+                    )
+            else:
+                print(f"{label}: Using existing...")
