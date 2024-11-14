@@ -149,8 +149,8 @@ FORCE_PROCESSING = False
 # load experiment
 for label in sted_labels:
     halogen_exp_dict[label].load_experiment(
-        confocal_template=label_template_paths_dict[confocal_label],
-        sted_template=label_template_paths_dict[label],
+        confocal_path_template=label_template_paths_dict[confocal_label],
+        sted_path_template=label_template_paths_dict[label],
         force_processing=data_label_dict[label].force_processing,
         should_re_correlate=FORCE_PROCESSING,
         should_subtract_afterpulse=True,
@@ -508,7 +508,10 @@ gate2_ns.interval()
 # load experiment
 old_exp = SFCSExperiment("old detector 300 bp ATTO")
 old_exp.load_experiment(
-    confocal_template=DATA_ROOT / "10_08_2021" / "solution" / "bp300_20uW_angular_exc_141639_*.pkl",
+    confocal_path_template=DATA_ROOT
+    / "10_08_2021"
+    / "solution"
+    / "bp300_20uW_angular_exc_141639_*.pkl",
     force_processing=False,
     should_re_correlate=False,
     should_subtract_afterpulse=True,
@@ -591,7 +594,7 @@ with Plotter() as ax:
 # load experiment
 laser_exp = SFCSExperiment("old detector 300 bp ATTO")
 laser_exp.load_experiment(
-    confocal_template=DATA_ROOT
+    confocal_path_template=DATA_ROOT
     / "20_03_2022"
     / "solution"
     / "mirror_100uW_wfilter_static_exc_143208_*.pkl",

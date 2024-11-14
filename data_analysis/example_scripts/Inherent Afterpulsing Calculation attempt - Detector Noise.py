@@ -145,7 +145,7 @@ FORCE_PROCESSING = True
 # load experiment
 new_det_atto300bp_exp = SFCSExperiment(name=label)
 new_det_atto300bp_exp.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_plot=True,
     force_processing=FORCE_PROCESSING,
     #     should_re_correlate=True,

@@ -18,29 +18,6 @@ plt.rcParams.update({"figure.max_open_warning": 300})
 default_colors = tuple(plt.rcParams["axes.prop_cycle"].by_key()["color"])
 
 
-@contextmanager
-def mpl_backend_switcher(backend):
-    """Temporarily switch Matplotlib backend. For use in Jupyter notebooks."""
-
-    original_backend = mpl.get_backend()
-    if original_backend == backend:
-        yield
-        return
-    print(f"[MPL BACKEND] Switching Matplotlib backend from '{original_backend}' to '{backend}'...")
-    plt.close("all")
-    mpl.use(backend)
-    try:
-        yield
-    finally:
-        plt.pause(0.001)  # Give the event loop time to process
-        if backend == "Qt5Agg":
-            print("[MPL BACKEND] Blocking until the window is closed...")
-            plt.show(block=True)  # Block until the window is closed
-        print(f"[MPL BACKEND] Switching Matplotlib backend back to '{original_backend}'...")
-        plt.close("all")
-        mpl.use(original_backend)
-
-
 class GuiDisplay:
     """Doc."""
 

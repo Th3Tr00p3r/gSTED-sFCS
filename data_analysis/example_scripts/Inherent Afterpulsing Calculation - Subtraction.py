@@ -103,7 +103,7 @@ DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 # load experiment
 exp = SFCSExperiment(name=label)
 exp.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_plot=True,
     should_use_preprocessed=not FORCE_PROCESSING,
     should_re_correlate=True,
@@ -173,7 +173,7 @@ exp_xcorr_as_ap = SFCSExperiment(
     name="Free-Running 300 bp, X-Correlation of Fluorescent vs. White-Noise as Afterpulsing"
 )
 exp_xcorr_as_ap.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_plot=False,
     should_plot_meas=False,
     should_use_preprocessed=True,

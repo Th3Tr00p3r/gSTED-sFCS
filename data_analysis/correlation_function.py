@@ -1715,8 +1715,8 @@ class SolutionSFCSExperiment:
 
     def load_experiment(
         self,
-        confocal_template: Union[str, Path] = None,
-        sted_template: Union[str, Path] = None,
+        confocal_path_template: Union[str, Path] = None,
+        sted_path_template: Union[str, Path] = None,
         confocal=None,
         sted=None,
         confocal_kwargs={},
@@ -1726,8 +1726,8 @@ class SolutionSFCSExperiment:
         """Doc."""
 
         if (
-            (confocal_template is None)
-            and (sted_template is None)
+            (confocal_path_template is None)
+            and (sted_path_template is None)
             and (confocal is None)
             and (sted is None)
         ):  # check if at least one measurement is available for laoding
@@ -1736,13 +1736,13 @@ class SolutionSFCSExperiment:
         # load measurements
         for meas_type in ("confocal", "sted"):
             measurement = locals()[meas_type]
-            meas_template = locals()[f"{meas_type}_template"]
+            meas_path_template = locals()[f"{meas_type}_path_template"]
             meas_kwargs = locals()[f"{meas_type}_kwargs"]
             if measurement is None:
-                if meas_template is not None:
+                if meas_path_template is not None:
                     measurement = self.load_measurement(
                         meas_type=meas_type,
-                        file_path_template=meas_template,
+                        file_path_template=meas_path_template,
                         **{**kwargs, **meas_kwargs},
                     )
                 else:  # Use empty measuremnt by default

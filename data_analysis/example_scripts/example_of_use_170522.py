@@ -51,8 +51,8 @@ Sang = SFCSExperiment("T100518", SC=SC)
 #                     file_selection='Use 0')
 
 Sang.load_experiment(
-    confocal_template="/Users/oleg/Google Drive/10.5.18/AngularScan/120/AngularScan300bpConf*.mat",
-    sted_template="/Users/oleg/Google Drive/10.5.18/AngularScan/120/AngularScan300bpSted*.mat",
+    confocal_path_template="/Users/oleg/Google Drive/10.5.18/AngularScan/120/AngularScan300bpConf*.mat",
+    sted_path_template="/Users/oleg/Google Drive/10.5.18/AngularScan/120/AngularScan300bpSted*.mat",
 )
 
 

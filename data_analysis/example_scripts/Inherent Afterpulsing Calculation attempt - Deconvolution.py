@@ -320,7 +320,7 @@ DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 # load experiment
 exp1 = SFCSExperiment(name=label)
 exp1.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_plot=True,
     should_use_preprocessed=False,  # TODO: load anew if not found
     should_re_correlate=True,  # True
@@ -411,7 +411,7 @@ old_detector_quotient_FT = deconvolve_afterpulse(
 # load experiment
 exp2 = SFCSExperiment(name=label)
 exp2.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_plot=True,
     should_use_preprocessed=False,  # TODO: load anew if not found
     should_re_correlate=True,
@@ -531,7 +531,7 @@ DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 # load experiment
 exp3 = SFCSExperiment(name=label)
 exp3.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_plot=True,
     should_use_preprocessed=False,  # TODO: load anew if not found
     should_re_correlate=True,  # True
@@ -627,7 +627,7 @@ new_detector_quotient_inherent_FT = deconvolve_afterpulse(
 # load experiment
 exp4 = SFCSExperiment(name=label)
 exp4.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_plot=True,
     should_use_preprocessed=True,  # TODO: load anew if not found
     should_re_correlate=True,
@@ -646,7 +646,7 @@ print(f"Count-Rate: {exp4.confocal.avg_cnt_rate_khz} kHz")
 # load experiment
 exp5 = SFCSExperiment(name=label)
 exp5.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_plot=True,
     should_use_preprocessed=True,  # TODO: load anew if not found
     should_re_correlate=True,

@@ -62,7 +62,7 @@ confocal_template = "mirror_100uW_wfilter_static_exc_143208_*.pkl"
 # load experiment
 laser_exp = SolutionSFCSExperiment(name="Laser Propagation Time")
 laser_exp.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_plot=True,
     should_use_preprocessed=not FORCE_PROCESSING,
 )
@@ -105,7 +105,7 @@ DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 label, confocal_template = ("ATTO FR", "atto_FR_angular_exc_141224_*.pkl")
 fr_exp = SolutionSFCSExperiment(name=label)
 fr_exp.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_fix_shift=True,
     should_plot=True,
     should_use_preprocessed=not FORCE_PROCESSING,
@@ -117,7 +117,7 @@ DATA_PATH = DATA_ROOT / DATA_DATE / DATA_TYPE
 label, confocal_template = ("ATTO Gated (56 ns delay)", "ATTO_Gated7ns_angular_exc_110755_*.pkl")
 gt_exp = SolutionSFCSExperiment(name=label)
 gt_exp.load_experiment(
-    confocal_template=DATA_PATH / confocal_template,
+    confocal_path_template=DATA_PATH / confocal_template,
     should_fix_shift=True,
     should_plot=True,
     should_use_preprocessed=not FORCE_PROCESSING,

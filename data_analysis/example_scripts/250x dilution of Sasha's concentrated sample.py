@@ -59,8 +59,8 @@ sted_template = DATA_PATH / "bp300_20uW_200mW_angular_sted_174126_*.pkl"
 # load experiment
 cal_exp = SFCSExperiment(name="300 bp")
 cal_exp.load_experiment(
-    confocal_template=confocal_template,
-    sted_template=sted_template,
+    confocal_path_template=confocal_template,
+    sted_path_template=sted_template,
     should_plot=True,
     should_use_preprocessed=not SHOULD_FORCE_PROCESSING,
     file_selection="Use All",
@@ -82,8 +82,8 @@ sted_template = DATA_PATH / "conc_250xDiluted_angular_sted_193229_*.pkl"
 # load experiment
 sample_exp = SFCSExperiment(name="250x Diluted Sample")
 sample_exp.load_experiment(
-    confocal_template=confocal_template,
-    sted_template=sted_template,
+    confocal_path_template=confocal_template,
+    sted_path_template=sted_template,
     should_plot=True,
     should_use_preprocessed=not SHOULD_FORCE_PROCESSING,
     roi_selection="auto",

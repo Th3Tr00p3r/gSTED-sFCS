@@ -4,6 +4,9 @@ settings/default_settings_choice
 log/
 pyrcc5.exe # pyrcc binary (needs to be copied to each local repository from local venv)
 
+# OneDrive folders (idomich)
+*.blosc
+
 # Auto-Generated (idomich)
 lextab.py
 yacctab.py
