@@ -34,6 +34,7 @@ def mpl_backend_switcher(backend):
     finally:
         plt.pause(0.001)  # Give the event loop time to process
         if backend == "Qt5Agg":
+            print("[MPL BACKEND] Blocking until the window is closed...")
             plt.show(block=True)  # Block until the window is closed
         print(f"[MPL BACKEND] Switching Matplotlib backend back to '{original_backend}'...")
         plt.close("all")
