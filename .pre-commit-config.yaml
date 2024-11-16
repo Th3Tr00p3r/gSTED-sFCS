@@ -1,7 +1,9 @@
----repos:
+---
+
+repos:
 
     - repo: https://github.com/pre-commit/mirrors-mypy
-      rev: v1.1.1
+      rev: v1.13.0
       hooks:
           - id: mypy
             args: [--no-strict-optional, --ignore-missing-imports]
@@ -20,18 +22,20 @@
                                       scikit-image, matplotlib, PyQt5]
 
     - repo: https://github.com/pycqa/isort
-      rev: 5.12.0
+      rev: 5.13.2
       hooks:
           - id: isort
             args: [--profile, black, --filter-files]
             exclude: ^data_analysis/example_scripts
 
     - repo: https://github.com/ambv/black
-      rev: 22.3.0
+      rev: 24.10.0
       hooks:
           - id: black
             language_version: python3.10
 
-    - repo: https://github.com/PyCQA/flake8/      rev: 6.0.0      hooks:          - id: flake8            exclude: ^data_analysis/example_scripts    # - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
-      # rev: 0.2.2
-      # hooks:          # - id: yamlfmt            # args: [--width, '150']
+    - repo: https://github.com/PyCQA/flake8/
+      rev: 7.1.1
+      hooks:
+          - id: flake8
+            exclude: ^data_analysis/example_scripts

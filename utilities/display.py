@@ -1,10 +1,9 @@
 """Plotting and image-showing utilities"""
 
 from collections import namedtuple
-from contextlib import contextmanager, suppress
-from typing import List, Tuple
+from contextlib import suppress
+from typing import List, Optional, Tuple
 
-import matplotlib as mpl
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
@@ -461,9 +460,12 @@ def force_aspect(ax, aspect=1) -> None:
 
 
 def get_gradient_colormap(
-    n_lines, color_list: List[str | Tuple[int | float]] = ["magenta", "lime", "cyan"], **kwargs
+    n_lines,
+    color_list: Optional[List[str | Tuple[int | float, int | float, int | float]]] = None,
+    **kwargs,
 ) -> np.ndarray:
     """Create a multicolor gradient colormap."""
+    color_list = color_list or ["magenta", "lime", "cyan"]
 
     # get a list of RGB colors from the list of colors provided (i.e. (1.0, 0.0, 1.0) for "magenta")
     rgb_color_list = [to_rgb(color) if isinstance(color, str) else color for color in color_list]

@@ -1,6 +1,7 @@
 import functools
 import os
 from contextlib import contextmanager, suppress
+from itertools import cycle
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -9,7 +10,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from data_analysis.correlation_function import SolutionSFCSExperiment
-from utilities.display import Plotter, plot_acfs
+from utilities.display import Plotter, default_colors, plot_acfs
 
 try:
     from winsound import Beep as beep  # type: ignore # Windows
@@ -21,7 +22,7 @@ except ModuleNotFoundError:
 
 
 @contextmanager
-def mpl_backend_switcher(backend, verbose=False):
+def mpl_backend(backend, verbose=False):
     """Temporarily switch Matplotlib backend. For use in Jupyter notebooks."""
 
     original_backend = mpl.get_backend()
@@ -37,7 +38,7 @@ def mpl_backend_switcher(backend, verbose=False):
     try:
         yield
     finally:
-        plt.pause(0.001)  # Give the event loop time to process
+        plt.pause(0.01)  # Give the event loop time to process
         if backend == "Qt5Agg":
             if verbose:
                 print("[MPL BACKEND] Blocking until the window is closed...")
@@ -106,7 +107,7 @@ class SolutionSFCSExperimentLoader:
 
             # skip already loaded experiments, unless forced
             if not hasattr(exp_dict[label], "confocal") or force_processing:
-                with mpl_backend_switcher("inline"):
+                with mpl_backend("inline"):
                     exp.load_experiment(
                         **data_config[label],
                         force_processing=force_processing,
@@ -121,7 +122,7 @@ class SolutionSFCSExperimentLoader:
 
                 # calibrate TDC - only if STED is loaded and not already synced (which is the case when filtering afterpulsing)
                 if exp.sted.is_loaded and not exp.sted.afterpulsing_method == "filter":
-                    with mpl_backend_switcher("inline"):
+                    with mpl_backend("inline"):
                         exp.calibrate_tdc(
                             **data_config[label], force_processing=force_processing, is_verbose=True
                         )
@@ -221,7 +222,7 @@ class SolutionSFCSExperimentHandler:
         """
         Plot the afterpulsing filters for a set of experiments.
         """
-        with mpl_backend_switcher(backend):
+        with mpl_backend(backend):
             for label, exp in self.filtered_exp_dict.items():
                 print(f"{label}:")
                 exp.plot_afterpulsing_filters(**kwargs)
@@ -282,11 +283,11 @@ class SolutionSFCSExperimentHandler:
         """
         for label, exp in self.filtered_exp_dict.items():
             print("Confocal scan images:")
-            with mpl_backend_switcher(backend):
+            with mpl_backend(backend):
                 exp.confocal.display_scan_images(n_images)
             print("STED scan images:")
             try:
-                with mpl_backend_switcher(backend):
+                with mpl_backend(backend):
                     exp.sted.display_scan_images(n_images)
             except AttributeError:
                 print("STED measurement not loaded!")
@@ -300,7 +301,7 @@ class SolutionSFCSExperimentHandler:
         for label, exp in self.filtered_exp_dict.items():
             # Calculate lifetime parameters if not already done (or forced)
             if exp.lifetime_params is None or force:
-                with mpl_backend_switcher("Qt5Agg"):
+                with mpl_backend("Qt5Agg"):
                     exp.get_lifetime_parameters()
 
                 # save (lifetime_params) if calculated
@@ -319,9 +320,12 @@ class SolutionSFCSExperimentHandler:
         Plot the count rates for a set of experiments.
         """
         for label, exp in self.filtered_exp_dict.items():
-            with mpl_backend_switcher(backend), Plotter(
-                super_title=f"'{label}' - Countrate", xlabel="time (s)", ylabel="countrate"
-            ) as ax:
+            with (
+                mpl_backend(backend),
+                Plotter(
+                    super_title=f"'{label}' - Countrate", xlabel="time (s)", ylabel="countrate"
+                ) as ax,
+            ):
                 with suppress(IndexError):
                     cf_conf = list(exp.confocal.cf.values())[0]
                     conf_split_countrate = cf_conf.countrate_list
@@ -347,7 +351,7 @@ class SolutionSFCSExperimentHandler:
             cf_sted = list(exp.sted.cf.values())[0]
 
             # Plot the split ACFs along with the mean ACF
-            with mpl_backend_switcher(backend), Plotter(subplots=(2, 2)) as axes:
+            with mpl_backend(backend), Plotter(subplots=(2, 2)) as axes:
                 conf_axes, sted_axes = axes[0], axes[1]
 
                 # plot confocal
@@ -472,11 +476,23 @@ class SolutionSFCSExperimentHandler:
         """
         Calculate the Hankel transforms for a set of experiments.
         """
+        # TODO: this one needs to be improved in terms of user-friendliness and interactivity -
+        #  1. keep the already selected limits on screen
+        #  2. keep the previous data (in a different color), as well as it's fit
+        #  3. Figure out why the last plot gets stuck after selecting the limit (middle mouse
+        #     button or 'Enter')
         for label, exp in self.filtered_exp_dict.items():
             if self._data_config[label]["was_processed"] or force:
-                for cf_name, cf in exp.cf_dict.items():
-                    with mpl_backend_switcher("Qt5Agg"):
-                        cf.calculate_hankel_transform(["gaussian"], rmax=200)
+                with mpl_backend("Qt5Agg"), Plotter() as ax:
+                    # remaining_colors = cycle(default_colors)
+                    for cf_name, cf in exp.cf_dict.items():
+                        cf.calculate_hankel_transform(
+                            ["gaussian"],
+                            rmax=200,
+                            title_prefix=f"{label}: ",
+                            parent_ax=ax,
+                        )
+                        # set all data points to
 
                 # save processed meas (data not re-saved - should be quick)
                 exp.save_processed_measurements(

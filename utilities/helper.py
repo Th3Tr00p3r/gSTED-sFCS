@@ -772,6 +772,8 @@ def extrapolate_over_noise(
     interp_type="gaussian",
     extrap_x_lims=Limits(-np.inf, np.inf),
     should_interactively_set_upper_x=True,
+    title_prefix="",
+    parent_ax=None,
     **kwargs,
 ) -> InterpExtrap1D:
     """Doc."""
@@ -799,7 +801,7 @@ def extrapolate_over_noise(
     # interactively choose the noise level
     elif should_interactively_set_upper_x:
         with display.Plotter(
-            super_title="Interactive Selection of Noise Level\n(One point)",
+            super_title=f"{title_prefix}Interactive Selection of Noise Level\n(One point)",
             selection_limits=x_lims,
             selection_type="upper",
             should_close_after_selection=True,
@@ -807,6 +809,7 @@ def extrapolate_over_noise(
             x_scale="quadratic",
             ylim=(1e-4, 1),
             y_scale="log",
+            parent_ax=parent_ax,
         ) as ax:
             ax.plot(x, y, "ok", label=kwargs["name"] if kwargs.get("name") else "data")
             ax.axvline(x=x_noise, color="red", lw=1, ls="--", label="heuristic estimate")

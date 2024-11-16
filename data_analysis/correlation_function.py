@@ -668,7 +668,6 @@ class CorrFunc:
             v = c0.T / (2 * np.pi * max_r)  # Frequency vector
             m1 = (abs(j1(c0)) / max_r).T  # m1 prepares input vector for transformation
             m2 = m1 * max_r / v_max  # m2 prepares output vector for display
-            # end  of preparations for Hankel transform
 
             # interpolation/extrapolation
             IE = extrapolate_over_noise(
@@ -679,9 +678,11 @@ class CorrFunc:
                 y_lims=Limits(fr_interp_lims),
                 n_robust=n_robust,
                 interp_type=interp_type,
-                name=f"{kwargs['parent_name']},\n{self.name}"
-                if kwargs.get("parent_name")
-                else self.name,
+                name=(
+                    f"{kwargs['parent_name']},\n{self.name}"
+                    if kwargs.get("parent_name")
+                    else self.name
+                ),
                 **kwargs,
             )
 
@@ -1326,9 +1327,11 @@ class SolutionSFCSMeasurement:
                 get_afterpulsing,
                 corr_options.get("is_verbose", False),
             ),
-            external_afterpulse_params
-            if external_afterpulse_params is not None
-            else self.afterpulse_params,
+            (
+                external_afterpulse_params
+                if external_afterpulse_params is not None
+                else self.afterpulse_params
+            ),
             getattr(self, "bg_line_corr_list", []) if subtract_spatial_bg_corr else [],
             external_afterpulsing=external_afterpulsing,
             should_subtract_afterpulsing=afterpulsing_method == "subtract calibrated",
@@ -1570,12 +1573,16 @@ class SolutionSFCSMeasurement:
 
         # calculate without plotting
         kwargs["parent_names"] = (
-            f"{kwargs['parent_names'][0]},\n{self.type}"
-            if kwargs.get("parent_names")
-            else self.type,
-            f"{kwargs['parent_names'][1]},\n{self.type}"
-            if kwargs.get("parent_names")
-            else self.type,
+            (
+                f"{kwargs['parent_names'][0]},\n{self.type}"
+                if kwargs.get("parent_names")
+                else self.type
+            ),
+            (
+                f"{kwargs['parent_names'][1]},\n{self.type}"
+                if kwargs.get("parent_names")
+                else self.type
+            ),
         )
         for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
             if not CF.structure_factors or should_force:
@@ -1689,6 +1696,7 @@ class SolutionSFCSExperiment:
         self.name = name
         self.confocal: SolutionSFCSMeasurement
         self.sted: SolutionSFCSMeasurement
+        self.cal_exp: SolutionSFCSExperiment
 
     def __repr__(self):
         return f"""SolutionSFCSExperiment({self.name}, confocal={f"'{self.confocal.template}'" if self.confocal.is_loaded else None}, sted='{f"'{self.sted.template}'" if self.sted.is_loaded else None})
@@ -1798,7 +1806,6 @@ class SolutionSFCSExperiment:
                 print(f"Loaded pre-processed {meas_type} measurement from: '{dir_path}'")
             except OSError:
                 # since not forcing processing, avoid dumping (though will still process to get p.general...) existing raw data
-                # TODO: try to avoid processing of existing files altogether - this may require saving the general part as well...
                 kwargs["should_avoid_dumping"] = True
                 print(
                     f"Pre-processed {meas_type} measurement not found at: '{dir_path}'. Processing (non-existing) data files regularly."
@@ -2326,13 +2333,14 @@ class SolutionSFCSExperiment:
                 )
 
     def calculate_structure_factors(
-        self, cal_exp, interp_types=["gaussian"], should_plot=True, is_verbose=True, **kwargs
+        self, cal_exp, interp_types=["gaussian"], is_verbose=True, **kwargs
     ):
         """
         Given a calibration SolutionSFCSExperiment, i.e. one performed
         on a below-resolution sample (e.g. a 300 bp DNA sample labeled with the same fluorophore),
         this method divides this experiment's (self) Hankel transforms by the corresponding ones
-        in the calibration experiment (all calculated if needed) and returns the sought structure factors.
+        in the calibration experiment (all calculated if needed) and returns the sought structure
+        factors.
         """
 
         if is_verbose:
