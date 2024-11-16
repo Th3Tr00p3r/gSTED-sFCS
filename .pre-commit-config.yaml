@@ -34,6 +34,15 @@ repos:
           - id: black
             language_version: python3.10
 
+    - repo: local
+      hooks:
+        - id: auto-git-add
+          name: Auto git add modified files
+          entry: git add
+          language: system
+          types: [python]
+          stages: [commit]
+
     - repo: https://github.com/PyCQA/flake8/
       rev: 7.1.1
       hooks:
