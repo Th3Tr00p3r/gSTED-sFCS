@@ -374,7 +374,10 @@ class InterpExtrap1D:
     interp_idxs: np.ndarray
     x_lims: Limits
 
-    def plot(self, label_prefix="", **kwargs):
+    def __repr__(self):
+        return f"InterpExtrap1D(interp_type={self.interp_type}, x_lims={self.x_lims})"
+
+    def plot(self, label_prefix="", parent_ax=None, **kwargs):
         """Display the interpolation."""
 
         # TODO: once hierarchical plotting is applied, use the first (confocal) max(self.x_data[self.interp_idxs]) as the upper x limit for plotting
@@ -386,6 +389,7 @@ class InterpExtrap1D:
             super_title=f"{self.interp_type.capitalize()} Interpolation",
             xlabel="$x$",
             ylabel="$y$",
+            parent_ax=parent_ax,
             **kwargs,
         ) as ax:
             line2d = ax.plot(

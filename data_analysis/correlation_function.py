@@ -63,8 +63,10 @@ class HankelTransform:
     fq: np.ndarray
 
     def __post_init__(self):
-        # normalize to 1
-        self.fq /= self.fq.max()
+        self.fq_norm = self.fq / self.fq.max()
+
+    def __repr__(self):
+        return f"HankelTransform(IE={self.IE}, q={self.q}, fq={self.fq})"
 
     def plot(self, label_prefix="", **kwargs):
         """Display the transform's results"""
@@ -75,20 +77,30 @@ class HankelTransform:
             **kwargs,
         ) as axes:
             kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
-            self.IE.plot(parent_ax=axes[0], label_prefix=label_prefix, **kwargs)
-            axes[0].set_xscale("function", functions=(lambda x: x**2, lambda x: x ** (1 / 2)))
             axes[0].set_title("Interp./Extrap. Testing")
-            axes[0].set_xlabel("vt_um")
-            axes[0].set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
-            axes[0].legend()
+            self.plot_interpolation(axes[0], label_prefix=label_prefix, **kwargs)
 
-            axes[1].plot(self.q, self.fq, label=f"{label_prefix}")
-            axes[1].set_xscale("log")
-            axes[1].set_ylim(1e-4, 2)
             axes[1].set_title("Hankel Transforms")
-            axes[1].set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
-            axes[1].set_ylabel("$F(q)$")
-            axes[1].legend(loc="lower left")
+            self.plot_fq(axes[1], label=label_prefix, norm=True)
+
+    def plot_interpolation(self, ax, label_prefix="", **kwargs):
+        """Display the transform's results"""
+
+        self.IE.plot(parent_ax=ax, label_prefix=label_prefix, **kwargs)
+        ax.set_xscale("function", functions=(lambda x: x**2, lambda x: x ** (1 / 2)))
+        ax.set_xlabel("vt_um")
+        ax.set_ylabel(f"{self.IE.interp_type.capitalize()} Interp./Extrap.")
+        ax.legend()
+
+    def plot_fq(self, ax, label="", norm: bool = False, **kwargs):
+        """Display the transform's results"""
+
+        ax.plot(self.q, self.fq_norm if norm else self.fq, label=label, **kwargs)
+        ax.set_xscale("log")
+        ax.set_ylim(1e-4, 2)
+        ax.set_xlabel("$q\\ \\left(\\frac{1}{\\mu m}\\right)$")
+        ax.set_ylabel("$F(q)$")
+        ax.legend(loc="lower left")
 
 
 @dataclass
@@ -2332,6 +2344,24 @@ class SolutionSFCSExperiment:
                     **kwargs,
                 )
 
+    def plot_hankel_transforms(self, **kwargs):
+        """
+        Plot Hankel transforms of all CorrFunc objects in the experiment.
+        """
+        # get interpolations types
+        interp_types = list(list(self.confocal.cf.values())[0].structure_factors.keys())
+        n_interps = len(interp_types)
+
+        with Plotter(
+            subplots=(n_interps, 2),
+            super_title=f"Experiment '{self.name}': Hankel Transforms",
+            **kwargs,
+        ) as axes:
+            kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
+            for meas in (self.confocal, self.sted):
+                if meas.is_loaded:
+                    meas.plot_hankel_transforms(parent_ax=axes, label_prefix=self.name, **kwargs)
+
     def calculate_structure_factors(
         self, cal_exp, interp_types=["gaussian"], is_verbose=True, **kwargs
     ):
@@ -2368,16 +2398,7 @@ class SolutionSFCSExperiment:
         # optionally plot all transforms of all corrfuncs of all measurements in a single figure (for self and calibration)
         if plot_ht:
             for exp in (self, self.cal_exp):
-                with Plotter(
-                    subplots=(n_interps, 2),
-                    super_title=f"Experiment '{exp.name}': Hankel Transforms",
-                    **kwargs,
-                ) as axes:
-                    for meas in [getattr(exp, meas_type) for meas_type in ("confocal", "sted")]:
-                        if meas.is_loaded:
-                            meas.plot_hankel_transforms(
-                                parent_ax=axes, label_prefix=self.name, **kwargs
-                            )
+                exp.plot_hankel_transforms(**kwargs)
 
         # plot the structure factors in another figure
         with Plotter(

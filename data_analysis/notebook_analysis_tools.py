@@ -477,22 +477,24 @@ class SolutionSFCSExperimentHandler:
         Calculate the Hankel transforms for a set of experiments.
         """
         # TODO: this one needs to be improved in terms of user-friendliness and interactivity -
-        #  1. keep the already selected limits on screen
-        #  2. keep the previous data (in a different color), as well as it's fit
-        #  3. Figure out why the last plot gets stuck after selecting the limit (middle mouse
+        #  1. Figure out why the last plot gets stuck after selecting the limit (middle mouse
         #     button or 'Enter')
         for label, exp in self.filtered_exp_dict.items():
             if self._data_config[label]["was_processed"] or force:
                 with mpl_backend("Qt5Agg"), Plotter() as ax:
-                    # remaining_colors = cycle(default_colors)
-                    for cf_name, cf in exp.cf_dict.items():
+                    for (cf_name, cf), color in zip(exp.cf_dict.items(), cycle(default_colors)):
                         cf.calculate_hankel_transform(
                             ["gaussian"],
                             rmax=200,
                             title_prefix=f"{label}: ",
                             parent_ax=ax,
                         )
-                        # set all data points to
+                        # remove the last two plots (data and noise estimate), and plot
+                        # the interpolation instead
+                        [line.remove() for line in ax.lines[-2:]]
+                        cf.hankel_transforms["gaussian"].plot_interpolation(
+                            ax=ax, color=color, label_prefix=cf_name
+                        )
 
                 # save processed meas (data not re-saved - should be quick)
                 exp.save_processed_measurements(
@@ -503,3 +505,12 @@ class SolutionSFCSExperimentHandler:
 
             else:
                 print(f"{label}: Using existing...")
+
+    @skip_if_all_exp_filtered
+    def plot_hankel_transforms(self, backend="inline", **kwargs):
+        """
+        Plot the Hankel transforms for a set of experiments.
+        """
+        with mpl_backend(backend):
+            for label, exp in self.filtered_exp_dict.items():
+                exp.plot_hankel_transforms(**kwargs)
