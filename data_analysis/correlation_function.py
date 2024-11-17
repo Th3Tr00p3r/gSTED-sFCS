@@ -6,7 +6,18 @@ from contextlib import suppress
 from dataclasses import InitVar, dataclass
 from itertools import cycle
 from pathlib import Path
-from typing import Any, Dict, Generator, Iterator, List, Sequence, Tuple, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 import numpy as np
 from matplotlib.lines import Line2D
@@ -1665,8 +1676,10 @@ class SolutionSFCSMeasurement:
             )
         # use supplied data root
         else:
-            *_, date_dir, type_dir, _ = original_filepath_template.parts
-            dir_path = data_root / date_dir / type_dir / "processed"
+            *_, date_dir, type_dir, file_template = original_filepath_template.parts
+            dir_path = (
+                data_root / date_dir / type_dir / "processed" / file_template.replace("_*.pkl", "")
+            )
         meas_file_path = dir_path / "SolutionSFCSMeasurement.blosc"
         if not meas_file_path.is_file() or should_force:
             # save the measurement object
@@ -1891,27 +1904,34 @@ class SolutionSFCSExperiment:
         for cf in self.cf_dict.values():
             cf.average_correlation(**kwargs)
 
-    def save_processed_measurements(self, meas_types=["confocal", "sted"], **kwargs):
-        """Doc."""
+    def save_processed_measurements(
+        self, meas_types: Optional[List[str]] = None, verbose=True, **kwargs
+    ):
+        """
+        Save processed measurements to disk.
+        """
+        meas_types = meas_types or ["confocal", "sted"]
 
-        print(f"Experiment '{self.name}': Saving processed measurements to disk...")
+        if verbose:
+            print(f"Experiment '{self.name}': Saving processed measurements to disk...")
         if self.confocal.is_loaded and "confocal" in meas_types:
-            if self.confocal.save_processed(**kwargs):
+            if self.confocal.save_processed(**kwargs) and verbose:
                 print("Confocal saved.")
-            else:
+            elif verbose:
                 print(
                     "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
                     end=" ",
                 )
         if self.sted.is_loaded and "sted" in meas_types:
-            if self.sted.save_processed(**kwargs):
+            if self.sted.save_processed(**kwargs) and verbose:
                 print("STED saved.")
-            else:
+            elif verbose:
                 print(
                     "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
                     end=" ",
                 )
-        print("Done.\n")
+        if verbose:
+            print("Done.\n")
 
     def calibrate_tdc(self, should_plot=True, **kwargs):
         """Doc."""
@@ -2349,7 +2369,7 @@ class SolutionSFCSExperiment:
         Plot Hankel transforms of all CorrFunc objects in the experiment.
         """
         # get interpolations types
-        interp_types = list(list(self.confocal.cf.values())[0].structure_factors.keys())
+        interp_types = list(list(self.confocal.cf.values())[0].hankel_transforms.keys())
         n_interps = len(interp_types)
 
         with Plotter(

@@ -129,7 +129,6 @@ class SolutionSFCSExperimentLoader:
 
                 # save processed data (to avoid re-processing)
                 exp.save_processed_measurements(
-                    data_root=self._data_root,
                     should_force=data_config[label]["force_save"],
                     # NOTE: processed data is temporarily stored anyway, and kept if not cleared
                     # setting "should_save_data" False saves a lot of time.
@@ -137,6 +136,7 @@ class SolutionSFCSExperimentLoader:
                     # processed data) for faster loading the next time if more analysis
                     # needs to be done
                     should_save_data=False,
+                    data_root=self._data_root,
                 )
 
         # beep to notify that the script has finished
@@ -156,6 +156,7 @@ class SolutionSFCSExperimentHandler:
         self._negative_filters: Tuple[str, ...] = ()
         self._data_loader = SolutionSFCSExperimentLoader(**kwargs)
         self._data_config: Dict[str, Dict[str, Any]] = {}
+        self._data_root = self._data_loader._data_root
 
     @property
     def labels(self):
@@ -309,6 +310,7 @@ class SolutionSFCSExperimentHandler:
                     should_save_data=False,
                     # NOTE: processed files should already exist at this point, so need to force
                     should_force=True,
+                    data_root=self._data_root,
                 )
 
             # print lifetime parameters
@@ -479,32 +481,34 @@ class SolutionSFCSExperimentHandler:
         # TODO: this one needs to be improved in terms of user-friendliness and interactivity -
         #  1. Figure out why the last plot gets stuck after selecting the limit (middle mouse
         #     button or 'Enter')
-        for label, exp in self.filtered_exp_dict.items():
-            if self._data_config[label]["was_processed"] or force:
-                with mpl_backend("Qt5Agg"), Plotter() as ax:
+        with mpl_backend("Qt5Agg"):
+            for label, exp in self.filtered_exp_dict.items():
+                with Plotter() as ax:
                     for (cf_name, cf), color in zip(exp.cf_dict.items(), cycle(default_colors)):
-                        cf.calculate_hankel_transform(
-                            ["gaussian"],
-                            rmax=200,
-                            title_prefix=f"{label}: ",
-                            parent_ax=ax,
-                        )
-                        # remove the last two plots (data and noise estimate), and plot
-                        # the interpolation instead
-                        [line.remove() for line in ax.lines[-2:]]
-                        cf.hankel_transforms["gaussian"].plot_interpolation(
-                            ax=ax, color=color, label_prefix=cf_name
-                        )
+                        if not getattr(cf, "hankel_transforms", False) or force:
+                            cf.calculate_hankel_transform(
+                                ["gaussian"],
+                                rmax=200,
+                                title_prefix=f"{label}: ",
+                                parent_ax=ax,
+                            )
+                            # remove the last two plots (data and noise estimate), and plot
+                            # the interpolation instead
+                            [line.remove() for line in ax.lines[-2:]]
+                            cf.hankel_transforms["gaussian"].plot_interpolation(
+                                ax=ax, color=color, label_prefix=cf_name
+                            )
 
-                # save processed meas (data not re-saved - should be quick)
-                exp.save_processed_measurements(
-                    should_save_data=False,
-                    # processed files should already exist at this point, so need to force
-                    should_force=True,
-                )
+                            # save processed meas (data not re-saved - should be quick)
+                            exp.save_processed_measurements(
+                                should_save_data=False,
+                                # processed files should already exist at this point, so need to force
+                                should_force=True,
+                                data_root=self._data_root,
+                            )
 
-            else:
-                print(f"{label}: Using existing...")
+                        else:
+                            print(f"{label}: Using existing...")
 
     @skip_if_all_exp_filtered
     def plot_hankel_transforms(self, backend="inline", **kwargs):
@@ -514,3 +518,28 @@ class SolutionSFCSExperimentHandler:
         with mpl_backend(backend):
             for label, exp in self.filtered_exp_dict.items():
                 exp.plot_hankel_transforms(**kwargs)
+
+    @skip_if_all_exp_filtered
+    def calculate_structure_factors(self, exp_label2cal_label: Dict[str, str], force: bool = False):
+        """
+        Calculate the structure factors for a set of experiments.
+        """
+        with mpl_backend("Qt5Agg"):
+            for exp_label, cal_exp_label in exp_label2cal_label.items():
+                try:
+                    exp = self.filtered_exp_dict[exp_label]
+                    cal_exp = self.filtered_exp_dict[cal_exp_label]
+                except KeyError as e:
+                    print(f"Experiment label {e} not found in filtered experiments. ignoring...")
+                    continue
+                else:
+                    exp.calculate_structure_factors(cal_exp, rmax=200, should_force=force)
+
+                    # save processed meas (data not re-saved - should be quick)
+                    exp.save_processed_measurements(
+                        should_save_data=False,
+                        # processed files should already exist at this point, so need to force
+                        should_force=True,
+                        data_root=self._data_root,
+                        verbose=False,
+                    )
