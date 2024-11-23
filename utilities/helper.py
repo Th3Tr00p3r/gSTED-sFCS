@@ -12,7 +12,6 @@ from collections import Counter
 from contextlib import suppress
 from copy import copy
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Callable, Hashable, List, Tuple, TypeVar
 
 import numpy as np
@@ -310,7 +309,8 @@ class Gate(Limits):
     delay time to match the hard gate.
     """
 
-    # TODO: perhaps I should change this class such that tdc gates and hard gates are attributes (inheriting Limits)?
+    # TODO: perhaps I should change this class such that tdc gates and hard gates are
+    #  attributes (inheriting Limits)?
     # This would have to involve proper handling of older measurements!
 
     def __init__(self, *args, hard_gate=None, units: str = "ns", **kwargs):
@@ -322,10 +322,11 @@ class Gate(Limits):
 
         if self.lower < 0:
             print(
-                "WARNING: LOWER GATE IS LOWER THAN 0! CLIPPING TO ZERO IN CASE THIS WAS INTERNTIONAL"
+                "WARNING: LOWER GATE IS LOWER THAN 0! CLIPPING TO ZERO "
+                "IN CASE THIS WAS INTERNTIONAL"
             )
             self.lower = 0  # TESTESTEST
-        #            raise ValueError(f"Gating limits {self} must be between 0 and positive infinity.")
+            # raise ValueError(f"Gating limits {self} must be between 0 and positive infinity.")
 
         if self.hard_gate is not None and self.hard_gate.upper == np.inf:
             raise ValueError("Hardware gating must have a finite upper limit.")
@@ -380,7 +381,8 @@ class InterpExtrap1D:
     def plot(self, label_prefix="", parent_ax=None, **kwargs):
         """Display the interpolation."""
 
-        # TODO: once hierarchical plotting is applied, use the first (confocal) max(self.x_data[self.interp_idxs]) as the upper x limit for plotting
+        # TODO: once hierarchical plotting is applied, use the first
+        #  (confocal) max(self.x_data[self.interp_idxs]) as the upper x limit for plotting
         #        kwargs["xlim"] = kwargs.get("xlim", (0, max(self.x_data[self.interp_idxs])))
         kwargs["xlim"] = kwargs.get("xlim", (0, 1))  # TESTESTEST - temporary fix
         kwargs["ylim"] = kwargs.get("ylim", (5e-3, 1.3))
@@ -424,7 +426,8 @@ class InterpExtrap1D:
 
 def exclude_elements_by_indices_1d(input_arr, idxs_to_exclude):
     """Doc."""
-    # TODO: look for lines where I filter indices using list comprehensions and replace with this function
+    # TODO: look for lines where I filter indices using list comprehensions
+    #  and replace with this function
 
     all_idxs = np.arange(len(input_arr))
     idxs_to_keep = np.setdiff1d(all_idxs, idxs_to_exclude)
@@ -432,7 +435,9 @@ def exclude_elements_by_indices_1d(input_arr, idxs_to_exclude):
 
 
 def normalize_scan_img_rows(img: np.ndarray, mask=None):
-    """Normalize an image to the median of the maximum row. Optionally use a supplied mask first."""
+    """
+    Normalize an image to the median of the maximum row. Optionally use a supplied mask first.
+    """
 
     if mask is None:
         mask = np.full(img.shape, True, dtype=np.bool)
@@ -456,10 +461,12 @@ def moving_average(arr, window_size, keep_size=True):
     Parameters:
         arr (numpy.ndarray): The input array.
         window_size (int): The size of the moving window.
-        keep_size (bool): If True, return an interpolated version of the averaged array to keep the same size.
+        keep_size (bool): If True, return an interpolated version of the
+        averaged array to keep the same size.
 
     Returns:
-        numpy.ndarray: The moving average of the input array with the same size (or interpolated if keep_size is True).
+        numpy.ndarray: The moving average of the input array with the same size (or interpolated
+        if keep_size is True).
     """
 
     cumsum = np.cumsum(arr)
@@ -475,7 +482,8 @@ def moving_average(arr, window_size, keep_size=True):
 def most_common(list_):
     """
     Returns the most common element in a list/array.
-    Adapted from: https://stackoverflow.com/questions/1518522/find-the-most-common-element-in-a-list
+    Adapted from: https://stackoverflow.com/questions/1518522/
+    find-the-most-common-element-in-a-list
     """
 
     data = Counter(list_)
@@ -511,7 +519,8 @@ def dbscan_noise_thresholding(
         else:
             eps += eps_inc
 
-    # get the largest cluster label. the rest of the clusters will be considered part of the "noise"
+    # get the largest cluster label.
+    # the rest of the clusters will be considered part of the "noise"
     noise_mask = (y_clusters == -1) | (y_clusters != largest_cluster_label)
 
     # do PCA to view results
@@ -528,9 +537,9 @@ def batch_mean_rows(arr: np.ndarray, batch_size: int = None, batch_sizes: List[i
     """
     Compute the mean of batches of rows from a 2D numpy array.
 
-    This function takes a 2D numpy array and an integer `n_rows` as input. It divides the array's rows
-    into approximately equal-sized batches and computes the mean along each column for each batch.
-    The resulting mean values are stacked vertically to form a new 2D numpy array.
+    This function takes a 2D numpy array and an integer `n_rows` as input. It divides the
+    array's row into approximately equal-sized batches and computes the mean along each column
+    for each batch. The resulting mean values are stacked vertically to form a new 2D numpy array.
 
     Parameters:
         arr (np.ndarray): A 2D numpy array with shape (num_rows, num_columns).
@@ -585,7 +594,8 @@ def get_encompassing_rectangle_dims(
     dims: Tuple[float, float], angle_deg: float
 ) -> Tuple[float, float]:
     """
-    Given dimensions of a rectangle (width, height) and an angle of rotation (clockwise from negative X-axis),
+    Given dimensions of a rectangle (width, height) and an angle of rotation
+    (clockwise from negative X-axis),
     return the encompassing cartesian rectangle's dimensions.
     """
 
@@ -633,7 +643,8 @@ def chunks(arr, n: int):
 def largest_n(arr: np.ndarray, n: int):
     """
     Adapted from:
-    https://stackoverflow.com/questions/10337533/a-fast-way-to-find-the-largest-n-elements-in-an-numpy-array
+    https://stackoverflow.com/questions/10337533/
+    a-fast-way-to-find-the-largest-n-elements-in-an-numpy-array
     """
 
     sz = arr.size
@@ -664,7 +675,10 @@ def timer(threshold_ms: float = 0.0) -> Callable:
                 if elapsed_time_ms > threshold_ms:
                     in_s = elapsed_time_ms > 1000
                     print(
-                        f"***TIMER*** Function '{func.__name__}()' took {elapsed_time_ms * (1e-3 if in_s else 1):.2f} {'s' if in_s else 'ms'} (threshold: {threshold_ms * (1e-3 if in_s else 1):.0f} {'s' if in_s else 'ms'}).\n"
+                        f"***TIMER*** Function '{func.__name__}()' took "
+                        f"{elapsed_time_ms * (1e-3 if in_s else 1):.2f} {'s' if in_s else 'ms'} "
+                        f"(threshold: "
+                        f"{threshold_ms * (1e-3 if in_s else 1):.0f} {'s' if in_s else 'ms'}).\n"
                     )
                 return value
 
@@ -679,7 +693,10 @@ def timer(threshold_ms: float = 0.0) -> Callable:
                 if elapsed_time_ms > threshold_ms:
                     in_s = elapsed_time_ms > 1000
                     print(
-                        f"***TIMER*** Function '{func.__name__}()' took {elapsed_time_ms * (1e-3 if in_s else 1):.2f} {'s' if in_s else 'ms'} (threshold: {threshold_ms * (1e-3 if in_s else 1):.0f} {'s' if in_s else 'ms'}).\n"
+                        f"***TIMER*** Function '{func.__name__}()' took "
+                        f"{elapsed_time_ms * (1e-3 if in_s else 1):.2f} {'s' if in_s else 'ms'} "
+                        f"(threshold: "
+                        f"{threshold_ms * (1e-3 if in_s else 1):.0f} {'s' if in_s else 'ms'}).\n"
                     )
                 return value
 
@@ -731,8 +748,9 @@ def get_noise_start_idx(arr: np.ndarray, **kwargs):
 
     def std_from_local_linear_fit(arr: np.ndarray, kernel_size=8, **kwargs):
         """
-        Given an array and an even kernel (1D) size, returns an array of equal length where each kernel-sized subarray
-        contains the local standard deviation of that part of the original array from a local linear fit of that part.
+        Given an array and an even kernel (1D) size, returns an array of equal length where
+        each kernel-sized subarray contains the local standard deviation of that part of the
+        original array from a local linear fit of that part.
         """
 
         ransac = linear_model.RANSACRegressor()
@@ -778,6 +796,7 @@ def extrapolate_over_noise(
     should_interactively_set_upper_x=True,
     title_prefix="",
     parent_ax=None,
+    x_lim: Tuple[float, float] = (0.01, 1.0),
     **kwargs,
 ) -> InterpExtrap1D:
     """Doc."""
@@ -809,9 +828,9 @@ def extrapolate_over_noise(
             selection_limits=x_lims,
             selection_type="upper",
             should_close_after_selection=True,
-            xlim=(0, min(x[(y < 1e-3) & (x > 0.1)][0], x[(x < 2)][-1])),
             x_scale="quadratic",
-            ylim=(1e-4, 1),
+            xlim=x_lim,
+            ylim=(1e-3, 1.05),
             y_scale="log",
             parent_ax=parent_ax,
         ) as ax:
@@ -851,7 +870,9 @@ def extrapolate_over_noise(
             y_interp = interpolator(initial_x_interp)
 
     else:
-        raise ValueError(f"Unknown interpolation type '{interp_type}'. Choose from {INTERP_TYPES}.")
+        raise ValueError(
+            f"Unknown interpolation type '{interp_type}'. Choose from {INTERP_TYPES}."
+        )
 
     if interp_type == "gaussian":
         y_interp = np.exp(y_interp)
@@ -1200,7 +1221,8 @@ def dir_date_parts(data_path: str, sub_dir: str = "", month: str = None, year: s
         a sorted list of strings containing all relevant dates parts in the folder.
 
     Examples:
-        say in folder 'main_data_path' we have the folders: 11_01_2019, 15_01_2019, 20_02_2019, 05_08_2018.
+        say in folder 'main_data_path' we have the folders: 11_01_2019, 15_01_2019, 20_02_2019,
+        05_08_2018.
         get_folder_dates(main_data_path, month=1, year=2019) will return ['11', '15'].
         get_folder_dates(main_data_path, year=2019) will return ['1', '2'].
         get_folder_dates(main_data_path) will return ['2018', '2019'].

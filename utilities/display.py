@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.colors import ListedColormap, to_rgb
 from skimage.exposure import rescale_intensity
@@ -249,7 +250,6 @@ class Plotter:
             if self.selection_limits is not None:
                 self.fig.suptitle(self.super_title, fontsize=self.fontsize)
                 self.fig.show()
-                x_coords = []
                 while True:
                     selected_points_list = self.fig.ginput(n=-1, timeout=-1)
                     x_coords = [x for (x, y) in selected_points_list]
@@ -467,7 +467,7 @@ def get_gradient_colormap(
     """Create a multicolor gradient colormap."""
     color_list = color_list or ["magenta", "lime", "cyan"]
 
-    # get a list of RGB colors from the list of colors provided (i.e. (1.0, 0.0, 1.0) for "magenta")
+    # get a list of RGB colors from the list of colors provided (i.e. (1.0, 0.0, 1.0) for magenta)
     rgb_color_list = [to_rgb(color) if isinstance(color, str) else color for color in color_list]
     n_colors = len(rgb_color_list)
 
@@ -567,3 +567,48 @@ def display_dim_reduction(arr2d, labels, name: str, **kwargs):
         for ax_str, component_num in zip(axes, components)
     }
     display_scatter(arr2d, labels, **axis_labels_dict, title=f"{name} Visualization", **kwargs)
+
+
+def move_labels_to_end_of_legend(axes: Axes | np.ndarray, labels_to_move: List[str]):
+    """
+    Move labels to the end of the legend.
+    """
+    # Skip if no labels to move
+    if not labels_to_move:
+        return
+
+    # Convert single axes to array
+    if isinstance(axes, Axes):
+        axes = np.array([axes])
+
+    for ax in axes:
+        # Get the current legend handles and labels
+        handles, labels = ax.get_legend_handles_labels()
+
+        # Find the indexes of the labels to move
+        idxs_to_move = [
+            idx
+            for idx, label in enumerate(labels)
+            if any([ltm in label for ltm in labels_to_move])
+        ]
+
+        # If no matching labels are found, continue to the next axes
+        if not idxs_to_move:
+            continue
+
+        # Sort indices in descending order to avoid shifting issues when popping
+        idxs_to_move_sorted = sorted(idxs_to_move, reverse=True)
+
+        moved_labels: List[str] = []
+        moved_handles: List = []
+
+        for idx in idxs_to_move_sorted:
+            moved_labels.insert(0, labels.pop(idx))
+            moved_handles.insert(0, handles.pop(idx))
+
+        # Append the moved labels and handles at the end
+        labels.extend(moved_labels)
+        handles.extend(moved_handles)
+
+        # Update the legend with the new order
+        ax.legend(handles, labels)

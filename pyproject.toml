@@ -1,30 +1,8 @@
 [tool.black]
-line-length = 100
-target-version = ['py310']
-include = '\.pyi?$'
-exclude = '''
+line-length = 99
+target-version = ['py311']
 
-[tool.pycln]
-all = true
-
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-  | foo.py           # also separately exclude a file named foo.py in
-                     # the root of the project
-)
-'''
-
-[tool.jupytext]
-formats = "ipynb,py:percent"
-outdated_text_notebook_margin = 5 # default is 1 (second)
+[tool.isort]
+profile = "black"
+line_length = 99
+filter_files = true

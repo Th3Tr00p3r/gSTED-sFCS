@@ -2,6 +2,7 @@
 
 import numpy as np
 import scipy as sp
+from matplotlib.axes import Axes
 
 BP_TO_NM = 0.34
 KUHN_LENGTH_NM = 100.0
@@ -60,8 +61,8 @@ def dawson_structure_factor_fit(q, Rg: float) -> np.ndarray:
     Static strucure factor expression for Gaussian ring polymers.
     See Yamakawa's book (Helical Worm-Like Chain in Polymer Solutions), Equation 5.70
     """
-    x = Rg*q/np.sqrt(2)
-    return 1/x * sp.special.dawsn(x);
+    x = Rg * q / np.sqrt(2)
+    return 1 / x * sp.special.dawsn(x)
 
 
 def wlc_rod_structure_factor_fit(q, L: float):
@@ -73,3 +74,16 @@ def wlc_rod_structure_factor_fit(q, L: float):
     x = L * q
     si_x, _ = sp.special.sici(x)
     return 2 / x**2 * (x * si_x + np.cos(x) - 1)
+
+
+def plot_theoretical_structure_factor_in_ax(ax: Axes, q: np.ndarray, coeff: float, model: str):
+    """
+    Plot theoretical structure factor in an axis.
+    """
+
+    if model == "ideal":
+        ax.plot(coeff * q, q ** (-2), "--k", label="$q^{-2}$" + f" ({model})")
+    elif model == "fractal globule":
+        ax.plot(coeff * q, q ** (-3), "-.k", label="$q^{-3}$" + f" ({model})")
+    else:
+        raise ValueError(f"Unknown model '{model}'. Choose 'ideal' or 'fractal globule'.")

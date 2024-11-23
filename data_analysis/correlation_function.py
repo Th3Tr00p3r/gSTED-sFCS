@@ -6,18 +6,7 @@ from contextlib import suppress
 from dataclasses import InitVar, dataclass
 from itertools import cycle
 from pathlib import Path
-from typing import (
-    Any,
-    Dict,
-    Generator,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import Any, Dict, Generator, Iterator, List, Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
 from matplotlib.lines import Line2D
@@ -33,9 +22,10 @@ from data_analysis.data_processing import (
     TDCPhotonFileData,
     TDCPhotonMeasurementData,
 )
+from data_analysis.polymer_physics import plot_theoretical_structure_factor_in_ax
 from data_analysis.software_correlator import CorrelatorType, SoftwareCorrelator
 from data_analysis.workers import N_CPU_CORES, data_processing_worker, io_worker
-from utilities.display import Plotter, default_colors, plot_acfs
+from utilities.display import Plotter, default_colors, move_labels_to_end_of_legend, plot_acfs
 from utilities.file_utilities import (
     DUMP_ROOT,
     default_system_info,
@@ -125,18 +115,27 @@ class StructureFactor:
         self.q = HT.q
         self.sq = HT.fq / cal_HT.fq
 
-    def plot(self, label_prefix="", **kwargs):
+    def plot(
+        self, label_prefix="", comparisons: Optional[List[Tuple[str, float]]] = None, **kwargs
+    ):
         """
         Plot a single structure factor. Built to be used for hierarchical plotting
         from a measurement or an experiment.
         """
+        comparisons = comparisons or []
 
         with Plotter(
             super_title="Structure Factors",
             y_scale="log",
             **kwargs,
         ) as ax:
+            # plot the structure factor
             ax.plot(self.q, self.sq / self.sq[0], label=label_prefix)
+            # plot the structure factor of
+            # an ideal chain (q^-2) and a fractal globule (q^-3) for comparison (optional)
+            for model, coeff in comparisons:
+                plot_theoretical_structure_factor_in_ax(ax, self.q, coeff, model)
+
             ax.set_xscale("log")
             ax.set_ylim(1e-4, 2)
             ax.set_xlabel("$q\\ \\left(\\mu m^{-1}\\right)$")
@@ -153,7 +152,11 @@ class LifeTimeParams:
     laser_pulse_delay_ns: float
 
     def __repr__(self):
-        return f"LifeTimeParams(lifetime_ns={self.lifetime_ns:.2f}, sigma_sted={self.sigma_sted:.2f}, laser_pulse_delay_ns={self.laser_pulse_delay_ns:.2f})"
+        return (
+            f"LifeTimeParams(lifetime_ns={self.lifetime_ns:.2f}, "
+            f"sigma_sted={self.sigma_sted:.2f}, "
+            f"laser_pulse_delay_ns={self.laser_pulse_delay_ns:.2f})"
+        )
 
     def __equiv__(self, other):
         return (
@@ -190,20 +193,26 @@ class CorrFunc:
         self.structure_factors: Dict[str, StructureFactor] = {}
 
     def __add__(self, other):
-        """Averages (weighted) all attributes of two CorrFunc objects and returns a new CorrFunc instance"""
+        """
+        Averages (weighted) all attributes of two CorrFunc objects
+        and returns a new CorrFunc instance
+        """
 
         # ensure similarity
         if self.correlator_type != other.correlator_type:
             raise ValueError(
-                f"Combined CorrFunc objects must have the same 'correlator_type'! ({self.correlator_type}, {other.correlator_type})"
+                f"Combined CorrFunc objects must have the same 'correlator_type'! "
+                f"({self.correlator_type}, {other.correlator_type})"
             )
         if self.laser_freq_hz != other.laser_freq_hz:
             raise ValueError(
-                f"Combined CorrFunc objects must have the same 'laser_freq_hz'! ({self.laser_freq_hz}, {other.laser_freq_hz})"
+                f"Combined CorrFunc objects must have the same 'laser_freq_hz'! "
+                f"({self.laser_freq_hz}, {other.laser_freq_hz})"
             )
         if not (bool(self.afterpulsing_filter) == bool(other.afterpulsing_filter)):
             raise ValueError(
-                f"Combined CorrFunc objects must both have/not have an 'afterpulsing_filter'! ({bool(self.afterpulsing_filter)}, {bool(other.afterpulsing_filter)})"
+                f"Combined CorrFunc objects must both have/not have an 'afterpulsing_filter'! "
+                f"({bool(self.afterpulsing_filter)}, {bool(other.afterpulsing_filter)})"
             )
 
         # instantiate a new CorrFunc object to hold the mean values
@@ -215,7 +224,8 @@ class CorrFunc:
             afterpulsing_filter=self.afterpulsing_filter,
         )
 
-        # before averaging, get the maximum lag length of self and other - will need to unify (zero pad) to max length before stacking for averaging
+        # before averaging, get the maximum lag length of self and other - will need to unify
+        # (zero pad) to max length before stacking for averaging
         new_CF.lag = max(self.lag, other.lag, key=len)
         max_length = len(new_CF.lag)
         min_n_rows = min(self.corrfunc.shape[0], other.corrfunc.shape[0])
@@ -412,7 +422,8 @@ class CorrFunc:
             nan_per_row = np.isnan(self.cf_cr).sum(axis=1)
             print(f"Warning: {(nan_per_row>0).sum()}/{self.cf_cr.shape[0]} ACFs contain NaNs!")
             print(
-                f"The bad rows contain {', '.join([str(nans) for nans in nan_per_row if nans])} NaNs."
+                f"The bad rows contain {', '.join([str(nans) for nans in nan_per_row if nans])} "
+                f"NaNs."
             )
 
             # interpolate over NaNs
@@ -452,7 +463,8 @@ class CorrFunc:
                 / len(jj)
             ).sum(axis=1)
             print(
-                f"Division by zero avoided by adding EPSILON={EPS:.2e}. Why does this happen (zero in variance)?"
+                f"Division by zero avoided by adding EPSILON={EPS:.2e}. Why does this happen "
+                f"(zero in variance)?"
             )
 
         total_n_rows, _ = self.cf_cr.shape
@@ -473,7 +485,8 @@ class CorrFunc:
         else:
             delete_list = []
 
-        # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list. If no delete list is supplied, use all rows.
+        # if 'reject_n_worst' and 'rejection' are both None, use supplied delete list.
+        # If no delete list is supplied, use all rows.
         self.j_bad = delete_list
         self.j_good = [row for row in range(total_n_rows) if row not in delete_list]
 
@@ -496,7 +509,8 @@ class CorrFunc:
                 1 / (self.error_cf_cr[j_t] + EPS) ** 2
             ).sum()
             print(
-                f"Division by zero avoided by adding EPSILON={EPS:.2e}. Why does this happen (zero in variance)?"
+                f"Division by zero avoided by adding EPSILON={EPS:.2e}. "
+                f"Why does this happen (zero in variance)?"
             )
 
         self.normalized = self.avg_cf_cr / self.g0
@@ -505,7 +519,10 @@ class CorrFunc:
     def _calculate_weighted_avg(
         self, cf_cr: np.ndarray, weights: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Calculates weighted average and standard error of a 2D array (rows are correlation functions)."""
+        """
+        Calculates weighted average and standard error of a 2D array
+        (rows are correlation functions).
+        """
 
         tot_weights = weights.sum(0)
         try:
@@ -515,7 +532,8 @@ class CorrFunc:
             tot_weights += EPS
             avg_cf_cr = (cf_cr * weights).sum(0) / tot_weights
             print(
-                f"Division by zero avoided by adding epsilon={EPS:.2e}. Why does this happen (zero total weight)?"
+                f"Division by zero avoided by adding epsilon={EPS:.2e}. "
+                f"Why does this happen (zero total weight)?"
             )
         finally:
             error_cf_cr = np.sqrt((weights**2 * (cf_cr - avg_cf_cr) ** 2).sum(0)) / tot_weights
@@ -525,8 +543,8 @@ class CorrFunc:
     def remove_background(self, name_prefix: str = "", bg_range: Limits = None) -> Limits:
         """
         Manually select the background range and remove it from all averages.
-        Returns the background range indices for passing to further measurements in same experiment.
-        Re-average to return to original state.
+        Returns the background range indices for passing to further measurements in same
+        experiment. Re-average to return to original state.
         """
 
         # manually select the background range
@@ -534,7 +552,8 @@ class CorrFunc:
             self.vt_um,
             avg_cf_cr=self.avg_cf_cr,
             # plot kwargs
-            super_title=f"{name_prefix + (', ' if name_prefix else '')}{self.name}: Use the mouse to place 2 markers\nmarking the ACF background range:",
+            super_title=f"{name_prefix + (', ' if name_prefix else '')}{self.name}: Use the mouse "
+            f"to place 2 markers\nmarking the ACF background range:",
             selection_limits=None if bg_range is not None else (bg_range := Limits()),
             should_close_after_selection=True,
             xlabel="vt_um",
@@ -559,7 +578,8 @@ class CorrFunc:
         self.error_normalized = self.error_cf_cr / self.g0
 
         print(
-            f"{name_prefix + (', ' if name_prefix else '')}{self.name}: Found and removed a background constant of {avg_cf_cr_bg:.2f} (from 'avg_cf_cr')."
+            f"{name_prefix + (', ' if name_prefix else '')}{self.name}: Found and removed a "
+            f"background constant of {avg_cf_cr_bg:.2f} (from 'avg_cf_cr')."
         )
         return bg_range
 
@@ -732,7 +752,8 @@ class CorrFunc:
         #        fq_allfunc = np.empty(shape=(len(self.j_good), q.size))
         #        for idx, j in enumerate(self.j_good):
         #            sample_cf_cr = self.cf_cr[j, j_intrp]
-        #            sample_cf_cr[sample_cf_cr <= 0] = 1e-3  # TODO: is that the best way to solve this?
+        #            # TODO: is that the best way to solve this? (line below)
+        #            sample_cf_cr[sample_cf_cr <= 0] = 1e-3
         #            if n_robust and False: # TESTESTEST - CANELLED FOR NOW
         #                log_fr = robust_interpolation(
         #                    r ** 2, sample_vt_um ** 2, np.log(sample_cf_cr), n_robust
@@ -744,7 +765,8 @@ class CorrFunc:
         #
         #            _, fq_allfunc[idx] = hankel_transform(r, fr)
         #
-        #        fq_error = np.std(fq_allfunc, axis=0, ddof=1) / np.sqrt(len(self.j_good)) / self.g0
+        #       fq_error = (np.std(fq_allfunc, axis=0, ddof=1) /
+        #                   np.sqrt(len(self.j_good)) / self.g0)
 
         if kwargs.get("is_verbose"):
             print("Done.")
@@ -783,7 +805,8 @@ class CorrFunc:
         Given a calibration CorrFunc object, i.e. one performed on a below-resolution sample
         (e.g. a 300 bp DNA sample labeled with the same fluorophore),
         this method divides this measurement's (self) Hankel transforms by the corresponding ones
-        in the calibration measurement (all calculated if needed) and returns the sought structure factors.
+        in the calibration measurement (all calculated if needed) and returns the sought
+        structure factors.
         """
 
         if is_verbose:
@@ -820,22 +843,34 @@ class CorrFunc:
             print("Done.")
 
     def plot_structure_factor(self, label_prefix="", **kwargs):
-        """Doc."""
+        """
+        Plot the structure factors. Built to be used for hierarchical plotting from a measurement
+        or an experiment.
+        """
 
         # get interpolations types
         interp_types = list(self.structure_factors.keys())
         n_interps = len(interp_types)
 
+        # remove the 'comparisons' kwarg from the kwargs
+        comparisons = kwargs.get("comparisons", [])
+
         with Plotter(subplots=(n_interps, 1), **kwargs) as axes:
-            kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
+            is_child = kwargs.pop("parent_ax", None) is not None
             for (interp_type, structure_factor), ax in zip(
                 self.structure_factors.items(), (axes if n_interps > 1 else [axes])
             ):
                 structure_factor.plot(
                     parent_ax=ax,
                     label_prefix=f"{label_prefix}{': ' if label_prefix else ''}{self.name}: ",
+                    # add to the first plot only
+                    comparisons=kwargs.pop("comparisons", []),
                     **kwargs,
                 )
+
+            # move the labels to the end of the legend
+            if not is_child:
+                move_labels_to_end_of_legend(axes, [model for model, _ in comparisons])
 
 
 class SolutionSFCSMeasurement:
@@ -865,14 +900,19 @@ class SolutionSFCSMeasurement:
 
     @property
     def avg_cnt_rate_khz(self):
-        """Calculate the mean effective (in sample) countrate using the first CorrFunc object in .cf"""
+        """
+        Calculate the mean effective (in sample) countrate using the first CorrFunc object in .cf
+        """
 
         in_sample_countrate_list = list(self.cf.values())[0].countrate_list
         return np.nanmean(in_sample_countrate_list) * 1e-3
 
     @property
     def std_cnt_rate_khz(self):
-        """Calculate the standard deviation from mean effective (in sample) countrate using the first CorrFunc object in .cf"""
+        """
+        Calculate the standard deviation from mean effective (in sample) countrate
+        using the first CorrFunc object in .cf
+        """
 
         in_sample_countrate_list = list(self.cf.values())[0].countrate_list
         return np.nanstd(in_sample_countrate_list, ddof=1) * 1e-3
@@ -903,7 +943,8 @@ class SolutionSFCSMeasurement:
         self.n_files = len(self.data)
         if not self.n_files:
             raise RuntimeError(
-                f"Loading FPGA data catastrophically failed ({self.n_paths}/{self.n_paths} files skipped)."
+                f"Loading FPGA data catastrophically failed "
+                f"({self.n_paths}/{self.n_paths} files skipped)."
             )
 
         # aggregate images and ROIs for sFCS
@@ -924,7 +965,8 @@ class SolutionSFCSMeasurement:
             # aggregate images and ROIs for angular sFCS
             self.scan_images_dstack = np.dstack(tuple(p.general.image for p in self.data))
             self.rois = [p.general.sec_roi_list for p in self.data]
-            # aggregate line background corrfuncs - each line in each section of each file has one background corrfunc
+            # aggregate line background corrfuncs -
+            # each line in each section of each file has one background corrfunc
             self.bg_line_corr_list = [
                 bg_line_corr
                 for bg_file_corr in [p.general.bg_line_corr for p in self.data]
@@ -939,7 +981,9 @@ class SolutionSFCSMeasurement:
         if self.duration_min is not None:
             if abs(calc_duration_mins - self.duration_min) > self.duration_min * 0.05:
                 print(
-                    f"Attention! calculated duration ({calc_duration_mins:.1f} mins) is significantly different than the set duration ({self.duration_min} min). Using calculated duration.\n"
+                    f"Attention! calculated duration ({calc_duration_mins:.1f} mins) "
+                    f"is significantly different than the set duration ({self.duration_min} min). "
+                    f"Using calculated duration.\n"
                 )
         else:
             print(f"Calculating duration (not supplied): {calc_duration_mins:.1f} mins\n")
@@ -966,12 +1010,17 @@ class SolutionSFCSMeasurement:
 
         # initialize data processor
         self.data_processor = TDCPhotonDataProcessor(
-            self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
+            self.dump_path,
+            self.laser_freq_hz,
+            self.fpga_freq_hz,
+            self.detector_settings["gate_ns"],
         )
 
         # parellel processing
-        # estimate byte_data size (of each file) - total photons times 7 (bytes per photon) in Mega-bytes
-        # TODO: estimation should be for a single file (must know the original number of files!) and condition should depend on actual number of file
+        # estimate byte_data size (of each file) - total photons times 7 (bytes per photon)
+        # in Mega-bytes
+        # TODO: estimation should be for a single file (must know the original
+        #  number of files!) and condition should depend on actual number of file
         total_byte_data_size_estimate_mb = (
             (self.est_avg_cnt_rate_khz * 1e3 * self.duration_min * 60) * 7 / 1e6
         )
@@ -987,11 +1036,13 @@ class SolutionSFCSMeasurement:
             N_RAM_PROCESSES = N_CPU_CORES - 2
 
             print(
-                f"Multi-processing {n_files} files using {N_RAM_PROCESSES} processes (+1 process for I/O)... ",
+                f"Multi-processing {n_files} files using {N_RAM_PROCESSES} "
+                f"processes (+1 process for I/O)... ",
                 end="",
             )
 
-            # initialize 2 queues and a list managed by a multiprocessing.Manager, to share between processes
+            # initialize 2 queues and a list managed by a multiprocessing.Manager,
+            # to share between processes
             with mp.Manager() as manager:
                 io_queue = manager.Queue()
                 data_processing_queue = manager.Queue()
@@ -1018,7 +1069,8 @@ class SolutionSFCSMeasurement:
 
                 # cancel auto-dumping upon processing, to leave the dumping to IO process
                 proc_options["should_dump"] = False
-                # do not print anything inside processes (slows things down) - if you want to know what's going on, put the text in the results queue
+                # do not print anything inside processes (slows things down) -
+                # if you want to know what's going on, put the text in the results queue
                 proc_options["is_verbose"] = False
                 # initialize the data processing workers (N_RAM_PROCESSES processes)
                 for worker_idx in range(N_RAM_PROCESSES):
@@ -1035,13 +1087,15 @@ class SolutionSFCSMeasurement:
                 for task in file_dict_load_tasks:
                     io_queue.put(task)
 
-                # join then close each process to block untill all are finished and immediately release resources
+                # join then close each process to block untill all are finished and immediately
+                # release resources
                 for process in process_list:
                     process.join()
                 for process in process_list:
                     process.close()
 
-                # keep the list after manager is closed (should be a more straightforward way to do this)
+                # keep the list after manager is closed (should be a more straightforward
+                # way to do this)
                 for p in processed_list:
                     self.data.append(p)
 
@@ -1078,7 +1132,8 @@ class SolutionSFCSMeasurement:
 
         full_data = file_dict["full_data"]
 
-        # get countrate estimate (for multiprocessing threshod). calculated more precisely in the end of processing.ArithmeticError
+        # get countrate estimate (for multiprocessing threshod). calculated more precisely
+        # in the end of processing.ArithmeticError
         self.est_avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
         self.afterpulse_params = file_dict["system_info"]["afterpulse_params"]
@@ -1103,7 +1158,8 @@ class SolutionSFCSMeasurement:
             )
             if self.detector_settings.get("gate_ns") != fixed_gate:
                 print(
-                    "This should not happen (missing detector gate) - move this to legacy handeling!"
+                    "This should not happen (missing detector gate) - "
+                    "move this to legacy handeling!"
                 )
                 self.detector_settings["gate_ns"] = fixed_gate
         elif self.detector_settings.get("gate_ns") is None or should_ignore_hard_gate:
@@ -1155,7 +1211,8 @@ class SolutionSFCSMeasurement:
         if file_path is not None:  # Loading file from disk
             *_, template = file_path.parts
             print(
-                f"Loading and processing file No. {file_num} ({self.n_paths} files): '{template}'...",
+                f"Loading and processing file No. {file_num} ({self.n_paths} files): "
+                f"'{template}'...",
                 end=" ",
             )
             try:
@@ -1179,7 +1236,8 @@ class SolutionSFCSMeasurement:
                 self.detector_settings["gate_ns"],
             )
 
-        # TODO: all relevant properties from 'file_dict' should have been imported to the 'SolutionSFCSMeasurement' object at this point.
+        # TODO: all relevant properties from 'file_dict' should have been imported
+        #  to the 'SolutionSFCSMeasurement' object at this point.
         # It makes no sense to send the 'file_dict' as an argument - send what's relevant.
         return self.data_processor.process_data(file_num, file_dict["full_data"], **proc_options)
 
@@ -1218,7 +1276,10 @@ class SolutionSFCSMeasurement:
         get_afterpulsing=False,
         is_verbose=False,
     ):
-        """Using the memory-mapped 'input_gen', build and prepare splits for the correlator, as well as optional corresponsding filter splits"""
+        """
+        Using the memory-mapped 'input_gen', build and prepare splits for the correlator,
+        as well as optional corresponsding filter splits
+        """
 
         for split_idx, split in enumerate(input_gen):
             # skipping empty splits
@@ -1252,14 +1313,16 @@ class SolutionSFCSMeasurement:
         **corr_options,
     ) -> CorrFunc:
         """
-        High level function for correlating any type of data (e.g. static, angular scan, circular scan...)
+        High level function for correlating any type of data
+        (e.g. static, angular scan, circular scan...)
         Returns a 'CorrFunc' object.
         Data attribute is memory-mapped from disk.
         """
 
         if corr_options.get("is_verbose"):
             print(
-                f"{self.type} - Preparing split data ({self.n_files} files) for software correlator...",
+                f"{self.type} - Preparing split data ({self.n_files} files) "
+                f"for software correlator...",
                 end=" ",
             )
 
@@ -1273,8 +1336,10 @@ class SolutionSFCSMeasurement:
         )
 
         # Unite TDC gate and detector gate
-        # TODO: detector gate represents the actual effective gate (since pulse travel time is already synchronized before measuring), This means that
-        # I should add the fit-deduced pulse travel time (affected by TDC +/- 2.5 ns) to the lower gate to compare with TDC gate???
+        # TODO: detector gate represents the actual effective gate
+        #  (since pulse travel time is already synchronized before measuring), This means that
+        # I should add the fit-deduced pulse travel time (affected by TDC +/- 2.5 ns)
+        # to the lower gate to compare with TDC gate???
         laser_pulse_period_ns = 1e9 / self.laser_freq_hz
         if tdc_gate_ns.upper >= laser_pulse_period_ns:
             tdc_gate_ns.upper = np.inf
@@ -1282,8 +1347,12 @@ class SolutionSFCSMeasurement:
 
         #  add gate to cf_name
         if gate_ns or gate_ns.hard_gate:
-            # TODO: cf_name should not contain any description other than gate and "afterpulsing" yes/no (description is in self.type)
-            cf_name = f"gated {cf_name} {gate_ns}{f' ({gate_ns.hard_gate} hard)' if gate_ns.hard_gate else ''}"
+            # TODO: cf_name should not contain any description
+            #  other than gate and "afterpulsing" yes/no (description is in self.type)
+            cf_name = (
+                f"gated {cf_name} {gate_ns}"
+                f"{f' ({gate_ns.hard_gate} hard)' if gate_ns.hard_gate else ''}"
+            )
 
         # ensure proper valid afterpulsing method
         if afterpulsing_method not in {"subtract calibrated", "filter", "none"}:
@@ -1327,7 +1396,8 @@ class SolutionSFCSMeasurement:
         if corr_options.get("is_verbose"):
             try:
                 print(
-                    f"Correlating {self.scan_type} {cf_name} data ({sum([p.general.n_corr_splits for p in self.data])} splits):",
+                    f"Correlating {self.scan_type} {cf_name} data "
+                    f"({sum([p.general.n_corr_splits for p in self.data])} splits):",
                     end=" ",
                 )
             except TypeError:
@@ -1343,7 +1413,8 @@ class SolutionSFCSMeasurement:
             duration_min=self.duration_min,
         )
         CF.correlate_measurement(
-            # TODO: perhaps both 'generate_combined_inputs' and 'data.generate_splits' can be united in data_processing.py
+            # TODO: perhaps both 'generate_combined_inputs' and 'data.generate_splits'
+            #  can be united in data_processing.py
             self.generate_combined_inputs(
                 self.data.generate_splits(gate_ns, **corr_options),
                 is_filtered,
@@ -1371,7 +1442,8 @@ class SolutionSFCSMeasurement:
             print("- Done.")
 
         # name the Corrfunc object
-        # TODO: this should be eventually a list, not a dict (only first element and all together are ever interesting)
+        # TODO: this should be eventually a list, not a dict (only first element and all
+        #  together are ever interesting)
         self.cf[cf_name] = CF
 
         return CF
@@ -1472,13 +1544,17 @@ class SolutionSFCSMeasurement:
 
     def estimate_spatial_resolution(self, colors=None, fit_range=None, **kwargs) -> Iterator[str]:
         """
-        Perform Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions in the measurement
-        in order to estimate the resolution improvement. This is relevant only for calibration experiments (i.e. 300 bp samples).
-        Returns the legend labels for use with higher-level Plotter instance in SolutionSFCSExperiment.
+        Perform Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions
+        in the measurement in order to estimate the resolution improvement.
+        This is relevant only for calibration experiments (i.e. 300 bp samples).
+        Returns the legend labels for use with
+        higher-level Plotter instance in SolutionSFCSExperiment.
         """
-        # TODO: this should be a higher-level function which delegates the fitting and plotting to the individual CorrFunc objects, and only plots hierarchically.
-        #            This would allow better control, e.g. in case only certain gates are needed for a plot.
-        #            Take a look at "plot_correlation_functions" or "plot_structure_factors", for examples on how to implement.
+        # TODO: this should be a higher-level function which delegates the fitting and plotting
+        #  to the individual CorrFunc objects, and only plots hierarchically.
+        #  This would allow better control, e.g. in case only certain gates are needed for
+        #  a plot. Take a look at "plot_correlation_functions" or "plot_structure_factors",
+        #  for examples on how to implement.
 
         HWHM_FACTOR = np.sqrt(2 * np.log(2))
 
@@ -1497,14 +1573,18 @@ class SolutionSFCSMeasurement:
             ylim=(5e-3, 1),
             **kwargs,
         ) as ax:
-            # TODO: line below - this issue (line colors in hierarchical plotting) may be general and should be solved in Plotter class (?)
+            # TODO: line below - this issue (line colors in hierarchical plotting) may be
+            #  general and should be solved in Plotter class (?)
             colors = colors if colors is not None else cycle(default_colors)
             for CF, color in zip(self.cf.values(), colors):
                 FP = CF.fit_params
                 kwargs.pop("parent_ax", None)  # TODO: consider including this in Plotter __exit__
                 hwhm = list(FP.beta.values())[0] * 1e3 * HWHM_FACTOR
                 hwhm_error = list(FP.beta_error.values())[0] * 1e3 * HWHM_FACTOR
-                fit_label = f"{CF.name}: ${hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ ($\\chi^2={FP.chi_sq_norm:.1e}$)"
+                fit_label = (
+                    f"{CF.name}: ${hwhm:.0f}\\pm{hwhm_error:.0f}~nm$ "
+                    f"($\\chi^2={FP.chi_sq_norm:.1e}$)"
+                )
                 FP.plot(parent_ax=ax, color=color, fit_label=fit_label, **kwargs)
             ax.set_xlabel("vt_um")
             ax.set_ylabel("normalized ACF")
@@ -1521,8 +1601,9 @@ class SolutionSFCSMeasurement:
         **kwargs,
     ):
         """
-        Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are to be used as legend labels
-        and values are 'TDCPhotonDataMixin'-inheriting objects which are supposed to have their own TDC calibrations.
+        Plots a comparison of lifetime histograms. 'kwargs' is a dictionary, where keys are
+        to be used as legend labels and values are 'TDCPhotonDataMixin'-inheriting objects
+        which are supposed to have their own TDC calibrations.
         """
 
         # add self (first) to compared TDC calibrations
@@ -1585,10 +1666,11 @@ class SolutionSFCSMeasurement:
         **kwargs,
     ):
         """
-        Given a calibration SolutionSFCSMeasurement, i.e. one performed on a below-resolution sample
-        (e.g. a 300 bp DNA sample labeled with the same fluorophore),
-        this method divides this measurement's (self) Hankel transforms by the corresponding ones
-        in the calibration measurement (all calculated if needed) and returns the sought structure factors.
+        Given a calibration SolutionSFCSMeasurement, i.e. one performed on a below-resolution
+        sample (e.g. a 300 bp DNA sample labeled with the same fluorophore), this method
+        divides this measurement's (self) Hankel transforms by the corresponding ones
+        in the calibration measurement (all calculated if needed) and returns the sought
+        structure factors.
         """
 
         if is_verbose:
@@ -1627,26 +1709,38 @@ class SolutionSFCSMeasurement:
         interp_types = list(list(self.cf.values())[0].structure_factors.keys())
         n_interps = len(interp_types)
 
+        # store the model comparison list
+        comparisons = kwargs.get("comparisons", [])
+
         with Plotter(
             subplots=(n_interps, 1),
             super_title=f"{self.type.capitalize()}: Structure Factors",
             **kwargs,
         ) as axes:
+            is_child = kwargs.pop("parent_ax", None) is not None
+            # Plot structure factors for all CorrFunc objects
             for CF in self.cf.values():
-                kwargs.pop("parent_ax", None)
                 CF.plot_structure_factor(
                     parent_ax=axes,
                     label_prefix=label_prefix,
+                    # add model comparison list to the first plot only
+                    comparisons=kwargs.pop("comparisons", []),
                     **kwargs,
                 )
+
             for ax, interp_type in zip(axes if n_interps > 1 else [axes], interp_types):
                 ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
+
+            # move labels to the end of the legend
+            if not is_child:
+                move_labels_to_end_of_legend(axes, [model for model, _ in comparisons])
 
     def calculate_filtered_afterpulsing(
         self, tdc_gate_ns: Union[Gate, Tuple[float, float]] = Gate(), is_verbose=True, **kwargs
     ):
         """Get the afterpulsing by filtering the raw data."""
-        # TODO: this might fail if called prior to either TDC calibration or afterpulsing filter calculation
+        # TODO: this might fail if called prior to either TDC calibration or
+        #  afterpulsing filter calculation
 
         self.correlate_and_average(
             cf_name="afterpulsing",
@@ -1667,7 +1761,8 @@ class SolutionSFCSMeasurement:
         was_saved = False
 
         original_filepath_template = cast(Path, self.file_path_template)
-        # if no data root supplied, use the originally saved path (will not work well across systems)
+        # if no data root supplied, use the originally saved path
+        # (will not work well across systems)
         if data_root is None:
             dir_path = (
                 original_filepath_template.parent
@@ -1724,12 +1819,17 @@ class SolutionSFCSExperiment:
         self.cal_exp: SolutionSFCSExperiment
 
     def __repr__(self):
-        return f"""SolutionSFCSExperiment({self.name}, confocal={f"'{self.confocal.template}'" if self.confocal.is_loaded else None}, sted='{f"'{self.sted.template}'" if self.sted.is_loaded else None})
+        return f"""SolutionSFCSExperiment({self.name},
+        confocal={f"'{self.confocal.template}'" if self.confocal.is_loaded else None},
+        sted='{f"'{self.sted.template}'" if self.sted.is_loaded else None})
         """
 
     @property
     def cf_dict(self):
-        """unite all CorrFunc objects from both 'confocal' and 'sted' measurements in a single dictionary."""
+        """
+        Unite all CorrFunc objects from both 'confocal' and 'sted' measurements
+        in a single dictionary.
+        """
 
         return {
             cf_label: cf for meas in [self.confocal, self.sted] for cf_label, cf in meas.cf.items()
@@ -1737,7 +1837,10 @@ class SolutionSFCSExperiment:
 
     @property
     def lifetime_params(self):
-        """Returns the LifeTimeParams property of the confocal/STED measurements if both exist and are the same."""
+        """
+        Returns the LifeTimeParams property of the confocal/STED measurements
+        if both exist and are the same.
+        """
 
         if (
             (getattr(self.confocal, "lifetime_params", None) is not None)
@@ -1830,10 +1933,12 @@ class SolutionSFCSExperiment:
                 setattr(self, meas_type, measurement)
                 print(f"Loaded pre-processed {meas_type} measurement from: '{dir_path}'")
             except OSError:
-                # since not forcing processing, avoid dumping (though will still process to get p.general...) existing raw data
+                # since not forcing processing, avoid dumping (though will still process
+                # to get p.general...) existing raw data
                 kwargs["should_avoid_dumping"] = True
                 print(
-                    f"Pre-processed {meas_type} measurement not found at: '{dir_path}'. Processing (non-existing) data files regularly."
+                    f"Pre-processed {meas_type} measurement not found at: '{dir_path}'. "
+                    f"Processing (non-existing) data files regularly."
                 )
 
         if not measurement.cf:  # Process data
@@ -1870,7 +1975,8 @@ class SolutionSFCSExperiment:
             )
 
             with Plotter(
-                super_title=f"'{self.name.capitalize()}' Experiment\n'{measurement.type.capitalize()}' Measurement - ACFs",
+                super_title=f"'{self.name.capitalize()}' Experiment"
+                f"\n'{measurement.type.capitalize()}' Measurement - ACFs",
                 ylim=(-100, cf.g0 * 1.5),
             ) as ax:
                 cf.plot_correlation_function(
@@ -1919,7 +2025,8 @@ class SolutionSFCSExperiment:
                 print("Confocal saved.")
             elif verbose:
                 print(
-                    "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
+                    "Not saving - processed measurement already exists "
+                    "(set 'should_force = True' to override.)",
                     end=" ",
                 )
         if self.sted.is_loaded and "sted" in meas_types:
@@ -1927,7 +2034,8 @@ class SolutionSFCSExperiment:
                 print("STED saved.")
             elif verbose:
                 print(
-                    "Not saving - processed measurement already exists (set 'should_force = True' to override.)",
+                    "Not saving - processed measurement already exists "
+                    "(set 'should_force = True' to override.)",
                     end=" ",
                 )
         if verbose:
@@ -1938,7 +2046,8 @@ class SolutionSFCSExperiment:
 
         # calibrate excitation measurement first, and sync STED to it if STED exists
         if self.confocal.is_loaded:
-            # only calibrate TDC for confocal if hasn't before (should exist if afterpulsing-filtered)
+            # only calibrate TDC for confocal if hasn't before
+            # (should exist if afterpulsing-filtered)
             if not hasattr(self.confocal, "tdc_calib"):  # TODO: TEST ME!
                 self.confocal.calibrate_tdc(**kwargs)
             if self.sted.is_loaded:  # if both measurements quack as if loaded
@@ -1982,7 +2091,8 @@ class SolutionSFCSExperiment:
         **kwargs,
     ) -> LifeTimeParams:
         """Doc."""
-        # TODO: the default bg_range may fail for hard-gated measurements! Check it out and add manual selection or some automatic heuristic solution.
+        # TODO: the default bg_range may fail for hard-gated measurements!
+        #  Check it out and add manual selection or some automatic heuristic solution.
 
         conf = self.confocal
         sted = self.sted
@@ -2116,7 +2226,8 @@ class SolutionSFCSExperiment:
         **kwargs,
     ) -> None:
         """
-        A high-level method for correlating a measurement (usually STED) while imposing a TDC (post measurement) gate.
+        A high-level method for correlating a measurement (usually STED)
+        while imposing a TDC (post measurement) gate.
         """
 
         kwargs["is_verbose"] = is_verbose
@@ -2174,14 +2285,16 @@ class SolutionSFCSExperiment:
         # remove all gates
         if gate_list is None:
             print(
-                f"Removing ALL '{meas_type}' TDC gates {gate_list} for experiment '{self.name}'... ",
+                f"Removing ALL '{meas_type}' TDC gates {gate_list} "
+                f"for experiment '{self.name}'... ",
                 end="",
             )
             meas.cf = {cf_name: cf for cf_name, cf in meas.cf.items() if not cf.gate_ns}
 
         else:
             print(
-                f"Removing multiple '{meas_type}' gates {gate_list} for experiment '{self.name}'... ",
+                f"Removing multiple '{meas_type}' gates {gate_list} "
+                f"for experiment '{self.name}'... ",
                 end="",
             )
             for tdc_gate_ns in gate_list:
@@ -2261,7 +2374,9 @@ class SolutionSFCSExperiment:
             if y_field == "normalized":
                 ylim = Limits(1e-3, 1) if y_scale == "log" else Limits(0, 1)
             elif y_field in {"average_all_cf_cr", "avg_cf_cr"}:
-                # TODO: perhaps cf attribute should be a list and not a dict? all I'm really ever interested in is either showing the first or all together (names are in each CF anyway)
+                # TODO: perhaps cf attribute should be a list and not a dict?
+                #  all I'm really ever interested in is either showing the first or all
+                #  together (names are in each CF anyway)
                 first_cf = list(ref_meas.cf.values())[0]
                 ylim = Limits(-1e3, first_cf.g0 * 1.2)
 
@@ -2297,7 +2412,8 @@ class SolutionSFCSExperiment:
             new_lines = [line for line in ax.get_lines() if line not in existing_lines]
 
             # add experiment name to labels if plotted hierarchically (multiple experiments)
-            # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
+            # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels
+            #  can be passed at Plotter init?
             if parent_ax is not None:
                 for line in new_lines:
                     label = line.get_label()
@@ -2310,9 +2426,10 @@ class SolutionSFCSExperiment:
 
     def estimate_spatial_resolution(self, colors=None, sted_only=False, **kwargs) -> Iterator[str]:
         """
-        High-level method for performing Gaussian fits over 'normalized' vs. 'vt_um' fields of all correlation functions
-        (confocal, sted and any gates) in order to estimate the resolution improvement.
-        This is relevant only for calibration experiments (i.e. 300 bp samples).
+        High-level method for performing Gaussian fits over 'normalized' vs. 'vt_um' fields
+        of all correlation functions (confocal, sted and any gates) in order to estimate
+        the resolution improvement. This is relevant only for calibration experiments
+        (i.e. 300 bp samples).
         """
 
         with Plotter(
@@ -2326,7 +2443,8 @@ class SolutionSFCSExperiment:
 
             kwargs.pop("gui_display", None)  # TODO: should this be included in Plotter init?
             if (parent_ax := kwargs.pop("parent_ax", None)) is not None:
-                # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
+                # TODO: this could be perhaps a feature of Plotter? i.e.,
+                #  an addition to all labels can be passed at Plotter init?
                 existing_lines = parent_ax.get_lines()
 
             remaining_colors = colors if colors is not None else cycle(default_colors)
@@ -2341,7 +2459,8 @@ class SolutionSFCSExperiment:
             )
 
             # add experiment name to labels if plotted hierarchically (multiple experiments)
-            # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all labels can be passed at Plotter init?
+            # TODO: this could be perhaps a feature of Plotter? i.e., an addition to all
+            #  labels can be passed at Plotter init?
             if parent_ax is not None:
                 for line in ax.get_lines():
                     if line not in existing_lines:
@@ -2355,7 +2474,8 @@ class SolutionSFCSExperiment:
 
     def plot_afterpulsing_filters(self, **kwargs) -> None:
         """Plot afterpulsing filters each measurement"""
-        # TODO: this can be improved, (plot both in single figure - plot method of AfterpulsingFilter doesn't match this)
+        # TODO: this can be improved, (plot both in single figure - plot method of
+        #  AfterpulsingFilter doesn't match this)
 
         with suppress(AttributeError):
             for cf in self.cf_dict.values():
@@ -2415,10 +2535,14 @@ class SolutionSFCSExperiment:
         interp_types = list(list(self.confocal.cf.values())[0].structure_factors.keys())
         n_interps = len(interp_types)
 
-        # optionally plot all transforms of all corrfuncs of all measurements in a single figure (for self and calibration)
+        # optionally plot all transforms of all corrfuncs of all measurements in a
+        # single figure (for self and calibration)
         if plot_ht:
             for exp in (self, self.cal_exp):
                 exp.plot_hankel_transforms(**kwargs)
+
+        # store the model comparisons
+        comparisons = kwargs.get("comparisons", [])
 
         # plot the structure factors in another figure
         with Plotter(
@@ -2426,16 +2550,22 @@ class SolutionSFCSExperiment:
             super_title=f"Experiment '{self.name}': Structure factors",
             **kwargs,
         ) as axes:
-            kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
+            is_child = kwargs.pop("parent_ax", None) is not None
             for meas in [getattr(self, meas_type) for meas_type in ("confocal", "sted")]:
                 if meas.is_loaded:
                     meas.plot_structure_factors(
                         parent_ax=axes,
                         label_prefix=self.name,
+                        # add to the first plot only
+                        comparisons=kwargs.pop("comparisons", []),
                         **kwargs,
                     )
+
             for ax, interp_type in zip(axes if len(interp_types) > 1 else [axes], interp_types):
                 ax.set_title(f"{interp_type.capitalize()} Interp./Extrap.")
+
+            if not is_child:
+                move_labels_to_end_of_legend(axes, [model for model, _ in comparisons])
 
     def fit_structure_factors(self, model: str):
         """Doc."""
@@ -2448,7 +2578,8 @@ class SolutionSFCSExperiment:
 class ImageSFCSMeasurement:
     """Doc."""
 
-    # TODO: Later, create ImageSFCSExperiment which will have .confocal and .sted (synchronize delay times and everything...)
+    # TODO: Later, create ImageSFCSExperiment which will have .confocal and .sted
+    #  (synchronize delay times and everything...)
 
     laser_freq_hz: int
     fpga_freq_hz: int
@@ -2494,12 +2625,16 @@ class ImageSFCSMeasurement:
         # initialize data processor
         self.dump_path = DUMP_ROOT / self.file_path.stem
         self.data_processor = TDCPhotonDataProcessor(
-            self.dump_path, self.laser_freq_hz, self.fpga_freq_hz, self.detector_settings["gate_ns"]
+            self.dump_path,
+            self.laser_freq_hz,
+            self.fpga_freq_hz,
+            self.detector_settings["gate_ns"],
         )
         # actual plane data processing
         if is_verbose:
             print(
-                f"Loading and processing total data ({self.scan_settings['n_planes']} planes): '{self.file_path.stem}'...",
+                f"Loading and processing total data "
+                f"({self.scan_settings['n_planes']} planes): '{self.file_path.stem}'...",
                 end=" ",
             )
         # Processing data
@@ -2545,7 +2680,8 @@ class ImageSFCSMeasurement:
         self.laser_mode = full_data.get("laser_mode")
         self.scan_settings = full_data.get("scan_settings")
 
-        # get countrate estimate (for multiprocessing threshod). calculated more precisely in the end of processing.
+        # get countrate estimate (for multiprocessing threshod).
+        # calculated more precisely in the end of processing.
         self.avg_cnt_rate_khz = full_data.get("avg_cnt_rate_khz")
 
         self.afterpulse_params = self._file_dict["system_info"]["afterpulse_params"]
@@ -2561,7 +2697,8 @@ class ImageSFCSMeasurement:
             not self.detector_settings["gate_ns"] and self.detector_settings["mode"] == "external"
         ):
             print(
-                "This should not happen (missing detector gate) - move this to legacy file handeling!"
+                "This should not happen (missing detector gate) - "
+                "move this to legacy file handeling!"
             )
             self.detector_settings["gate_ns"] = Gate(
                 hard_gate=(
@@ -2622,7 +2759,7 @@ class ImageSFCSMeasurement:
         ppl = self.scan_settings["ppl"]
         ppp = ppl * n_lines
 
-        # only one file for images. using .data as list for consistency with SolutionSFCSMeasurement
+        # only 1 file for images. using .data as list for consistency with SolutionSFCSMeasurement
         data = self.data[0]
 
         # gate
@@ -2726,7 +2863,8 @@ class ImageSFCSMeasurement:
         # auto-determination of 'min_n_photons' if not given
         if min_n_photons is None:
             print(
-                f"Auto-determining 'min_n_photons' according to {img_median_factor:.1f} times median number of photons-per-pixel... ",
+                f"Auto-determining 'min_n_photons' according to {img_median_factor:.1f} "
+                f"times median number of photons-per-pixel... ",
                 end="",
             )
             # get TDC counts data (use existing or make new)
@@ -2752,7 +2890,7 @@ class ImageSFCSMeasurement:
         ppl = self.scan_settings["ppl"]
         ppp = ppl * n_lines
 
-        # only one file for images. using .data as list for consistency with SolutionSFCSMeasurement
+        # only 1 file for images. using .data as list for consistency with SolutionSFCSMeasurement
         data = self.data[0]
 
         pulse_runtime = data.raw.pulse_runtime
@@ -2923,7 +3061,9 @@ class ImageSFCSMeasurement:
         return img
 
     def estimate_spatial_resolution(self, should_plot=True, **kwargs) -> FitParams:
-        """Fit a 2D Gaussian to image in order to estimate the resolution (e.g. for fluorescent beads)"""
+        """
+        Fit a 2D Gaussian to image in order to estimate the resolution (e.g. for fluorescent beads)
+        """
 
         img = self.tdc_image_data.construct_plane_image("forward normalized", **kwargs)
         fp = fit_2d_gaussian_to_image(img)
@@ -2965,7 +3105,9 @@ class ImageSFCSMeasurement:
         # print
         dim1_char, dim2_char = self.scan_settings["plane_orientation"]
         print(
-            f"1/e^2 diameter determined to be:\n{dim1_char}: {diameter_x_nm:.0f} +/- {diameter_x_nm_err:.0f} nm\n{dim2_char}: {diameter_y_nm:.0f} +/- {diameter_y_nm_err:.0f} nm"
+            f"1/e^2 diameter determined to be:\n"
+            f"{dim1_char}: {diameter_x_nm:.0f} +/- {diameter_x_nm_err:.0f} nm\n{dim2_char}: "
+            f"{diameter_y_nm:.0f} +/- {diameter_y_nm_err:.0f} nm"
         )
 
         if should_plot:
@@ -2977,7 +3119,11 @@ class ImageSFCSMeasurement:
             )
             ellipse.set_facecolor((0, 0, 0, 0))
             ellipse.set_edgecolor("red")
-            annotation = f"$1/e^2$: \n{dim1_char}: {diameter_x_nm:.0f} +/- {diameter_x_nm_err:.0f} nm\n{dim2_char}: {diameter_y_nm:.0f} +/- {diameter_y_nm_err:.0f} nm\n$\\chi^2$={fp.chi_sq_norm:.2e}"
+            annotation = (
+                f"$1/e^2$: \n{dim1_char}: {diameter_x_nm:.0f} +/- "
+                f"{diameter_x_nm_err:.0f} nm\n{dim2_char}: {diameter_y_nm:.0f} +/- "
+                f"{diameter_y_nm_err:.0f} nm\n$\\chi^2$={fp.chi_sq_norm:.2e}"
+            )
             with Plotter(**kwargs) as ax:
                 ax.imshow(img)
                 ax.add_artist(ellipse)

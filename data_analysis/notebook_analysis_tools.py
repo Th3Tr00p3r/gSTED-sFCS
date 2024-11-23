@@ -31,7 +31,8 @@ def mpl_backend(backend, verbose=False):
         return
     if verbose:
         print(
-            f"[MPL BACKEND] Switching Matplotlib backend from '{original_backend}' to '{backend}'..."
+            f"[MPL BACKEND] Switching Matplotlib backend "
+            f"from '{original_backend}' to '{backend}'..."
         )
     plt.close("all")
     mpl.use(backend)
@@ -62,7 +63,10 @@ class SolutionSFCSExperimentLoader:
         # build proper paths
         for config in data_config.values():
             config["confocal_path_template"] = (
-                self._data_root / config["confocal_date"] / "solution" / config["confocal_template"]
+                self._data_root
+                / config["confocal_date"]
+                / "solution"
+                / config["confocal_template"]
                 if config.get("confocal_template")
                 else None
             )
@@ -120,11 +124,14 @@ class SolutionSFCSExperimentLoader:
                 ):
                     data_config[label]["was_processed"] = True
 
-                # calibrate TDC - only if STED is loaded and not already synced (which is the case when filtering afterpulsing)
+                # calibrate TDC - only if STED is loaded and not already synced (which is the
+                # case when filtering afterpulsing)
                 if exp.sted.is_loaded and not exp.sted.afterpulsing_method == "filter":
                     with mpl_backend("inline"):
                         exp.calibrate_tdc(
-                            **data_config[label], force_processing=force_processing, is_verbose=True
+                            **data_config[label],
+                            force_processing=force_processing,
+                            is_verbose=True,
                         )
 
                 # save processed data (to avoid re-processing)
@@ -275,7 +282,6 @@ class SolutionSFCSExperimentHandler:
                     # )
 
                 print(f"\n{label} countrates:\nConfocal - {exp.confocal.avg_cnt_rate_khz:.2f} kHz")
-                # print(f"\n{label} line frequency:\nConfocal - {exp.confocal.scan_settings['line_freq_hz']:.2f} Hz")
 
     @skip_if_all_exp_filtered
     def display_scan_images(self, n_images: int = 3, backend="inline"):
@@ -431,7 +437,8 @@ class SolutionSFCSExperimentHandler:
                     f"{list(exp.sted.cf.values())[0].g0 / 1e3:.2f} kHz"
                 )
                 print(
-                    f"    STED countrate: {sted_cr:.2f} +/- " f"{exp.sted.std_cnt_rate_khz:.2f} kHz"
+                    f"    STED countrate: {sted_cr:.2f} +/- "
+                    f"{exp.sted.std_cnt_rate_khz:.2f} kHz"
                 )
                 print(
                     f"    STED Molecules in Sampling Volume: "
@@ -474,16 +481,17 @@ class SolutionSFCSExperimentHandler:
                 print(f"{label}: Using existing...")
 
     @skip_if_all_exp_filtered
-    def calculate_hankel_transforms(self, force: bool = False):
+    def calculate_hankel_transforms(self, force: bool = False, **kwargs):
         """
         Calculate the Hankel transforms for a set of experiments.
         """
-        # TODO: this one needs to be improved in terms of user-friendliness and interactivity -
-        #  1. Figure out why the last plot gets stuck after selecting the limit (middle mouse
-        #     button or 'Enter')
+        # TODO: make the extrapolation point of the last CorrFunc the xlim of the next CorrFunc
+        #  e.g. if set x to 1.2, then the next xlim will be max(1.0, 1.2). the max is saved
+        #  for the next CorrFunc. This way, the user get's to see what he's actually choosing
+        #  as the extrapolation point.
         with mpl_backend("Qt5Agg"):
             for label, exp in self.filtered_exp_dict.items():
-                with Plotter() as ax:
+                with Plotter(**kwargs) as ax:
                     for (cf_name, cf), color in zip(exp.cf_dict.items(), cycle(default_colors)):
                         if not getattr(cf, "hankel_transforms", False) or force:
                             cf.calculate_hankel_transform(
@@ -502,7 +510,8 @@ class SolutionSFCSExperimentHandler:
                             # save processed meas (data not re-saved - should be quick)
                             exp.save_processed_measurements(
                                 should_save_data=False,
-                                # processed files should already exist at this point, so need to force
+                                # processed files should already exist at this point,
+                                # so need to force
                                 should_force=True,
                                 data_root=self._data_root,
                             )
@@ -520,26 +529,37 @@ class SolutionSFCSExperimentHandler:
                 exp.plot_hankel_transforms(**kwargs)
 
     @skip_if_all_exp_filtered
-    def calculate_structure_factors(self, exp_label2cal_label: Dict[str, str], force: bool = False):
+    def calculate_structure_factors(
+        self, exp_label2cal_label: Dict[str, str], force: bool = False
+    ):
         """
         Calculate the structure factors for a set of experiments.
         """
-        with mpl_backend("Qt5Agg"):
-            for exp_label, cal_exp_label in exp_label2cal_label.items():
-                try:
-                    exp = self.filtered_exp_dict[exp_label]
-                    cal_exp = self.filtered_exp_dict[cal_exp_label]
-                except KeyError as e:
-                    print(f"Experiment label {e} not found in filtered experiments. ignoring...")
-                    continue
-                else:
-                    exp.calculate_structure_factors(cal_exp, rmax=200, should_force=force)
 
-                    # save processed meas (data not re-saved - should be quick)
-                    exp.save_processed_measurements(
-                        should_save_data=False,
-                        # processed files should already exist at this point, so need to force
-                        should_force=True,
-                        data_root=self._data_root,
-                        verbose=False,
-                    )
+        with mpl_backend("Qt5Agg"):
+            for exp, cal_exp in [
+                (self.exp_dict[exp_label], self.exp_dict[cal_label])
+                for exp_label, cal_label in exp_label2cal_label.items()
+                if exp_label in self.filtered_exp_dict
+            ]:
+                exp.calculate_structure_factors(cal_exp, rmax=200, should_force=force)
+
+                # save processed meas (data not re-saved - should be quick)
+                exp.save_processed_measurements(
+                    should_save_data=False,
+                    # processed files should already exist at this point, so need to force
+                    should_force=True,
+                    data_root=self._data_root,
+                    verbose=False,
+                )
+
+    @skip_if_all_exp_filtered
+    def plot_structure_factors(self, backend="inline", **kwargs):
+        """
+        Plot the structure factors for a set of experiments.
+        """
+        with mpl_backend(backend):
+            for exp_label, exp in self.filtered_exp_dict.items():
+                # plot structure factors for each experiment (except the calibrations
+                if hasattr(exp, "cal_exp"):
+                    exp.plot_structure_factors(**kwargs)
