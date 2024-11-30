@@ -426,7 +426,7 @@ class InterpExtrap1D:
 
 def exclude_elements_by_indices_1d(input_arr, idxs_to_exclude):
     """Doc."""
-    # TODO: look for lines where I filter indices using list comprehensions
+    # NOTE: look for lines where I filter indices using list comprehensions
     #  and replace with this function
 
     all_idxs = np.arange(len(input_arr))

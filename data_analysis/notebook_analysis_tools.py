@@ -491,6 +491,7 @@ class SolutionSFCSExperimentHandler:
         #  as the extrapolation point.
         with mpl_backend("Qt5Agg"):
             for label, exp in self.filtered_exp_dict.items():
+                x_lim = (0.01, 1.0)
                 with Plotter(**kwargs) as ax:
                     for (cf_name, cf), color in zip(exp.cf_dict.items(), cycle(default_colors)):
                         if not getattr(cf, "hankel_transforms", False) or force:
@@ -499,6 +500,7 @@ class SolutionSFCSExperimentHandler:
                                 rmax=200,
                                 title_prefix=f"{label}: ",
                                 parent_ax=ax,
+                                x_lim=x_lim,
                             )
                             # remove the last two plots (data and noise estimate), and plot
                             # the interpolation instead
@@ -518,6 +520,11 @@ class SolutionSFCSExperimentHandler:
 
                         else:
                             print(f"{label}: Using existing...")
+
+                        # Get the last x_lim for the next CorrFunc
+                        extrap_point = cf.hankel_transforms["gaussian"].IE.x_lims.upper
+                        new_max_x = max(extrap_point * 1.2, x_lim[1])
+                        x_lim = (0.01, new_max_x)
 
     @skip_if_all_exp_filtered
     def plot_hankel_transforms(self, backend="inline", **kwargs):
