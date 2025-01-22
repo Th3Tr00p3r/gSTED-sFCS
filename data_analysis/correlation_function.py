@@ -6,7 +6,19 @@ from contextlib import suppress
 from dataclasses import InitVar, dataclass
 from itertools import cycle
 from pathlib import Path
-from typing import Any, Dict, Generator, Iterator, List, Optional, Sequence, Tuple, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 import numpy as np
 from matplotlib.lines import Line2D
@@ -35,6 +47,7 @@ from utilities.file_utilities import (
     save_object,
 )
 from utilities.fit_tools import (
+    FitError,
     FitParams,
     curve_fit_lims,
     diffusion_3d_fit,
@@ -110,19 +123,26 @@ class StructureFactor:
 
     HT: InitVar[HankelTransform]
     cal_HT: InitVar[HankelTransform]
+    fit_params: Optional[FitParams] = None
 
     def __post_init__(self, HT, cal_HT):
         self.q = HT.q
         self.sq = HT.fq / cal_HT.fq
 
     def plot(
-        self, label_prefix="", comparisons: Optional[List[Tuple[str, float]]] = None, **kwargs
+        self,
+        label_prefix="",
+        comparisons: Optional[List[Tuple[str, float]]] = None,
+        plot_fit=True,
+        color: Optional[str] = None,
+        **kwargs,
     ):
         """
         Plot a single structure factor. Built to be used for hierarchical plotting
         from a measurement or an experiment.
         """
         comparisons = comparisons or []
+        is_fitting = plot_fit and self.fit_params is not None
 
         with Plotter(
             super_title="Structure Factors",
@@ -130,17 +150,65 @@ class StructureFactor:
             **kwargs,
         ) as ax:
             # plot the structure factor
-            ax.plot(self.q, self.sq / self.sq[0], label=label_prefix)
+            ax.plot(
+                self.q,
+                self.sq / self.sq[0],
+                "o",
+                label=f"{label_prefix}"
+                f"{f' {self.fit_params.fit_func.__name__}' if is_fitting else ''}",
+                color=color,
+                markerfacecolor="none",
+            )
             # plot the structure factor of
             # an ideal chain (q^-2) and a fractal globule (q^-3) for comparison (optional)
             for model, coeff in comparisons:
                 plot_theoretical_structure_factor_in_ax(ax, self.q, coeff, model)
+            # plot the fit, if available
+            if is_fitting:
+                ax.plot(self.fit_params.x, self.fit_params.fitted_y, label="_Fit", color=color)
 
             ax.set_xscale("log")
             ax.set_ylim(1e-4, 2)
             ax.set_xlabel("$q\\ \\left(\\mu m^{-1}\\right)$")
             ax.set_ylabel("$S(q)$")
             ax.legend()
+
+    def fit(self, fit_func: Callable, should_plot: bool = False, **kwargs) -> None:
+        """
+        Fit the structure factor data to a given function.
+        """
+        # normalize the structure factor
+        x = self.q
+        y = self.sq / self.sq[0]
+
+        # heuristically estimate the fit parameters if not provided
+        if not (p0 := kwargs.get("p0")):
+            if fit_func.__name__ in ["debye_structure_factor_fit", "dawson_structure_factor_fit"]:
+                p0 = (1,)
+            elif fit_func.__name__ in [
+                "screened_debye_structure_factor_fit",
+                "screened_dawson_structure_factor_fit",
+            ]:
+                p0 = (1, 1, 1)
+            else:
+                raise ValueError(f"Unknown fit function: {fit_func.__name__}")
+
+        # fit the structure factor, keeping the fit parameters for plotting
+        try:
+            self.fit_params = curve_fit_lims(
+                fit_func,
+                param_estimates=p0,
+                xs=x,
+                ys=y,
+                x_limits=kwargs.pop("x_limits", Limits(1e-4, 10)),
+                y_limits=kwargs.pop("y_limits", Limits(0, 1)),
+                plot_kwargs=dict(x_scale="log", y_scale="log"),
+                should_plot=should_plot,
+                **kwargs,
+            )
+        except FitError as exc:
+            self.fit_params = None
+            raise exc
 
 
 @dataclass
@@ -1812,10 +1880,11 @@ class SolutionSFCSMeasurement:
 class SolutionSFCSExperiment:
     """Doc."""
 
+    confocal: SolutionSFCSMeasurement
+    sted: SolutionSFCSMeasurement
+
     def __init__(self, name):
         self.name = name
-        self.confocal: SolutionSFCSMeasurement
-        self.sted: SolutionSFCSMeasurement
         self.cal_exp: SolutionSFCSExperiment
 
     def __repr__(self):
@@ -2005,7 +2074,9 @@ class SolutionSFCSExperiment:
             bg_range = cf.remove_background(name_prefix=self.name, bg_range=bg_range)
 
     def re_average_all(self, **kwargs):
-        """Doc."""
+        """
+        Re-average all correlation functions in the experiment.
+        """
 
         for cf in self.cf_dict.values():
             cf.average_correlation(**kwargs)
@@ -2528,8 +2599,12 @@ class SolutionSFCSExperiment:
         # keep reference to calibration experiment
         self.cal_exp = cal_exp
 
-    def plot_structure_factors(self, plot_ht=False, **kwargs):
-        """Doc."""
+    def plot_structure_factors(
+        self, plot_ht=False, confocal_only=False, sted_only=False, parent_ax=None, **kwargs
+    ) -> None:
+        """
+        Plot structure factors of all CorrFunc objects in the experiment.
+        """
 
         # get interpolations types
         interp_types = list(list(self.confocal.cf.values())[0].structure_factors.keys())
@@ -2548,10 +2623,17 @@ class SolutionSFCSExperiment:
         with Plotter(
             subplots=(n_interps, 1),
             super_title=f"Experiment '{self.name}': Structure factors",
+            parent_ax=parent_ax,
             **kwargs,
         ) as axes:
             is_child = kwargs.pop("parent_ax", None) is not None
-            for meas in [getattr(self, meas_type) for meas_type in ("confocal", "sted")]:
+            if confocal_only:
+                meas_types = ["confocal"]
+            elif sted_only:
+                meas_types = ["sted"]
+            else:
+                meas_types = ["confocal", "sted"]
+            for meas in [getattr(self, meas_type) for meas_type in meas_types]:
                 if meas.is_loaded:
                     meas.plot_structure_factors(
                         parent_ax=axes,
@@ -2692,7 +2774,7 @@ class ImageSFCSMeasurement:
         self.fpga_freq_hz = int(full_data["fpga_freq_mhz"] * 1e6)
         self.ao_sampling_freq_hz = self.scan_settings["line_freq_hz"] * self.scan_settings["ppl"]
 
-        # TODO: missing gate - move this to legacy handeling
+        # TODO: missing gate - move this to legacy data handling
         if self.detector_settings.get("gate_ns") is not None and (
             not self.detector_settings["gate_ns"] and self.detector_settings["mode"] == "external"
         ):

@@ -1,7 +1,7 @@
 import functools
 import os
 from contextlib import contextmanager, suppress
-from itertools import cycle
+from itertools import cycle, product
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -10,7 +10,15 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from data_analysis.correlation_function import SolutionSFCSExperiment
+from data_analysis.polymer_physics import (
+    dawson_structure_factor_fit,
+    debye_structure_factor_fit,
+    screened_dawson_structure_factor_fit,
+    screened_debye_structure_factor_fit,
+)
 from utilities.display import Plotter, default_colors, plot_acfs
+from utilities.fit_tools import FitError
+from utilities.helper import Gate
 
 try:
     from winsound import Beep as beep  # type: ignore # Windows
@@ -22,8 +30,11 @@ except ModuleNotFoundError:
 
 
 @contextmanager
-def mpl_backend(backend, verbose=False):
+def mpl_backend(backend: Optional[str] = None, verbose=False):
     """Temporarily switch Matplotlib backend. For use in Jupyter notebooks."""
+    if backend is None:
+        yield
+        return
 
     original_backend = mpl.get_backend()
     if original_backend == backend:
@@ -105,8 +116,8 @@ class SolutionSFCSExperimentLoader:
         exp_dict = {label: SolutionSFCSExperiment(name=label) for label in data_config.keys()}
         for label, exp in exp_dict.items():
             # Determine if processing is forced
-            force_processing = self._force_processing or data_config[label].pop(
-                "force_processing", False
+            force_processing = (
+                data_config[label].pop("force_processing", False) or self._force_processing
             )
 
             # skip already loaded experiments, unless forced
@@ -237,7 +248,11 @@ class SolutionSFCSExperimentHandler:
 
     @skip_if_all_exp_filtered
     def plot_correlation_functions(
-        self, confocal_only: bool = False, sted_only: bool = False, **kwargs
+        self,
+        plot_type: str = "norm_vs_vt_um",
+        confocal_only: bool = False,
+        sted_only: bool = False,
+        **kwargs,
     ):
         """
         Plot the correlation functions for a set of experiments.
@@ -245,41 +260,48 @@ class SolutionSFCSExperimentHandler:
         with Plotter(super_title="All Experiments, All ACFs", figsize=(8, 6)) as ax:
             for label, exp in self.filtered_exp_dict.items():
                 with suppress(AttributeError):
-                    # # normalized vt_um
-                    # exp.plot_correlation_functions(
-                    #     parent_ax=ax, sted_only=sted_only
-                    # )
 
                     # normalized linear vt_um
-                    exp.plot_correlation_functions(
-                        x_scale="log",
-                        y_scale="linear",
-                        parent_ax=ax,
-                        sted_only=sted_only,
-                        confocal_only=confocal_only,
-                        **kwargs,
-                    )
+                    if plot_type == "norm_vs_vt_um":
+                        exp.plot_correlation_functions(
+                            x_scale="log",
+                            y_scale="linear",
+                            parent_ax=ax,
+                            sted_only=sted_only,
+                            confocal_only=confocal_only,
+                            **kwargs,
+                        )
 
-                    # # normalized linear vt_um
-                    # exp.confocal.plot_correlation_functions(
-                    #     x_scale="log", y_scale="linear", parent_ax=ax, sted_only=sted_only
-                    # )
-                    #
-                    # # normalized vs. log lag
-                    # exp.plot_correlation_functions(
-                    #     x_field="lag", parent_ax=ax, confocal_only=confocal_only
-                    # )
-                    #
-                    # # avg_cf_cr vs. log lag
-                    # exp.plot_correlation_functions(
-                    #     x_field="lag", y_field="avg_cf_cr", parent_ax=ax,
-                    #     confocal_only=confocal_only
-                    # )
-                    #
-                    # # log normalized vs. vt_um_sq
-                    # exp.plot_correlation_functionsrelation_functions(
-                    #     x_scale="quadratic", parent_ax=ax, sted_only=sted_only
-                    # )
+                    # normalized vs. log lag
+                    elif plot_type == "norm_vs_log_lag":
+                        exp.plot_correlation_functions(
+                            x_field="lag",
+                            parent_ax=ax,
+                            sted_only=sted_only,
+                            confocal_only=confocal_only,
+                            **kwargs,
+                        )
+
+                    # avg_cf_cr vs. log lag
+                    elif plot_type == "avg_cf_cr_vs_log_lag":
+                        exp.plot_correlation_functions(
+                            x_field="lag",
+                            y_field="avg_cf_cr",
+                            parent_ax=ax,
+                            sted_only=sted_only,
+                            confocal_only=confocal_only,
+                            **kwargs,
+                        )
+
+                    # log normalized vs. vt_um_sq
+                    elif plot_type == "log_norm_vs_vt_um_sq":
+                        exp.plot_correlation_functions(
+                            x_scale="quadratic",
+                            parent_ax=ax,
+                            confocal_only=confocal_only,
+                            sted_only=sted_only,
+                            **kwargs,
+                        )
 
                 print(f"\n{label} countrates:\nConfocal - {exp.confocal.avg_cnt_rate_khz:.2f} kHz")
 
@@ -449,46 +471,115 @@ class SolutionSFCSExperimentHandler:
             print("\n")
 
     @skip_if_all_exp_filtered
-    def re_average_acfs(self, force: bool = False):
+    def remove_gates(self, meas_type: Optional[str] = None, force: bool = False):
         """
-        Re-average the ACFs for a set of experiments.
+        Remove all gates from a set of experiments.
         """
         for label, exp in self.filtered_exp_dict.items():
             if self._data_config[label]["was_processed"] or force:
-                print(f"Re-averaging '{label}'...")
-                exp.re_average_all(
-                    norm_range=(2.7e-3, 3.7e-3),
-                    should_use_clustering=True,
-                    rejection=2,
-                    noise_thresh=0.5,
-                    should_plot=True,
-                )
-
-                cf_conf = list(exp.confocal.cf.values())[0]
-                #         cf_sted = list(exp.sted.cf.values())[0]
-                #         for cf in (cf_conf, cf_sted):
-                for cf in (cf_conf,):
-                    plot_acfs(
-                        cf.lag,
-                        cf.avg_cf_cr,
-                        cf.g0,
-                        cf.cf_cr,
-                        j_good=cf.j_good,
-                        # plot kwargs
-                        super_title=f"'{label}' - Split ACFs ({cf.name})",
+                # If measurement type is not specified, remove all gates
+                if meas_type is None:
+                    exp.remove_gates(should_plot=False, meas_type="confocal")
+                    exp.remove_gates(should_plot=False, meas_type="sted")
+                # Otherwise, remove gates for the specified measurement type
+                else:
+                    exp.remove_gates(should_plot=False, meas_type=meas_type)
+                try:
+                    # save processed meas (data not re-saved - should be quick)
+                    exp.save_processed_measurements(
+                        should_save_data=False,
+                        # processed files should already exist at this point, so need to force
+                        should_force=True,
                     )
-            else:
-                print(f"{label}: Using existing...")
+                except AttributeError:
+                    print("\nCode updated? did not save!\n")
+        print("Removed all gates from all experiments")
 
     @skip_if_all_exp_filtered
-    def calculate_hankel_transforms(self, force: bool = False, **kwargs):
+    def gate(
+        self,
+        upper_gates: List[float],
+        lower_gates: List[float],
+        meas_type: str = "sted",
+        force: bool = False,
+    ):
+        """
+        Gate a set of experiments.
+        """
+        gate_list_lt = [Gate(gate_ns) for gate_ns in product(lower_gates, upper_gates)]
+
+        for label, exp in self.filtered_exp_dict.items():
+            if self._data_config[label]["was_processed"] or force:
+                if exp.lifetime_params is None:
+                    with mpl_backend("Qt5Agg"):
+                        lt_params = exp.get_lifetime_parameters()
+                else:
+                    lt_params = exp.lifetime_params
+                # NOTE: lt_params.laser_pulse_delay_ns is inaccurate.
+                # Using calibrated value from "Laser Propagation Time Calibration.ipynb"
+                pulse_delay_ns = 3.70
+                lifetime_ns = lt_params.lifetime_ns
+                gate_list_ns = [
+                    round(gate * lifetime_ns + pulse_delay_ns, 2) for gate in gate_list_lt
+                ]
+                print(f"{label}:\n{lt_params}")
+                exp.add_gates(gate_list_ns, meas_type=meas_type, should_plot=False)
+                # save processed meas (data not re-saved - should be quick)
+                exp.save_processed_measurements(
+                    meas_types=["sted"],  # re-save only STED after gating (confocal unchaged)
+                    should_save_data=False,
+                    # processed files should already exist at this point, so need to force
+                    should_force=True,
+                )
+            else:
+                print(f"{label}: Using pre-processed...")
+        print("Gated all experiments")
+
+    @skip_if_all_exp_filtered
+    def re_average_acfs(
+        self,
+        norm_range: Tuple[float, float] = (2.7e-3, 3.7e-3),
+        should_use_clustering: bool = True,
+        rejection: int = 2,
+        noise_thresh: float = 0.5,
+        force: bool = False,
+    ):
+        """
+        Re-average the ACFs for a set of experiments.
+        """
+        with mpl_backend("inline"):
+            for label, exp in self.filtered_exp_dict.items():
+                if self._data_config[label]["was_processed"] or force:
+                    print(f"Re-averaging '{label}'...")
+                    exp.re_average_all(
+                        norm_range=norm_range,
+                        should_use_clustering=should_use_clustering,
+                        rejection=rejection,
+                        noise_thresh=noise_thresh,
+                        should_plot=True,
+                    )
+
+                    cf_conf = list(exp.confocal.cf.values())[0]
+                    #         cf_sted = list(exp.sted.cf.values())[0]
+                    #         for cf in (cf_conf, cf_sted):
+                    for cf in (cf_conf,):
+                        plot_acfs(
+                            cf.lag,
+                            cf.avg_cf_cr,
+                            cf.g0,
+                            cf.cf_cr,
+                            j_good=cf.j_good,
+                            # plot kwargs
+                            super_title=f"'{label}' - Split ACFs ({cf.name})",
+                        )
+                else:
+                    print(f"{label}: Using existing...")
+
+    @skip_if_all_exp_filtered
+    def calculate_hankel_transforms(self, force: bool = False, save_data: bool = False, **kwargs):
         """
         Calculate the Hankel transforms for a set of experiments.
         """
-        # TODO: make the extrapolation point of the last CorrFunc the xlim of the next CorrFunc
-        #  e.g. if set x to 1.2, then the next xlim will be max(1.0, 1.2). the max is saved
-        #  for the next CorrFunc. This way, the user get's to see what he's actually choosing
-        #  as the extrapolation point.
         with mpl_backend("Qt5Agg"):
             for label, exp in self.filtered_exp_dict.items():
                 x_lim = (0.01, 1.0)
@@ -510,13 +601,16 @@ class SolutionSFCSExperimentHandler:
                             )
 
                             # save processed meas (data not re-saved - should be quick)
-                            exp.save_processed_measurements(
-                                should_save_data=False,
-                                # processed files should already exist at this point,
-                                # so need to force
-                                should_force=True,
-                                data_root=self._data_root,
-                            )
+                            if save_data:
+                                exp.save_processed_measurements(
+                                    should_save_data=False,
+                                    # processed files should already exist at this point,
+                                    # so need to force
+                                    should_force=True,
+                                    data_root=self._data_root,
+                                )
+                            else:
+                                print(f"{label}: Warning - data not saved! (save_data=False)")
 
                         else:
                             print(f"{label}: Using existing...")
@@ -561,12 +655,79 @@ class SolutionSFCSExperimentHandler:
                 )
 
     @skip_if_all_exp_filtered
-    def plot_structure_factors(self, backend="inline", **kwargs):
+    def plot_structure_factors(self, backend: Optional[str] = None, **kwargs):
         """
-        Plot the structure factors for a set of experiments.
+        Plot the structure factors for a set of experiments, each with a unique color.
         """
         with mpl_backend(backend):
-            for exp_label, exp in self.filtered_exp_dict.items():
-                # plot structure factors for each experiment (except the calibrations
-                if hasattr(exp, "cal_exp"):
-                    exp.plot_structure_factors(**kwargs)
+            with Plotter(super_title="Structure Factors", figsize=(8, 6)) as ax:
+                # Create a color cycle to assign a unique color to each experiment
+                color_cycle = cycle(default_colors)
+
+                for exp_label, exp in self.filtered_exp_dict.items():
+                    if hasattr(exp, "cal_exp"):
+                        # Get the next color from the cycle
+                        color = next(color_cycle)
+                        # Pass the color to the plot_structure_factors method
+                        exp.plot_structure_factors(parent_ax=ax, color=color, **kwargs)
+
+    @skip_if_all_exp_filtered
+    def fit_confocal_structure_factors(self, interp_type: str = "gaussian", **kwargs):
+        """
+        Fit the structure factors for a set of experiments.
+        """
+        # Fit the structure factors for each experiment
+        for exp_label, exp in self.filtered_exp_dict.items():
+            # Get the appropriate fit function for the experiment
+            try:
+                fit_func = self._get_structure_factor_fit_func(exp_label)
+            except ValueError as e:
+                print(f"Can't select fit function for '{exp_label}': {e}, skipping...")
+                continue
+            print(f"Using fit function: {fit_func.__name__} for '{exp_label}'")
+            # Fit the structure factors for the confocal measurements
+            try:
+                exp.confocal.cf["confocal"].structure_factors[interp_type].fit(fit_func, **kwargs)
+            except FitError as e:
+                print(f"Error fitting '{exp_label}': {e}, skipping...")
+
+    @skip_if_all_exp_filtered
+    def print_confocal_structure_factor_fitted_parameters(self):
+        """
+        Print the fitted parameters for the structure factors of a set of experiments.
+        """
+        for exp_label, exp in self.filtered_exp_dict.items():
+            if hasattr(exp, "cal_exp"):
+                structure_factor = exp.confocal.cf["confocal"].structure_factors["gaussian"]
+                if structure_factor.fit_params is not None:
+                    print(f"{exp_label}:")
+                    structure_factor.fit_params.print_fitted_params()
+                    print()
+
+    @staticmethod
+    def _get_structure_factor_fit_func(label: str):
+        """
+        Returns the appropriate structure factor fit function for the given label.
+        The logic is as follows:
+        * If the label contains " L " (linearized), return a "debye" fit function
+        * If the label contains " OC " (nicked), return a "dawson" fit function
+        * If the label contains " D " (dilute), return a "regular" fit function
+        * If the label contains " SD " (semi-dilute), return a "screened" fit function
+        """
+
+        if " L " in label:
+            if " D " in label:
+                return debye_structure_factor_fit
+            elif " SD " in label:
+                return screened_debye_structure_factor_fit
+            else:
+                raise ValueError(f"Label {label} contains ' L ' but not ' D ' or ' SD '!")
+        elif " OC " in label:
+            if " D " in label:
+                return dawson_structure_factor_fit
+            elif " SD " in label:
+                return screened_dawson_structure_factor_fit
+            else:
+                raise ValueError(f"Label {label} contains ' OC ' but not ' D ' or ' SD '!")
+        else:
+            raise ValueError(f"Label {label} does not contain ' L ' or ' OC '!")

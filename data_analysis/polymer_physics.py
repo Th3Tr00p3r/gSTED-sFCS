@@ -56,6 +56,14 @@ def debye_structure_factor_fit(q, Rg: float) -> np.ndarray:
     return 2 / x**2 * (x - 1 + np.exp(-x))
 
 
+def screened_debye_structure_factor_fit(q, Rg: float, B: float, xi: float) -> np.ndarray:
+    """
+    Static structure factor expression for screened Gaussian polymers.
+    """
+    x = 2 * (xi / Rg) ** 2
+    return B / (1 + x / debye_structure_factor_fit(q, Rg))
+
+
 def dawson_structure_factor_fit(q, Rg: float) -> np.ndarray:
     """
     Static strucure factor expression for Gaussian ring polymers.
@@ -63,6 +71,14 @@ def dawson_structure_factor_fit(q, Rg: float) -> np.ndarray:
     """
     x = Rg * q / np.sqrt(2)
     return 1 / x * sp.special.dawsn(x)
+
+
+def screened_dawson_structure_factor_fit(q, Rg: float, B: float, xi: float) -> np.ndarray:
+    """
+    Static structure factor expression for screened Gaussian ring polymers.
+    """
+    x = 2 * (xi / Rg) ** 2
+    return B / (1 + x / dawson_structure_factor_fit(q, Rg))
 
 
 def wlc_rod_structure_factor_fit(q, L: float):

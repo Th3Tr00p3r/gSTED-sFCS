@@ -17,8 +17,7 @@ warnings.simplefilter("error", sp.optimize.OptimizeWarning)
 warnings.simplefilter("error", RuntimeWarning)
 
 
-class FitError(Exception):
-    ...
+class FitError(Exception): ...  # noqa: E701
 
 
 @dataclass
@@ -47,7 +46,7 @@ class FitParams:
         try:
             self.fitted_y = self.fit_func(self.x.astype(np.float64), *self.beta.values())
         except AttributeError:
-            # self.x is a tuple - this class really only makes sense for 1D data fitting! should be changed or called FitParams1D
+            # self.x is a tuple - this class really only makes sense for 1D data fitting!
             pass
 
     def interpolate_y(self, x):
@@ -94,6 +93,14 @@ class FitParams:
             )
             ax.legend()
 
+    def print_fitted_params(self):
+        """Doc."""
+
+        print(f"Fitted parameters for {self.fit_func.__name__}:")
+        print(f"Chi-squared / N = {self.chi_sq_norm:.3e}")
+        for name, val in self.beta.items():
+            print(f"{name} = {val:.3e} +/- {self.beta_error[name]:.3e}")
+
 
 def curve_fit_lims(
     fit_func: Callable,
@@ -116,7 +123,7 @@ def curve_fit_lims(
     is_finite_err = (ys_errors > 0) & np.isfinite(ys_errors)
     valid_idxs = in_lims & is_finite_err
 
-    FP = _fit_and_get_param_dict(
+    fit_params = _fit_and_get_param_dict(
         fit_func,
         xs,
         ys,
@@ -128,9 +135,9 @@ def curve_fit_lims(
     )
 
     if should_plot:
-        FP.plot(**plot_kwargs)
+        fit_params.plot(**plot_kwargs)
 
-    return FP
+    return fit_params
 
 
 def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
@@ -183,7 +190,7 @@ def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
 
 
 def _fit_and_get_param_dict(
-    fit_func,
+    fit_func: Callable,
     xs,
     ys,
     p0,
@@ -201,7 +208,8 @@ def _fit_and_get_param_dict(
     x = xs[valid_idxs]
     y = ys[valid_idxs]
     try:
-        # TODO: using weighted fitting ruins my resolution! why is that? what is the legitimate method?
+        # TODO: using weighted fitting ruins my resolution!
+        #  why is that? what is the legitimate method?
         sigma = ys_errors[valid_idxs] if should_weight_fits else np.ones(y.shape)
         ys_errors[~valid_idxs] = 0
     except TypeError:
@@ -214,7 +222,7 @@ def _fit_and_get_param_dict(
 
     param_names = fit_func.__code__.co_varnames[: fit_func.__code__.co_argcount][1:]
     if param_names == ():
-        param_names = (letter for _, letter in zip(p0, ascii_lowercase))
+        param_names = tuple(letter for _, letter in zip(p0, ascii_lowercase))
     chi_sq_arr = np.square((fit_func(x, *popt) - y) / sigma)
     try:
         chi_sq_norm = chi_sq_arr.sum() / x.size
