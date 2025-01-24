@@ -11,7 +11,7 @@ import scipy as sp
 
 from utilities.display import Plotter
 from utilities.errors import err_hndlr
-from utilities.helper import Limits
+from utilities.helper import Limits, get_func_attr
 
 warnings.simplefilter("error", sp.optimize.OptimizeWarning)
 warnings.simplefilter("error", RuntimeWarning)
@@ -95,8 +95,7 @@ class FitParams:
 
     def print_fitted_params(self):
         """Doc."""
-
-        print(f"Fitted parameters for {self.fit_func.__name__}:")
+        print(f"Fitted parameters for {get_func_attr(self.fit_func, '__name__')}:")
         print(f"Chi-squared / N = {self.chi_sq_norm:.3e}")
         for name, val in self.beta.items():
             print(f"{name} = {val:.3e} +/- {self.beta_error[name]:.3e}")
@@ -138,6 +137,69 @@ def curve_fit_lims(
         fit_params.plot(**plot_kwargs)
 
     return fit_params
+
+
+def _fit_and_get_param_dict(
+    fit_func: Callable,
+    xs,
+    ys,
+    p0,
+    ys_errors=None,
+    valid_idxs=slice(None),
+    should_weight_fits: bool = False,
+    curve_fit_kwargs: Dict[str, Any] = {},
+    **kwargs,
+) -> FitParams:
+    """Doc."""
+
+    if "linear" in get_func_attr(fit_func, "__name__"):
+        curve_fit_kwargs.pop("max_nfev", None)
+
+    x = xs[valid_idxs]
+    y = ys[valid_idxs]
+    try:
+        # TODO: using weighted fitting ruins my resolution!
+        #  why is that? what is the legitimate method?
+        sigma = ys_errors[valid_idxs] if should_weight_fits else np.ones(y.shape)
+        ys_errors[~valid_idxs] = 0
+    except TypeError:
+        sigma = np.ones(y.shape)
+
+    try:
+        popt, pcov = sp.optimize.curve_fit(fit_func, x, y, p0=p0, sigma=sigma, **curve_fit_kwargs)
+    except (RuntimeWarning, RuntimeError, sp.optimize.OptimizeWarning, ValueError) as exc:
+        raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
+
+    fit_func_code = get_func_attr(fit_func, "__code__")
+    param_names = fit_func_code.co_varnames[: fit_func_code.co_argcount][1:]
+    if param_names == ():
+        param_names = tuple(letter for _, letter in zip(p0, ascii_lowercase))
+    chi_sq_arr = np.square((fit_func(x, *popt) - y) / sigma)
+    try:
+        chi_sq_norm = chi_sq_arr.sum() / x.size
+    except AttributeError:  # x is a tuple (e.g. for 2D Gaussian)
+        chi_sq_norm = chi_sq_arr.sum() / x[0].size
+
+    beta = {name: val for name, val in zip(param_names, popt)}
+    beta0 = {name: val for name, val in zip(param_names, p0)}
+    try:
+        beta_error = {name: error for name, error in zip(param_names, np.sqrt(np.diag(pcov)))}
+    except RuntimeError as exc:
+        raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
+
+    return FitParams(
+        fit_func,
+        beta,
+        beta_error,
+        beta0,
+        xs,
+        ys,
+        ys_errors,
+        valid_idxs,
+        chi_sq_norm,
+        kwargs.get("x_limits", Limits()),
+        kwargs.get("y_limits", Limits()),
+    )
 
 
 def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
@@ -187,68 +249,6 @@ def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
         raise ValueError(f"Invalid measurement type: {meas_type}")
 
     return fp
-
-
-def _fit_and_get_param_dict(
-    fit_func: Callable,
-    xs,
-    ys,
-    p0,
-    ys_errors=None,
-    valid_idxs=slice(None),
-    should_weight_fits: bool = False,
-    curve_fit_kwargs: Dict[str, Any] = {},
-    **kwargs,
-) -> FitParams:
-    """Doc."""
-
-    if "linear" in fit_func.__name__:
-        curve_fit_kwargs.pop("max_nfev", None)
-
-    x = xs[valid_idxs]
-    y = ys[valid_idxs]
-    try:
-        # TODO: using weighted fitting ruins my resolution!
-        #  why is that? what is the legitimate method?
-        sigma = ys_errors[valid_idxs] if should_weight_fits else np.ones(y.shape)
-        ys_errors[~valid_idxs] = 0
-    except TypeError:
-        sigma = np.ones(y.shape)
-
-    try:
-        popt, pcov = sp.optimize.curve_fit(fit_func, x, y, p0=p0, sigma=sigma, **curve_fit_kwargs)
-    except (RuntimeWarning, RuntimeError, sp.optimize.OptimizeWarning, ValueError) as exc:
-        raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
-
-    param_names = fit_func.__code__.co_varnames[: fit_func.__code__.co_argcount][1:]
-    if param_names == ():
-        param_names = tuple(letter for _, letter in zip(p0, ascii_lowercase))
-    chi_sq_arr = np.square((fit_func(x, *popt) - y) / sigma)
-    try:
-        chi_sq_norm = chi_sq_arr.sum() / x.size
-    except AttributeError:  # x is a tuple (e.g. for 2D Gaussian)
-        chi_sq_norm = chi_sq_arr.sum() / x[0].size
-
-    beta = {name: val for name, val in zip(param_names, popt)}
-    beta0 = {name: val for name, val in zip(param_names, p0)}
-    try:
-        beta_error = {name: error for name, error in zip(param_names, np.sqrt(np.diag(pcov)))}
-    except RuntimeError as exc:
-        raise FitError(err_hndlr(exc, sys._getframe(), None, lvl="debug"))
-
-    return FitParams(
-        fit_func,
-        beta,
-        beta_error,
-        beta0,
-        xs,
-        ys,
-        ys_errors,
-        valid_idxs,
-        chi_sq_norm,
-        kwargs.get("x_limits", Limits()),
-        kwargs.get("y_limits", Limits()),
-    )
 
 
 def gaussian_1d_fit(t, A, mu, sigma, bg):

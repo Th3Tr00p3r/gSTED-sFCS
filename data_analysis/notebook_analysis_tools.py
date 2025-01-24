@@ -18,7 +18,7 @@ from data_analysis.polymer_physics import (
 )
 from utilities.display import Plotter, default_colors, plot_acfs
 from utilities.fit_tools import FitError
-from utilities.helper import Gate
+from utilities.helper import Gate, get_func_attr
 
 try:
     from winsound import Beep as beep  # type: ignore # Windows
@@ -676,20 +676,79 @@ class SolutionSFCSExperimentHandler:
         """
         Fit the structure factors for a set of experiments.
         """
-        # Fit the structure factors for each experiment
-        for exp_label, exp in self.filtered_exp_dict.items():
+        # Re-order the experiments to fit the dilute experiments first
+        dilute_first_exp_labels = list(self.filtered_exp_dict.keys())
+        dilute_first_exp_labels.sort(key=lambda x: " D " in x, reverse=True)
+
+        # Fit the structure factors for each experiment, with the dilute experiments first
+        for exp_label, exp in [
+            (label, self.filtered_exp_dict[label]) for label in dilute_first_exp_labels
+        ]:
             # Get the appropriate fit function for the experiment
             try:
                 fit_func = self._get_structure_factor_fit_func(exp_label)
             except ValueError as e:
                 print(f"Can't select fit function for '{exp_label}': {e}, skipping...")
                 continue
-            print(f"Using fit function: {fit_func.__name__} for '{exp_label}'")
+            print(f"Using fit function: {get_func_attr(fit_func, '__name__')} for '{exp_label}'")
             # Fit the structure factors for the confocal measurements
             try:
                 exp.confocal.cf["confocal"].structure_factors[interp_type].fit(fit_func, **kwargs)
             except FitError as e:
                 print(f"Error fitting '{exp_label}': {e}, skipping...")
+
+    def _get_structure_factor_fit_func(self, label: str):
+        """
+        Returns the appropriate structure factor fit function for the given label.
+        The logic is as follows:
+        * If the label contains " L " (linearized), return a "debye" fit function
+        * If the label contains " OC " (nicked), return a "dawson" fit function
+        * If the label contains " D " (dilute), or "PL " (partially labeled),
+            return a "regular" fit function
+        * If the label contains " SD " (semi-dilute), return a "screened" fit function - in this
+            case, the Rg_dilute and B_dilute values must be provided by the fit for the dilute
+            version of the experiment
+        """
+
+        def get_dilute_params(semidilute_label: str):
+            """
+            Get the dilute parameters from the label.
+            """
+            # Get the dilute label
+            dilute_label = semidilute_label.replace(" SD ", " D ")
+            # Get the fit parameters for the dilute label
+            dilute_fit_params = (
+                self.filtered_exp_dict[dilute_label]
+                .confocal.cf["confocal"]
+                .structure_factors["gaussian"]
+                .fit_params
+            )
+            # Get the Rg_dilute and B_dilute values from the fit parameters
+            return dilute_fit_params.beta["Rg"], dilute_fit_params.beta["B"]
+
+        if " L " in label:
+            if " D " in label or "PL " in label:
+                return debye_structure_factor_fit
+            elif " SD " in label:
+                Rg_dilute, B_dilute = get_dilute_params(label)
+                # return the screened fit function with the dilute values
+                return functools.partial(
+                    screened_debye_structure_factor_fit, Rg_dilute=Rg_dilute, B_dilute=B_dilute
+                )
+            else:
+                raise ValueError(f"Label {label} contains ' L ' but not ' D ', 'PL ' or ' SD '!")
+        elif " OC " in label:
+            if " D " in label or "PL " in label:
+                return dawson_structure_factor_fit
+            elif " SD " in label:
+                Rg_dilute, B_dilute = get_dilute_params(label)
+                return functools.partial(
+                    screened_dawson_structure_factor_fit, Rg_dilute=Rg_dilute, B_dilute=B_dilute
+                )
+            else:
+                raise ValueError(f"Label {label} contains ' OC ' but not ' D ', 'PL ' or ' SD '!")
+        else:
+            raise ValueError(f"Label {label} does not contain ' L ' or ' OC '!")
 
     @skip_if_all_exp_filtered
     def print_confocal_structure_factor_fitted_parameters(self):
@@ -703,31 +762,3 @@ class SolutionSFCSExperimentHandler:
                     print(f"{exp_label}:")
                     structure_factor.fit_params.print_fitted_params()
                     print()
-
-    @staticmethod
-    def _get_structure_factor_fit_func(label: str):
-        """
-        Returns the appropriate structure factor fit function for the given label.
-        The logic is as follows:
-        * If the label contains " L " (linearized), return a "debye" fit function
-        * If the label contains " OC " (nicked), return a "dawson" fit function
-        * If the label contains " D " (dilute), return a "regular" fit function
-        * If the label contains " SD " (semi-dilute), return a "screened" fit function
-        """
-
-        if " L " in label:
-            if " D " in label:
-                return debye_structure_factor_fit
-            elif " SD " in label:
-                return screened_debye_structure_factor_fit
-            else:
-                raise ValueError(f"Label {label} contains ' L ' but not ' D ' or ' SD '!")
-        elif " OC " in label:
-            if " D " in label:
-                return dawson_structure_factor_fit
-            elif " SD " in label:
-                return screened_dawson_structure_factor_fit
-            else:
-                raise ValueError(f"Label {label} contains ' OC ' but not ' D ' or ' SD '!")
-        else:
-            raise ValueError(f"Label {label} does not contain ' L ' or ' OC '!")

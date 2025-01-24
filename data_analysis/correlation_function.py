@@ -63,6 +63,7 @@ from utilities.helper import (
     Limits,
     dbscan_noise_thresholding,
     extrapolate_over_noise,
+    get_func_attr,
     nan_helper,
     unify_length,
 )
@@ -150,12 +151,14 @@ class StructureFactor:
             **kwargs,
         ) as ax:
             # plot the structure factor
+            fit_func_name = (
+                get_func_attr(self.fit_params.fit_func, "__name__") if is_fitting else None
+            )
             ax.plot(
                 self.q,
                 self.sq / self.sq[0],
                 "o",
-                label=f"{label_prefix}"
-                f"{f' {self.fit_params.fit_func.__name__}' if is_fitting else ''}",
+                label=f"{label_prefix}" f"{f' {fit_func_name}' if is_fitting else ''}",
                 color=color,
                 markerfacecolor="none",
             )
@@ -183,21 +186,14 @@ class StructureFactor:
 
         # heuristically estimate the fit parameters if not provided
         if not (p0 := kwargs.get("p0")):
-            if fit_func.__name__ in ["debye_structure_factor_fit", "dawson_structure_factor_fit"]:
-                p0 = (1,)
-            elif fit_func.__name__ in [
-                "screened_debye_structure_factor_fit",
-                "screened_dawson_structure_factor_fit",
-            ]:
-                p0 = (1, 1, 1)
-            else:
-                raise ValueError(f"Unknown fit function: {fit_func.__name__}")
+            p0 = [1, 1]
 
         # fit the structure factor, keeping the fit parameters for plotting
         try:
             self.fit_params = curve_fit_lims(
                 fit_func,
                 param_estimates=p0,
+                curve_fit_kwargs=dict(bounds=(0, np.inf), max_nfev=int(1e4)),
                 xs=x,
                 ys=y,
                 x_limits=kwargs.pop("x_limits", Limits(1e-4, 10)),

@@ -1274,3 +1274,13 @@ def dir_date_parts(data_path: str, sub_dir: str = "", month: str = None, year: s
 
     # return unique date parts, sorted in descending order
     return sorted(set(date_item_list), key=lambda item: int(item), reverse=True)
+
+
+def get_func_attr(func: Callable, attr_name: str, default: Any = None) -> Any:
+    """
+    Get the specified attribute 'attr_name' of a function, even if it's a lambda or partial.
+    If the attribute is not found, return the provided 'default'.
+    """
+    # If 'func' is a partial or similar wrapper, unwrap it
+    unwrapped_func = getattr(func, "func", func)
+    return getattr(unwrapped_func, attr_name, default)
