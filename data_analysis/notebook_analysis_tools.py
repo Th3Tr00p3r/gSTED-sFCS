@@ -3,7 +3,7 @@ import os
 from contextlib import contextmanager, suppress
 from itertools import cycle, product
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import matplotlib as mpl
 import numpy as np
@@ -13,8 +13,7 @@ from data_analysis.correlation_function import SolutionSFCSExperiment
 from data_analysis.polymer_physics import (
     dawson_structure_factor_fit,
     debye_structure_factor_fit,
-    screened_dawson_structure_factor_fit,
-    screened_debye_structure_factor_fit,
+    screened_structure_factor_fit,
 )
 from utilities.display import Plotter, default_colors, plot_acfs
 from utilities.fit_tools import FitError
@@ -189,8 +188,8 @@ class SolutionSFCSExperimentHandler:
         fed = {
             label: exp
             for label, exp in self.exp_dict.items()
-            if any([str_ in label for str_ in self._positive_filters])
-            and not any([str_ in label for str_ in self._negative_filters])
+            if any(str_ in label for str_ in self._positive_filters)
+            and not any(str_ in label for str_ in self._negative_filters)
         }
         if not fed:
             print("WARNING: No experiments match the current filter criteria.")
@@ -250,14 +249,24 @@ class SolutionSFCSExperimentHandler:
     def plot_correlation_functions(
         self,
         plot_type: str = "norm_vs_vt_um",
-        confocal_only: bool = False,
-        sted_only: bool = False,
+        show_confocal: bool = True,
+        show_sted: bool = True,
+        show_non_tdc_gated: bool = True,
+        show_tdc_gated: bool = True,
         **kwargs,
     ):
         """
         Plot the correlation functions for a set of experiments.
         """
         with Plotter(super_title="All Experiments, All ACFs", figsize=(8, 6)) as ax:
+            shared_kwargs = {
+                "parent_ax": ax,
+                "show_confocal": show_confocal,
+                "show_sted": show_sted,
+                "show_non_tdc_gated": show_non_tdc_gated,
+                "show_tdc_gated": show_tdc_gated,
+                **kwargs,
+            }
             for label, exp in self.filtered_exp_dict.items():
                 with suppress(AttributeError):
 
@@ -266,20 +275,14 @@ class SolutionSFCSExperimentHandler:
                         exp.plot_correlation_functions(
                             x_scale="log",
                             y_scale="linear",
-                            parent_ax=ax,
-                            sted_only=sted_only,
-                            confocal_only=confocal_only,
-                            **kwargs,
+                            **shared_kwargs,
                         )
 
                     # normalized vs. log lag
                     elif plot_type == "norm_vs_log_lag":
                         exp.plot_correlation_functions(
                             x_field="lag",
-                            parent_ax=ax,
-                            sted_only=sted_only,
-                            confocal_only=confocal_only,
-                            **kwargs,
+                            **shared_kwargs,
                         )
 
                     # avg_cf_cr vs. log lag
@@ -287,20 +290,14 @@ class SolutionSFCSExperimentHandler:
                         exp.plot_correlation_functions(
                             x_field="lag",
                             y_field="avg_cf_cr",
-                            parent_ax=ax,
-                            sted_only=sted_only,
-                            confocal_only=confocal_only,
-                            **kwargs,
+                            **shared_kwargs,
                         )
 
                     # log normalized vs. vt_um_sq
                     elif plot_type == "log_norm_vs_vt_um_sq":
                         exp.plot_correlation_functions(
                             x_scale="quadratic",
-                            parent_ax=ax,
-                            confocal_only=confocal_only,
-                            sted_only=sted_only,
-                            **kwargs,
+                            **shared_kwargs,
                         )
 
                 print(f"\n{label} countrates:\nConfocal - {exp.confocal.avg_cnt_rate_khz:.2f} kHz")
@@ -655,24 +652,28 @@ class SolutionSFCSExperimentHandler:
                 )
 
     @skip_if_all_exp_filtered
-    def plot_structure_factors(self, backend: Optional[str] = None, **kwargs):
+    def plot_structure_factors(
+        self, backend: Optional[str] = None, plot_fits: bool = True, **kwargs
+    ):
         """
-        Plot the structure factors for a set of experiments, each with a unique color.
+        Plot the structure factors for a set of experiments,
+        each with a unique marker shape.
         """
         with mpl_backend(backend):
             with Plotter(super_title="Structure Factors", figsize=(8, 6)) as ax:
-                # Create a color cycle to assign a unique color to each experiment
-                color_cycle = cycle(default_colors)
-
+                # Create a marker cycle to assign a unique marker for each experiment
+                marker_cycle = cycle(["o", "^", "s", "D", "v", "p", "*"])
                 for exp_label, exp in self.filtered_exp_dict.items():
                     if hasattr(exp, "cal_exp"):
-                        # Get the next color from the cycle
-                        color = next(color_cycle)
-                        # Pass the color to the plot_structure_factors method
-                        exp.plot_structure_factors(parent_ax=ax, color=color, **kwargs)
+                        # Get the next marker from the cycle
+                        marker = next(marker_cycle)
+                        # Pass the marker to the plot_structure_factors method
+                        exp.plot_structure_factors(
+                            parent_ax=ax, marker=marker, plot_fit=plot_fits, **kwargs
+                        )
 
     @skip_if_all_exp_filtered
-    def fit_confocal_structure_factors(self, interp_type: str = "gaussian", **kwargs):
+    def fit_structure_factors(self, meas_type: str, interp_type: str = "gaussian", **kwargs):
         """
         Fit the structure factors for a set of experiments.
         """
@@ -684,20 +685,31 @@ class SolutionSFCSExperimentHandler:
         for exp_label, exp in [
             (label, self.filtered_exp_dict[label]) for label in dilute_first_exp_labels
         ]:
-            # Get the appropriate fit function for the experiment
-            try:
-                fit_func = self._get_structure_factor_fit_func(exp_label)
-            except ValueError as e:
-                print(f"Can't select fit function for '{exp_label}': {e}, skipping...")
+            if not self._is_exp_label_valid(exp_label):
+                print(f"Skipping '{exp_label}' - invalid label...")
                 continue
-            print(f"Using fit function: {get_func_attr(fit_func, '__name__')} for '{exp_label}'")
-            # Fit the structure factors for the confocal measurements
-            try:
-                exp.confocal.cf["confocal"].structure_factors[interp_type].fit(fit_func, **kwargs)
-            except FitError as e:
-                print(f"Error fitting '{exp_label}': {e}, skipping...")
+            # Fit the structure factors for a specific measurement type
+            for cf_idx, cf in enumerate(getattr(exp, meas_type).cf.values()):
+                print(f"Fitting '{exp_label}', {cf.name}...")
+                # Get the appropriate fit function for the experiment
+                try:
+                    fit_func = self._get_structure_factor_fit_func(exp_label, meas_type, cf_idx)
+                except ValueError as e:
+                    print(f"Error fitting '{exp_label}': {e}, skipping...")
+                    continue
+                print(
+                    f"Using fit function: {get_func_attr(fit_func, '__name__')} for '{exp_label}'"
+                )
+                try:
+                    cf.structure_factors[interp_type].fit(fit_func, **kwargs)
+                except KeyError:
+                    print(f"Structure factor not calculated for '{exp_label}'! Skipping...")
+                except FitError as e:
+                    print(f"Error fitting '{exp_label}': {e}, skipping...")
 
-    def _get_structure_factor_fit_func(self, label: str):
+    def _get_structure_factor_fit_func(
+        self, label: str, meas_type: str, cf_idx: int, dilute_as_param: bool = False
+    ) -> Callable:
         """
         Returns the appropriate structure factor fit function for the given label.
         The logic is as follows:
@@ -710,55 +722,88 @@ class SolutionSFCSExperimentHandler:
             version of the experiment
         """
 
-        def get_dilute_params(semidilute_label: str):
+        def get_screened_fitting_function(semidilute_label: str):
             """
-            Get the dilute parameters from the label.
+            Returns a screened fit function for the given semi-dilute label.
             """
             # Get the dilute label
             dilute_label = semidilute_label.replace(" SD ", " D ")
-            # Get the fit parameters for the dilute label
-            dilute_fit_params = (
-                self.filtered_exp_dict[dilute_label]
-                .confocal.cf["confocal"]
-                .structure_factors["gaussian"]
-                .fit_params
-            )
-            # Get the Rg_dilute and B_dilute values from the fit parameters
-            return dilute_fit_params.beta["Rg"], dilute_fit_params.beta["B"]
 
-        if " L " in label:
-            if " D " in label or "PL " in label:
+            # Get the fit parameters for the dilute label
+            dilute_exp = self.filtered_exp_dict[dilute_label]
+            try:
+                dilute_cf = list(getattr(dilute_exp, meas_type).cf.values())[cf_idx]
+            except IndexError:
+                raise ValueError(
+                    f"No gated CorrFunc found for '{dilute_label}', '{meas_type}', {cf_idx}!"
+                )
+            dilute_structure_factor = dilute_cf.structure_factors["gaussian"]
+
+            # Get the dilute gyration radius and the dilute structure factor function
+            dilute_Rg = dilute_structure_factor.fit_params.beta["Rg"]
+
+            # If dilute_as_param is True, use the actual dilute structure factor as a parameter
+            if dilute_as_param:
+                dilute_Sq = dilute_structure_factor.get_interpolator()
+            # Otherwise, use the appropriate fit function for the dilute label
+            else:
+                # Linear topology
+                if " L " in semidilute_label:
+                    dilute_Sq = functools.partial(
+                        debye_structure_factor_fit,
+                        Rg=dilute_Rg,
+                        B=1,
+                    )
+                # Circular topology
+                elif " OC " in semidilute_label:
+                    dilute_Sq = functools.partial(
+                        dawson_structure_factor_fit,
+                        Rg=dilute_Rg,
+                        B=1,
+                    )
+                else:
+                    raise ValueError(f"Label {dilute_label} does not contain ' L ' or ' OC '!")
+            # Return a partial function of the screened fit function with the dilute parameters
+            return functools.partial(
+                screened_structure_factor_fit,
+                Rg_dilute=dilute_Rg,
+                dilute_structure_factor_func=dilute_Sq,
+            )
+
+        if " D " in label or "PL " in label:
+            if " L " in label:
                 return debye_structure_factor_fit
-            elif " SD " in label:
-                Rg_dilute, B_dilute = get_dilute_params(label)
-                # return the screened fit function with the dilute values
-                return functools.partial(
-                    screened_debye_structure_factor_fit, Rg_dilute=Rg_dilute, B_dilute=B_dilute
-                )
-            else:
-                raise ValueError(f"Label {label} contains ' L ' but not ' D ', 'PL ' or ' SD '!")
-        elif " OC " in label:
-            if " D " in label or "PL " in label:
+            elif " OC " in label:
                 return dawson_structure_factor_fit
-            elif " SD " in label:
-                Rg_dilute, B_dilute = get_dilute_params(label)
-                return functools.partial(
-                    screened_dawson_structure_factor_fit, Rg_dilute=Rg_dilute, B_dilute=B_dilute
-                )
             else:
-                raise ValueError(f"Label {label} contains ' OC ' but not ' D ', 'PL ' or ' SD '!")
+                raise ValueError(f"Label {label} contains ' D ' or 'PL ' but not ' L ' or ' OC '!")
+        elif " SD " in label:
+            return get_screened_fitting_function(label)
         else:
-            raise ValueError(f"Label {label} does not contain ' L ' or ' OC '!")
+            raise ValueError(f"Label {label} does not contain ' D ', 'PL ', or ' SD '!")
+
+    @staticmethod
+    def _is_exp_label_valid(label: str) -> bool:
+        """
+        Returns True if the experiment label is valid, False otherwise.
+        """
+        if " D " in label or "PL " in label:
+            return (" L " in label) or (" OC " in label)
+        else:
+            return " SD " in label
 
     @skip_if_all_exp_filtered
-    def print_confocal_structure_factor_fitted_parameters(self):
+    def print_structure_factor_fitted_parameters(self, meas_type: str):
         """
         Print the fitted parameters for the structure factors of a set of experiments.
         """
         for exp_label, exp in self.filtered_exp_dict.items():
             if hasattr(exp, "cal_exp"):
-                structure_factor = exp.confocal.cf["confocal"].structure_factors["gaussian"]
-                if structure_factor.fit_params is not None:
-                    print(f"{exp_label}:")
-                    structure_factor.fit_params.print_fitted_params()
-                    print()
+                meas = getattr(exp, meas_type)
+                for cf in meas.cf.values():
+                    if cf.structure_factors:
+                        structure_factor = cf.structure_factors["gaussian"]
+                        if structure_factor.fit_params is not None:
+                            print(f"{exp_label}:")
+                            structure_factor.fit_params.print_fitted_params()
+                            print()

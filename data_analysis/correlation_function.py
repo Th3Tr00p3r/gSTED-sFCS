@@ -3,6 +3,7 @@
 import multiprocessing as mp
 import re
 from contextlib import suppress
+from copy import deepcopy
 from dataclasses import InitVar, dataclass
 from itertools import cycle
 from pathlib import Path
@@ -23,6 +24,7 @@ from typing import (
 import numpy as np
 from matplotlib.lines import Line2D
 from matplotlib.patches import Ellipse
+from scipy.interpolate import interp1d
 from scipy.special import j0, j1, jn_zeros
 from sklearn import linear_model
 
@@ -136,6 +138,8 @@ class StructureFactor:
         comparisons: Optional[List[Tuple[str, float]]] = None,
         plot_fit=True,
         color: Optional[str] = None,
+        marker: Optional[str] = "o",
+        linestyle: str = "",
         **kwargs,
     ):
         """
@@ -154,10 +158,11 @@ class StructureFactor:
             fit_func_name = (
                 get_func_attr(self.fit_params.fit_func, "__name__") if is_fitting else None
             )
-            ax.plot(
+            data_line, *_ = ax.plot(
                 self.q,
                 self.sq / self.sq[0],
-                "o",
+                marker=marker,
+                linestyle=linestyle,
                 label=f"{label_prefix}" f"{f' {fit_func_name}' if is_fitting else ''}",
                 color=color,
                 markerfacecolor="none",
@@ -168,7 +173,12 @@ class StructureFactor:
                 plot_theoretical_structure_factor_in_ax(ax, self.q, coeff, model)
             # plot the fit, if available
             if is_fitting:
-                ax.plot(self.fit_params.x, self.fit_params.fitted_y, label="_Fit", color=color)
+                ax.plot(
+                    self.fit_params.x,
+                    self.fit_params.fitted_y,
+                    label="_Fit",
+                    color=data_line.get_color(),
+                )
 
             ax.set_xscale("log")
             ax.set_ylim(1e-4, 2)
@@ -205,6 +215,21 @@ class StructureFactor:
         except FitError as exc:
             self.fit_params = None
             raise exc
+
+    def get_interpolator(self, normalize=True, interp_type="linear"):
+        """
+        Return an interpolation function that, given q, returns S(q)
+        (optionally normalized by S(0)).
+        """
+        norm_factor = self.sq[0] if (normalize and self.sq[0] != 0) else 1
+
+        return interp1d(
+            self.q,
+            self.sq / norm_factor,
+            kind=interp_type,
+            bounds_error=False,
+            fill_value="extrapolate",
+        )
 
 
 @dataclass
@@ -336,6 +361,16 @@ class CorrFunc:
             axis=0,
             weights=[self.duration_min, other.duration_min],
         )
+        new_CF.vt_um = np.average(
+            np.vstack(
+                (
+                    unify_length(self.vt_um, (max_length,)),
+                    unify_length(other.vt_um, (max_length,)),
+                )
+            ),
+            axis=0,
+            weights=[self.duration_min, other.duration_min],
+        )
         new_CF.error_cf_cr = np.average(
             np.vstack(
                 (
@@ -390,6 +425,9 @@ class CorrFunc:
 
         # accumulate the duration (used as weights for the next addition
         new_CF.duration_min = self.duration_min + other.duration_min
+
+        # add the countrate_lists
+        new_CF.countrate_list = self.countrate_list + other.countrate_list
 
         return new_CF
 
@@ -859,9 +897,7 @@ class CorrFunc:
         self,
         cal_cf,
         interp_types: List[str],
-        parent_ax=None,
         should_force=False,
-        should_plot=False,
         is_verbose=True,
         **kwargs,
     ):
@@ -949,7 +985,6 @@ class SolutionSFCSMeasurement:
     def __init__(self, type):
         self.type = type
         self.cf: dict = dict()
-        self.xcf: dict = dict()
         self.scan_type: str
         self.duration_min: float = None
         self.is_loaded = False
@@ -1587,13 +1622,25 @@ class SolutionSFCSMeasurement:
         xlim=(1e-4, 1),
         ylim=(-0.20, 1.4),
         plot_kwargs={},
+        show_non_tdc_gated=True,
+        show_tdc_gated=True,
         **kwargs,
     ):
         """Doc."""
+        if not show_non_tdc_gated and not show_tdc_gated:
+            raise ValueError(
+                "At least one of 'show_non_tdc_gated' or 'show_tdc_gated' must be True."
+            )
 
         with Plotter(super_title=f"'{self.type.capitalize()}' - ACFs", **kwargs) as ax:
             kwargs["parent_ax"] = ax
-            for cf_name, cf in {**self.cf, **self.xcf}.items():
+            for cf_idx, cf in enumerate(self.cf.values()):
+                # skip first if only gated are to be plotted
+                if not cf_idx and not show_non_tdc_gated:
+                    continue
+                # skip rest if only non-gated are to be plotted
+                elif cf_idx and not show_tdc_gated:
+                    break
                 cf.plot_correlation_function(
                     x_field=x_field,
                     y_field=y_field,
@@ -1724,9 +1771,7 @@ class SolutionSFCSMeasurement:
         self,
         cal_meas,
         interp_types=["gaussian"],
-        parent_ax=None,
         is_verbose=True,
-        should_force=False,
         **kwargs,
     ):
         """
@@ -1754,19 +1799,24 @@ class SolutionSFCSMeasurement:
             ),
         )
         for CF, cal_CF in zip(self.cf.values(), cal_meas.cf.values()):
-            if not CF.structure_factors or should_force:
-                try:
-                    CF.calculate_structure_factor(
-                        cal_CF, interp_types, is_verbose=is_verbose, **kwargs
-                    )
-                except RuntimeError:
-                    # RuntimeError - exponent overflow
-                    # avoid losing everything because of a single bad limit choice/noisy gate
-                    continue
-            elif is_verbose:
-                print("Using existing... Done.")
+            try:
+                CF.calculate_structure_factor(
+                    cal_CF, interp_types, is_verbose=is_verbose, **kwargs
+                )
+            except RuntimeError:
+                # RuntimeError - exponent overflow
+                # avoid losing everything because of a single bad limit choice/noisy gate
+                continue
 
-    def plot_structure_factors(self, label_prefix="", **kwargs):
+    def plot_structure_factors(
+        self,
+        label_prefix="",
+        show_non_tdc_gated=True,
+        show_tdc_gated=True,
+        color_cycle: Optional[Iterator] = None,
+        color: Optional[str] = None,
+        **kwargs,
+    ):
         """Doc."""
 
         # get interpolations types
@@ -1783,12 +1833,20 @@ class SolutionSFCSMeasurement:
         ) as axes:
             is_child = kwargs.pop("parent_ax", None) is not None
             # Plot structure factors for all CorrFunc objects
-            for CF in self.cf.values():
-                CF.plot_structure_factor(
+            for cf_idx, cf in enumerate(self.cf.values()):
+                color = next(color_cycle) if color_cycle else color
+                # skip first if only gated are to be plotted
+                if not cf_idx and not show_non_tdc_gated:
+                    continue
+                # skip rest if only non-gated are to be plotted
+                elif cf_idx and not show_tdc_gated:
+                    break
+                cf.plot_structure_factor(
                     parent_ax=axes,
                     label_prefix=label_prefix,
                     # add model comparison list to the first plot only
                     comparisons=kwargs.pop("comparisons", []),
+                    color=color,
                     **kwargs,
                 )
 
@@ -2401,13 +2459,15 @@ class SolutionSFCSExperiment:
         x_scale=None,
         y_scale=None,
         should_add_exp_name=True,
-        confocal_only=False,
-        sted_only=False,
+        show_confocal=True,
+        show_sted=True,
         **kwargs,
     ) -> List[Line2D]:
-        """Doc."""
+        """
+        High-level method for plotting all correlation functions in the experiment.
+        """
 
-        if self.confocal.is_loaded and not sted_only:
+        if self.confocal.is_loaded and not show_sted:
             ref_meas = self.confocal
         else:
             ref_meas = self.sted
@@ -2456,12 +2516,11 @@ class SolutionSFCSExperiment:
                 existing_lines = parent_ax.get_lines()
                 kwargs.pop("parent_ax")
 
-            if confocal_only:
-                meas_types = ["confocal"]
-            elif sted_only:
-                meas_types = ["sted"]
-            else:
-                meas_types = ["confocal", "sted"]
+            meas_types = []
+            if show_confocal:
+                meas_types.append("confocal")
+            if show_sted:
+                meas_types.append("sted")
 
             for meas_type in meas_types:
                 getattr(self, meas_type).plot_correlation_functions(
@@ -2570,7 +2629,13 @@ class SolutionSFCSExperiment:
                     meas.plot_hankel_transforms(parent_ax=axes, label_prefix=self.name, **kwargs)
 
     def calculate_structure_factors(
-        self, cal_exp, interp_types=["gaussian"], is_verbose=True, **kwargs
+        self,
+        cal_exp,
+        interp_types=["gaussian"],
+        calc_confocal=True,
+        calc_sted=True,
+        is_verbose=True,
+        **kwargs,
     ):
         """
         Given a calibration SolutionSFCSExperiment, i.e. one performed
@@ -2583,9 +2648,15 @@ class SolutionSFCSExperiment:
         if is_verbose:
             print(f"Calculating all structure factors for '{self.name}' experiment... ", end="")
 
+        meas_types = []
+        if calc_confocal:
+            meas_types.append("confocal")
+        if calc_sted:
+            meas_types.append("sted")
+
         # calculated without plotting
         kwargs["parent_names"] = (self.name, cal_exp.name)
-        for meas in [getattr(self, meas_type) for meas_type in ("confocal", "sted")]:
+        for meas in [getattr(self, meas_type) for meas_type in meas_types]:
             if meas.is_loaded:
                 cal_meas = getattr(cal_exp, meas.type)
                 getattr(self, meas.type).calculate_structure_factors(
@@ -2596,7 +2667,12 @@ class SolutionSFCSExperiment:
         self.cal_exp = cal_exp
 
     def plot_structure_factors(
-        self, plot_ht=False, confocal_only=False, sted_only=False, parent_ax=None, **kwargs
+        self,
+        plot_ht: bool = False,
+        show_confocal: bool = True,
+        show_sted: bool = True,
+        parent_ax=None,
+        **kwargs,
     ) -> None:
         """
         Plot structure factors of all CorrFunc objects in the experiment.
@@ -2623,12 +2699,14 @@ class SolutionSFCSExperiment:
             **kwargs,
         ) as axes:
             is_child = kwargs.pop("parent_ax", None) is not None
-            if confocal_only:
-                meas_types = ["confocal"]
-            elif sted_only:
-                meas_types = ["sted"]
-            else:
-                meas_types = ["confocal", "sted"]
+
+            color_cycle = cycle(default_colors)
+
+            meas_types = []
+            if show_confocal:
+                meas_types.append("confocal")
+            if show_sted:
+                meas_types.append("sted")
             for meas in [getattr(self, meas_type) for meas_type in meas_types]:
                 if meas.is_loaded:
                     meas.plot_structure_factors(
@@ -2636,6 +2714,8 @@ class SolutionSFCSExperiment:
                         label_prefix=self.name,
                         # add to the first plot only
                         comparisons=kwargs.pop("comparisons", []),
+                        color=next(color_cycle) if meas.type == "confocal" else None,
+                        color_cycle=color_cycle if meas.type == "sted" else None,
                         **kwargs,
                     )
 
@@ -3239,3 +3319,64 @@ def calculate_calibrated_afterpulse(
         afterpulse = gate_pulse_period_ratio * np.exp(np.polyval(beta, np.log(lag)))
 
     return afterpulse
+
+
+def combine_measurements_list(
+    measurements_list: List[SolutionSFCSMeasurement],
+) -> SolutionSFCSMeasurement:
+    """
+    Combine a list of SolutionSFCSMeasurement objects into one, in a single pass.
+    Any CorrFunc with the same .name in multiple measurements gets combined via
+    CorrFunc.__add__; unique CorrFuncs are simply copied over.
+    """
+    if not measurements_list:
+        raise ValueError("No measurements to combine")
+    if len(measurements_list) == 1:
+        return deepcopy(measurements_list[0])
+
+    # Start with a copy of the first measurement
+    merged = deepcopy(measurements_list[0])
+
+    # Merge each subsequent measurement into 'merged'
+    for measurement in measurements_list[1:]:
+        # Combine the CorrFuncs
+        for cf_name, cf2 in measurement.cf.items():
+            if cf_name in merged.cf:
+                merged.cf[cf_name] = merged.cf[cf_name] + cf2
+            else:
+                merged.cf[cf_name] = deepcopy(cf2)
+
+    return merged
+
+
+def combine_experiment_pair(e1, e2, new_name: Optional[str] = None):
+    """
+    Return a new SolutionSFCSExperiment that merges the confocal and STED
+    measurements of e1 and e2.
+    """
+    new_exp = deepcopy(e1)
+    new_exp.name = new_name or f"'{e1.name}' + '{e2.name}'"
+
+    # Combine confocal measurements if both are loaded:
+    if e1.confocal.is_loaded and e2.confocal.is_loaded:
+        new_exp.confocal = combine_measurements_list([e1.confocal, e2.confocal])
+    # Use the one that is loaded if only one is loaded:
+    elif e1.confocal.is_loaded:
+        print(f"Only {e1.name} has confocal data. Using it.")
+        new_exp.confocal = deepcopy(e1.confocal)
+    else:
+        print(f"Only {e2.name} has confocal data. Using it.")
+        new_exp.confocal = deepcopy(e2.confocal)
+
+    # Combine STED measurements if both are loaded:
+    if e1.sted.is_loaded and e2.sted.is_loaded:
+        new_exp.sted = combine_measurements_list([e1.sted, e2.sted])
+    # Use the one that is loaded if only one is loaded:
+    elif e1.sted.is_loaded:
+        print(f"Only {e1.name} has STED data. Using it.")
+        new_exp.sted = deepcopy(e1.sted)
+    else:
+        print(f"Only {e2.name} has STED data. Using it.")
+        new_exp.sted = deepcopy(e2.sted)
+
+    return new_exp

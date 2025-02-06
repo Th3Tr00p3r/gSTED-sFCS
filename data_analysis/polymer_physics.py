@@ -1,5 +1,7 @@
 """Polymer physics"""
 
+from typing import Callable
+
 import numpy as np
 import scipy as sp
 from matplotlib.axes import Axes
@@ -35,12 +37,18 @@ def gyradius(L_bp: int, topology: str, model: str, kuhn_length_nm=KUHN_LENGTH_NM
         elif model == "gaussian":
             return np.sqrt(L_nm * kuhn_length_nm / 6)
 
+        else:
+            raise ValueError(f"Unknown model '{model}'. Choose 'wlc' or 'gaussian'.")
+
     # Circular/Relaxed Ring Chains
     elif topology == "ring":
         if model == "wlc":
             return np.sqrt(L_nm * kuhn_length_nm / 12 - 7 / 72 * kuhn_length_nm**2)
         elif model == "gaussian":
             return np.sqrt(L_nm * kuhn_length_nm / 12)
+
+    else:
+        raise ValueError(f"Unknown topology '{topology}'. Choose 'linear' or 'ring'.")
 
 
 def estimate_resolution_from_measured_field(w_meas_nm: float, Rg_nm: float):
@@ -64,29 +72,6 @@ def debye_structure_factor_fit(q, Rg: float, B: float) -> np.ndarray:
     return 2 * B / x**2 * (x - 1 + np.exp(-x))
 
 
-def screened_debye_structure_factor_fit(
-    q, B: float, ksi: float, Rg_dilute: float, B_dilute: float
-) -> np.ndarray:
-    """
-    Static structure factor expression for screened Gaussian polymers.
-    Rg_dilute and B_dilute are constants determined from the dilute fit.
-
-    B is expected to be approximately 1.
-
-    Example usage with functools.partial:
-        ```python
-        from functools import partial
-        from utilities.fit_tools import curve_fit_lims
-        from polymer_physics import screened_debye_structure_factor_fit
-
-        fit_func = partial(screened_debye_structure_factor_fit, Rg_dilute=100, B_dilute=1)
-        fit_params = curve_fit_lims(fit_func, ...)
-        ```
-    """
-    x = 2 * (ksi / Rg_dilute) ** 2
-    return B / (1 + x / debye_structure_factor_fit(q, Rg_dilute, B_dilute))
-
-
 def dawson_structure_factor_fit(q, Rg: float, B: float) -> np.ndarray:
     """
     Static strucure factor expression for Gaussian ring polymers.
@@ -98,28 +83,19 @@ def dawson_structure_factor_fit(q, Rg: float, B: float) -> np.ndarray:
     return B / x * sp.special.dawsn(x)
 
 
-def screened_dawson_structure_factor_fit(
-    q, B: float, ksi: float, Rg_dilute: float, B_dilute: float
+def screened_structure_factor_fit(
+    q,
+    B: float,
+    ksi: float,
+    dilute_structure_factor_func: Callable,
+    Rg_dilute: float,
 ) -> np.ndarray:
     """
-    Static structure factor expression for screened Gaussian ring polymers.
-    Rg_dilute and B_dilute are constants determined from the dilute fit.
-
-    B is expected to be approximately 1.
-
-    Example usage with functools.partial:
-        ```python
-        from functools import partial
-        from utilities.fit_tools import curve_fit_lims
-        from polymer_physics import screened_dawson_structure_factor_fit
-
-        fit_func = partial(screened_dawson_structure_factor_fit, Rg_dilute=100, B_dilute=1)
-        fit_params = curve_fit_lims(fit_func, ...)
-        ```
-    ```
+    a general screened structure factor fit function that takes a dilute structure factor function
+    as input and fits a screened structure factor to it.
     """
     x = 2 * (ksi / Rg_dilute) ** 2
-    return B / (1 + x / dawson_structure_factor_fit(q, Rg_dilute, B_dilute))
+    return B / (1 + x / dilute_structure_factor_func(q))
 
 
 def wlc_rod_structure_factor_fit(q, L: float):
