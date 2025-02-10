@@ -78,12 +78,92 @@ class HankelTransform:
     IE: InterpExtrap1D
     q: np.ndarray
     fq: np.ndarray
+    max_r: float
+    n: int
 
     def __post_init__(self):
         self.fq_norm = self.fq / self.fq.max()
 
     def __repr__(self):
-        return f"HankelTransform(IE={self.IE}, q={self.q}, fq={self.fq})"
+        return (
+            f"HankelTransform(IE={self.IE}, q={self.q}, fq={self.fq}, "
+            f"max_r={self.max_r}, n={self.n})"
+        )
+
+    def inverse_transform(
+        self,
+    ) -> "HankelTransform":
+        """
+        Invert this Hankel transform, *without* calling extrapolate_over_noise again.
+        We simply assume self.q already lies on the special discrete grid:
+
+            q[i] == c0[i] / max_r
+
+        where c0 = jn_zeros(0, n) are the first n zeros of J0.
+
+        The discrete inverse transform is then:
+
+            f(r) =  m1  ×  [ C_inv @ ( F(q) / m2 ) ]
+
+        where, for the standard 0th-order Hankel scheme:
+          - C_inv is the same matrix you'd use in the forward transform,
+          - r[i] = (c0[i]/c0[-1]) * max_r,
+          - m1[i] = |J1(c0[i])| / max_r,
+          - v_max = c0[-1] / (2π · max_r),
+          - m2[i] = m1[i] × (max_r / v_max).
+
+        Returns
+        -------
+        HankelTransform
+            A new HankelTransform whose "q" is actually r,
+            and whose "fq" is the recovered f(r).
+        """
+        # Patch for missing attributes with default values
+        if not hasattr(self, "n") or not hasattr(self, "max_r"):
+            self.n = 2048
+            self.max_r = 10.0
+            print(f"Using default values for n={self.n} and max_r={self.max_r} - missing in self.")
+
+        # 1) Build the Bessel zeros
+        c0 = jn_zeros(0, self.n)  # shape (n,)
+
+        # 2) Construct the "inverse" Hankel matrix, the same you used in the forward transform.
+        #    (Strictly speaking, the matrix is its own transpose for J0, so we just do the
+        #     usual discrete-Hankel formula.)
+        j_m, j_n = np.meshgrid(c0, c0)
+        C_inv = (2.0 / c0[-1]) * j0((j_m * j_n) / c0[-1]) / (np.abs(j1(j_m)) * np.abs(j1(j_n)))
+
+        # 3) Build the radial array that pairs with c0
+        r_grid = (c0 / c0[-1]) * self.max_r
+
+        # 4) Build the scaling vectors m1 and m2
+        m1 = np.abs(j1(c0)) / self.max_r
+        # v_max = c0[-1] / (2π·max_r) => multiply (max_r / v_max) =  (max_r / [c0[-1]/(2π·max_r)])
+        m2 = m1 * (self.max_r / (c0[-1] / (2.0 * np.pi * self.max_r)))
+
+        # 5) Check that self.q matches c0 / max_r (optional):
+        #    Otherwise, either we'd do an interpolation here or proceed with mismatch.
+        #    For demonstration, we do a simple shape check:
+        if len(self.q) != self.n:
+            raise ValueError(
+                f"Expected exactly {self.n} points in self.q, but got {len(self.q)}. "
+                "If these differ, you must interpolate or use the correct 'n'."
+            )
+
+        # 6) Do the matrix multiply: f(r) = m1 × [ C_inv @ ( F(q)/m2 ) ]
+        Fq_scaled = self.fq / m2  # elementwise
+        fr = m1 * (C_inv @ Fq_scaled)
+
+        # 7) Return a new HankelTransform.  We'll store:
+        #    - the new radial values in 'q',
+        #    - the new function f(r) in 'fq'.
+        return HankelTransform(
+            IE=self.IE,  # re-use the same IE if you like, though it's still for the r-domain
+            q=r_grid,
+            fq=fr,
+            max_r=self.max_r,
+            n=self.n,
+        )
 
     def plot(self, label_prefix="", **kwargs):
         """Display the transform's results"""
@@ -618,8 +698,9 @@ class CorrFunc:
         self.normalized = self.avg_cf_cr / self.g0
         self.error_normalized = self.error_cf_cr / self.g0
 
+    @staticmethod
     def _calculate_weighted_avg(
-        self, cf_cr: np.ndarray, weights: np.ndarray
+        cf_cr: np.ndarray, weights: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates weighted average and standard error of a 2D array
@@ -832,7 +913,7 @@ class CorrFunc:
             )
 
             # returning the transform (includes interpolation for testing)
-            return HankelTransform(IE, 2 * np.pi * v, C @ (IE.y_interp / m1) * m2)
+            return HankelTransform(IE, 2 * np.pi * v, C @ (IE.y_interp / m1) * m2, max_r, n)
 
         if kwargs.get("is_verbose"):
             print(f"Calculating '{self.name}' Hankel transform...", end=" ")
@@ -1833,13 +1914,13 @@ class SolutionSFCSMeasurement:
         ) as axes:
             is_child = kwargs.pop("parent_ax", None) is not None
             # Plot structure factors for all CorrFunc objects
-            for cf_idx, cf in enumerate(self.cf.values()):
+            for cf_idx, cf in enumerate(cfs := self.cf.values()):
                 color = next(color_cycle) if color_cycle else color
-                # skip first if only gated are to be plotted
-                if not cf_idx and not show_non_tdc_gated:
+                # skip first if only gated are to be plotted (and there are more than one)
+                if (cf_idx == 0) and (len(cfs) > 1) and not show_non_tdc_gated:
                     continue
                 # skip rest if only non-gated are to be plotted
-                elif cf_idx and not show_tdc_gated:
+                elif (cf_idx > 0) and not show_tdc_gated:
                     break
                 cf.plot_structure_factor(
                     parent_ax=axes,
@@ -2423,10 +2504,12 @@ class SolutionSFCSExperiment:
                 end="",
             )
             for tdc_gate_ns in gate_list:
-                for cf_name in meas.cf.keys():
+                for cf_name in list(meas.cf.keys()):
                     if str(tdc_gate_ns) in cf_name:
                         meas.cf.pop(cf_name)
                         print(f"Removed {tdc_gate_ns}... ", end="")
+                    else:
+                        print(f"Gate {tdc_gate_ns} not found... ", end="")
 
         print("Done.")
 

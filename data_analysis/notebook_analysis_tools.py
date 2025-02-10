@@ -804,6 +804,6 @@ class SolutionSFCSExperimentHandler:
                     if cf.structure_factors:
                         structure_factor = cf.structure_factors["gaussian"]
                         if structure_factor.fit_params is not None:
-                            print(f"{exp_label}:")
+                            print(f"{exp_label}, {cf.name}:")
                             structure_factor.fit_params.print_fitted_params()
                             print()
