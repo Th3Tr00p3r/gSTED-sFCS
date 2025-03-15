@@ -246,7 +246,8 @@ def search_database(data_root: Path, str_list: List[str]) -> str:
     and print them along with their dates.
     """
 
-    # get all unique templates by using their .log files from all directories in DATA_ROOT. filter using the SEARCH_LIST.
+    # get all unique templates by using their .log files from all directories in DATA_ROOT. filter
+    # using the str_list.
     try:
         template_date_dict = {
             path_.stem[:-2]: datetime.strptime(path_.parent.parent.name, "%d_%m_%Y").date()
@@ -306,7 +307,8 @@ def deep_size_estimate(obj, threshold_mb=1e-6, level=np.inf, indent=4, name=None
         if name is None:
             name = obj.__class__.__name__
             print(
-                f"Displaying object of class '{name}' size tree up to level={level} with a threshold of {threshold_mb} Mb:"
+                f"Displaying object of class '{name}' size tree up to level={level} "
+                f"with a threshold of {threshold_mb} Mb:"
             )
         try:
             type_str = str(obj.dtype)
@@ -345,8 +347,12 @@ def save_object(
     Save a pickle-serialized and optionally gzip/blosc-compressed object to disk.
     Returns 'True' if saved, 'False' otherwise.
     """
-    # TODO: file suffix (.pkl, .blosc, .gzip) should be determined here! (with_suffix...) - this would simplify the load_object function, too, since it would know which file to expect. (but it's nice that it finds out on its own)
-    # TODO: compressed objects take up less space, and so the chunksize should (if possible) be set to a higher value when estimating the chunksize of a soon to be compressed object (but how??)
+    # TODO: file suffix (.pkl, .blosc, .gzip) should be determined here! (with_suffix...) - this
+    #  would simplify the load_object function, too, since it would know which file to expect.
+    #  (but it's nice that it finds out on its own)
+    # TODO: compressed objects take up less space, and so the chunksize should (if possible)
+    #  be set to a higher value when estimating the chunksize of a soon to be compressed object
+    #  (but how??)
 
     # create parent directory if needed
     dir_path = file_path.parent
@@ -402,7 +408,8 @@ def save_object(
         print(" - Done.")
 
     logging.debug(
-        f"Object '{obj_name}' of class '{obj.__class__.__name__}' ({compression_method}-compressed) saved as: {file_path}"
+        f"Object '{obj_name}' of class '{obj.__class__.__name__}' "
+        f"({compression_method}-compressed) saved as: {file_path}"
     )
     return True
 
@@ -457,7 +464,9 @@ def load_object(file_path: Union[str, Path], should_track_progress=False, **kwar
     except EOFError:
         if should_track_progress:
             print(
-                f" - Done ({(n_chunks := len(loaded_data))} {'chunks' if n_chunks > 1 else 'chunk'}, {compression_method} compression)"
+                f" - Done ({(n_chunks := len(loaded_data))} "
+                f"{'chunks' if n_chunks > 1 else 'chunk'}, "
+                f"{compression_method} compression)"
             )
 
         if len(loaded_data) == 1:  # extract non-chunked loaded data
@@ -479,10 +488,12 @@ def load_processed_solution_measurement(
     meas = load_object(meas_file_path)
     print("Done.")
 
-    # load separately the data, but only if not already in temp folder (to avoid long decompressing)
+    # load separately the data, but only if not already in temp folder
+    # (to avoid long decompressing)
     if should_load_data:
         print(
-            f"Loading (decompressing and memory-mapping) {len(meas.data):,} processed data files: ",
+            "Loading (decompressing and memory-mapping) "
+            f"{len(meas.data):,} processed data files: ",
             end="",
         )
         for idx, p in enumerate(meas.data):
@@ -644,8 +655,10 @@ def _handle_legacy_file_dict(file_dict, override_system_info=False, **kwargs):  
 def load_file_dict(file_path: Path):
     """
     Load files according to extension.
-    Allows backwards compatibility with legacy dictionary keys (relevant for both .mat and .pkl files).
-    Uses defaults for legacy files where 'system_info' or 'afterpulse_params' is not iterable (therefore old).
+    Allows backwards compatibility with legacy dictionary keys
+    (relevant for both .mat and .pkl files).
+    Uses defaults for legacy files where 'system_info'
+    or 'afterpulse_params' is not iterable (therefore old).
     """
 
     try:
@@ -660,7 +673,8 @@ def load_file_dict(file_path: Path):
 
     except OSError as exc:
         raise OSError(
-            f"File was not fully downloaded from cloud (check that cloud is synchronizing), or is missing. [{exc}]"
+            f"File was not fully downloaded from cloud (check that cloud is synchronizing), "
+            f"or is missing. [{exc}]"
         )
 
     _handle_legacy_file_dict(file_dict)
@@ -702,14 +716,14 @@ def _translate_dict_keys(original_dict: dict, translation_dict: dict) -> dict:
 def save_mat(*file_paths: Path) -> None:
     """
     Re-saves raw data at 'file_path' as .mat, in order to be loaded by old MATLAB analysis tools.
-    This takes care of converting all keys to legacy naming, converting 'AfterPulseParam' to old style (array only, no type),
-    and all lists to Numpy arrays.
+    This takes care of converting all keys to legacy naming, converting 'AfterPulseParam'
+    to old style (array only, no type), and all lists to Numpy arrays.
     """
 
     def _convert_types_to_matlab_format(obj, key_name=None):
         """
-        Recursively converts any list/tuple in dictionary and any sub-dictionaries to Numpy ndarrays.
-        Converts integers to floats.
+        Recursively converts any list/tuple in dictionary and any sub-dictionaries
+        to Numpy ndarrays. Converts integers to floats.
         """
 
         # stop condition
@@ -761,7 +775,8 @@ def _load_mat(file_path):
     from mat files. It calls the function check keys to cure all entries
     which are still mat-objects
 
-    adapted from: https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
+    adapted from: https://stackoverflow.com/questions/7008608/
+    scipy-io-loadmat-nested-structures-i-e-dictionaries
     """
 
     def _check_keys(d):

@@ -64,7 +64,7 @@ def debye_structure_factor_fit(q, Rg: float, B: float) -> np.ndarray:
     """
     Static structure factor expression for Gaussian linear polymers.
     Sharp Bloomfield, Biopolymers (1968)
-    See Yamakawa's book (Helical Worm-Like Chain in Polymer Solutions), Equation 5.30
+    See Yamakawa's book (Helical Worm-Like Chain in Polymer Solutions, 2nd Ed.), Equation 5.30
 
     B is expected to be approximately 1.
     """
@@ -72,10 +72,10 @@ def debye_structure_factor_fit(q, Rg: float, B: float) -> np.ndarray:
     return 2 * B / x**2 * (x - 1 + np.exp(-x))
 
 
-def dawson_structure_factor_fit(q, Rg: float, B: float) -> np.ndarray:
+def casassa_structure_factor_fit(q, Rg: float, B: float) -> np.ndarray:
     """
     Static strucure factor expression for Gaussian ring polymers.
-    See Yamakawa's book (Helical Worm-Like Chain in Polymer Solutions), Equation 5.70
+    See Yamakawa's book (Helical Worm-Like Chain in Polymer Solutions, 2nd Ed.), Equation 5.70
 
     B is expected to be approximately 1.
     """

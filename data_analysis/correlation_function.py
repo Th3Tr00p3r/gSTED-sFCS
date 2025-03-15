@@ -165,20 +165,26 @@ class HankelTransform:
             n=self.n,
         )
 
-    def plot(self, label_prefix="", **kwargs):
+    def plot(self, label_prefix="", plot_interpolations: bool = True, **kwargs):
         """Display the transform's results"""
 
         with Plotter(
-            subplots=(1, 2),
+            subplots=(1, 2) if plot_interpolations else None,
             y_scale="log",
             **kwargs,
         ) as axes:
-            kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
-            axes[0].set_title("Interp./Extrap. Testing")
-            self.plot_interpolation(axes[0], label_prefix=label_prefix, **kwargs)
+            if plot_interpolations:
+                kwargs.pop("parent_ax", None)  # TODO: should this be included in Plotter init?
+                axes[0].set_title("Interp./Extrap. Testing")
+                self.plot_interpolation(axes[0], label_prefix=label_prefix, **kwargs)
 
-            axes[1].set_title("Hankel Transforms")
-            self.plot_fq(axes[1], label=label_prefix, norm=True)
+                axes[1].set_title("Hankel Transforms")
+                self.plot_fq(axes[1], label=label_prefix, norm=True)
+
+            else:
+                ax = axes
+                ax.set_title("Hankel Transforms")
+                self.plot_fq(ax, label=label_prefix, norm=True)
 
     def plot_interpolation(self, ax, label_prefix="", **kwargs):
         """Display the transform's results"""
@@ -258,6 +264,7 @@ class StructureFactor:
                     self.fit_params.fitted_y,
                     label="_Fit",
                     color=data_line.get_color(),
+                    alpha=0.5,
                 )
 
             ax.set_xscale("log")
@@ -396,9 +403,11 @@ class CorrFunc:
         # before averaging, get the maximum lag length of self and other - will need to unify
         # (zero pad) to max length before stacking for averaging
         new_CF.lag = max(self.lag, other.lag, key=len)
+        new_CF.vt_um = max(self.vt_um, other.vt_um, key=len)
         max_length = len(new_CF.lag)
         min_n_rows = min(self.corrfunc.shape[0], other.corrfunc.shape[0])
         req_shape = (max_length, min_n_rows)  # for 2D arrays
+        duration_weights = [self.duration_min**2, other.duration_min**2]
 
         # set the attributes
         # TODO: test me with alignment measurement, then regular
@@ -407,19 +416,19 @@ class CorrFunc:
                 (unify_length(self.corrfunc, req_shape), unify_length(other.corrfunc, req_shape))
             ),
             axis=-1,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
         new_CF.weights = np.average(
             np.dstack(
                 (unify_length(self.weights, req_shape), unify_length(other.weights, req_shape))
             ),
             axis=-1,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
         new_CF.cf_cr = np.average(
             np.dstack((unify_length(self.cf_cr, req_shape), unify_length(other.cf_cr, req_shape))),
             axis=-1,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
         new_CF.average_all_cf_cr = np.average(
             np.vstack(
@@ -429,7 +438,7 @@ class CorrFunc:
                 )
             ),
             axis=0,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
         new_CF.avg_cf_cr = np.average(
             np.vstack(
@@ -439,17 +448,7 @@ class CorrFunc:
                 )
             ),
             axis=0,
-            weights=[self.duration_min, other.duration_min],
-        )
-        new_CF.vt_um = np.average(
-            np.vstack(
-                (
-                    unify_length(self.vt_um, (max_length,)),
-                    unify_length(other.vt_um, (max_length,)),
-                )
-            ),
-            axis=0,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
         new_CF.error_cf_cr = np.average(
             np.vstack(
@@ -459,7 +458,7 @@ class CorrFunc:
                 )
             ),
             axis=0,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
         new_CF.avg_corrfunc = np.average(
             np.vstack(
@@ -469,7 +468,7 @@ class CorrFunc:
                 )
             ),
             axis=0,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
         new_CF.error_corrfunc = np.average(
             np.vstack(
@@ -479,7 +478,7 @@ class CorrFunc:
                 )
             ),
             axis=0,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
         new_CF.normalized = np.average(
             np.vstack(
@@ -489,7 +488,7 @@ class CorrFunc:
                 )
             ),
             axis=0,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
         new_CF.error_normalized = np.average(
             np.vstack(
@@ -499,9 +498,9 @@ class CorrFunc:
                 )
             ),
             axis=0,
-            weights=[self.duration_min, other.duration_min],
+            weights=duration_weights,
         )
-        new_CF.g0 = (self.g0 + other.g0) / 2
+        new_CF.g0 = np.average([self.g0, other.g0], weights=duration_weights)
 
         # accumulate the duration (used as weights for the next addition
         new_CF.duration_min = self.duration_min + other.duration_min
@@ -1033,7 +1032,7 @@ class CorrFunc:
         interp_types = list(self.structure_factors.keys())
         n_interps = len(interp_types)
 
-        # remove the 'comparisons' kwarg from the kwargs
+        # Get the 'comparisons' kwarg from the kwargs
         comparisons = kwargs.get("comparisons", [])
 
         with Plotter(subplots=(n_interps, 1), **kwargs) as axes:
@@ -2317,17 +2316,15 @@ class SolutionSFCSExperiment:
         h_max, j_max = conf_hist.max(), conf_hist.argmax()
         t_max = conf_t[j_max]
 
-        beta0 = (h_max, 4, h_max * 1e-3)
-
-        fit_range = fit_range or Limits(t_max + 0.1, 40)
-        param_estimates = param_estimates or beta0
+        fit_range = fit_range or Limits(t_max + 0.1, 80)
 
         conf_params = conf.tdc_calib.fit_lifetime_hist(
-            fit_range=fit_range, fit_param_estimate=beta0
+            fit_range=fit_range,
+            fit_param_estimate=param_estimates or (h_max, 4, h_max * 1e-3),
         )
         lifetime_ns = conf_params.beta["tau"]
         if should_plot:
-            conf_params.plot(super_title="Lifetime Fit", y_scale="log")
+            conf_params.plot(super_title="Lifetime Fit", y_scale="log", **kwargs)
 
         if sted.is_loaded:
             # remove background
@@ -2550,10 +2547,12 @@ class SolutionSFCSExperiment:
         High-level method for plotting all correlation functions in the experiment.
         """
 
-        if self.confocal.is_loaded and not show_sted:
+        if self.confocal.is_loaded and (not show_sted or not self.sted.is_loaded):
             ref_meas = self.confocal
-        else:
+        elif self.sted.is_loaded:
             ref_meas = self.sted
+        else:
+            raise RuntimeError("No measurements loaded for plotting!")
 
         # auto x_field/x_scale determination
         if x_field is None:
@@ -3417,17 +3416,38 @@ def combine_measurements_list(
     if len(measurements_list) == 1:
         return deepcopy(measurements_list[0])
 
-    # Start with a copy of the first measurement
-    merged = deepcopy(measurements_list[0])
+    # Check that all measurements are of the same type
+    if len(meas_types := {m.type for m in measurements_list}) > 1:
+        raise ValueError(f"Cannot combine measurements of different types ({meas_types})")
 
-    # Merge each subsequent measurement into 'merged'
-    for measurement in measurements_list[1:]:
+    # Start with a copy of the measurement with the most CorrFuncs
+    merged = deepcopy(max(measurements_list, key=lambda m: len(m.cf)))
+    max_n_corrfuncs = len(merged.cf)
+
+    # Merge each subsequent measurement into 'merged', updating the .cf according to the
+    # (numbered) order of the keys
+    for meas_idx, measurement in enumerate(measurements_list[1:]):
+        print(f"Merging measurement #{meas_idx + 1}...")
         # Combine the CorrFuncs
-        for cf_name, cf2 in measurement.cf.items():
-            if cf_name in merged.cf:
-                merged.cf[cf_name] = merged.cf[cf_name] + cf2
+        for corrfunc_idx, (corrfunc_name, corrfunc) in enumerate(merged.cf.items()):
+            # Get the corresponding CorrFunc from the measurement
+            try:
+                other_corrfunc = list(measurement.cf.values())[corrfunc_idx]
+                other_corrfunc_name = list(measurement.cf.keys())[corrfunc_idx]
+            except IndexError:
+                print(
+                    f"Warning: the #{meas_idx + 1} measurement has fewer CorrFuncs "
+                    f"than {max_n_corrfuncs} ({len(measurement.cf)})."
+                )
+                break
             else:
-                merged.cf[cf_name] = deepcopy(cf2)
+                # Combine the CorrFunc
+                merged.cf[corrfunc_name] += other_corrfunc
+                if corrfunc_name != other_corrfunc_name:
+                    print(
+                        "Warning: CorrFunc names do not match "
+                        f"({corrfunc_name} != {other_corrfunc_name})"
+                    )
 
     return merged
 

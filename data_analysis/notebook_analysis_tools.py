@@ -1,9 +1,10 @@
 import functools
 import os
+import shutil
 from contextlib import contextmanager, suppress
 from itertools import cycle, product
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import matplotlib as mpl
 import numpy as np
@@ -11,11 +12,11 @@ from matplotlib import pyplot as plt
 
 from data_analysis.correlation_function import SolutionSFCSExperiment
 from data_analysis.polymer_physics import (
-    dawson_structure_factor_fit,
+    casassa_structure_factor_fit,
     debye_structure_factor_fit,
     screened_structure_factor_fit,
 )
-from utilities.display import Plotter, default_colors, plot_acfs
+from utilities.display import Plotter, default_colors, move_labels_to_end_of_legend, plot_acfs
 from utilities.fit_tools import FitError
 from utilities.helper import Gate, get_func_attr
 
@@ -58,6 +59,32 @@ def mpl_backend(backend: Optional[str] = None, verbose=False):
             print(f"[MPL BACKEND] Switching Matplotlib backend back to '{original_backend}'...")
         plt.close("all")
         mpl.use(original_backend)
+
+
+def revert_to_backup_processed_measurements(
+    root_path: Path,
+    backup_dirname: str = "backup",
+    processed_measurement_filename: str = "SolutionSFCSMeasurement.blosc",
+):
+    """
+    Recursively find subdirectories named 'backup' under root_path and
+    copy 'SolutionSFCSMeasurement.blosc' from each of those directories
+    to the parent directory of 'backup'.
+    """
+    # Walk through each subdirectory in root_path
+    for backup_dir in root_path.rglob(backup_dirname):
+        if backup_dir.is_dir():
+            source_file = backup_dir / processed_measurement_filename
+            # Check if the file exists in the current 'backup' directory
+            if source_file.exists():
+                destination = backup_dir.parent / processed_measurement_filename
+                # Check if the destination file already exists
+                if destination.exists():
+                    print("File already exists, overwriting... ", end="")
+                shutil.copy2(source_file, destination)
+                print(f"Copied from {source_file} to {destination}.")
+            else:
+                print(f"Backup file not found: {source_file}, skipping.")
 
 
 class SolutionSFCSExperimentLoader:
@@ -167,13 +194,19 @@ class SolutionSFCSExperimentHandler:
     Class to handle Solution SFCS experiments.
     """
 
-    def __init__(self, exp_dict: Optional[Dict[str, SolutionSFCSExperiment]] = None, **kwargs):
+    def __init__(
+        self,
+        data_root: Path,
+        exp_dict: Optional[Dict[str, SolutionSFCSExperiment]] = None,
+        **kwargs,
+    ):
         self.exp_dict = exp_dict or {}
         self._positive_filters: Tuple[str, ...] = ("",)
         self._negative_filters: Tuple[str, ...] = ()
-        self._data_loader = SolutionSFCSExperimentLoader(**kwargs)
+        self._exact_filter: Optional[Tuple[str, ...]] = None
+        self._data_loader = SolutionSFCSExperimentLoader(data_root=data_root, **kwargs)
         self._data_config: Dict[str, Dict[str, Any]] = {}
-        self._data_root = self._data_loader._data_root
+        self._data_root = data_root
 
     @property
     def labels(self):
@@ -191,9 +224,34 @@ class SolutionSFCSExperimentHandler:
             if any(str_ in label for str_ in self._positive_filters)
             and not any(str_ in label for str_ in self._negative_filters)
         }
+        if self._exact_filter:
+            fed = {label: exp for label, exp in fed.items() if label in self._exact_filter}
         if not fed:
             print("WARNING: No experiments match the current filter criteria.")
         return fed
+
+    @property
+    def exact_filter(self) -> Optional[Tuple[str, ...]]:
+        """
+        Return the exact filter as a tuple of strings.
+        """
+        return self._exact_filter
+
+    @exact_filter.setter
+    def exact_filter(self, exact_labels: Optional[Iterable[str]]):
+        """
+        Set the exact filter as a tuple of strings.
+        """
+        if exact_labels is None:
+            self._exact_filter = None
+            return
+
+        # cancel the current positive and negative filters
+        self.positive_filters = ("",)
+        self.negative_filters = ()
+
+        self._exact_filter = tuple(exact_labels)
+        _ = self.filtered_exp_dict  # trigger warning if no experiments match the current filters
 
     @property
     def positive_filters(self) -> Tuple[str, ...]:
@@ -201,6 +259,9 @@ class SolutionSFCSExperimentHandler:
 
     @positive_filters.setter
     def positive_filters(self, filters: Optional[List[str]] = None):
+        # Cancel the current exact filter
+        self.exact_filter = None
+        # Set the positive filters
         self._positive_filters = tuple(filters) if filters else ("",)
         _ = self.filtered_exp_dict  # trigger warning if no experiments match the current filters
 
@@ -210,6 +271,9 @@ class SolutionSFCSExperimentHandler:
 
     @negative_filters.setter
     def negative_filters(self, filters: Optional[List[str]] = None):
+        # Cancel the current exact filter
+        self.exact_filter = None
+        # Set the negative filters
         self._negative_filters = tuple(filters) if filters else ()
         _ = self.filtered_exp_dict  # trigger warning if no experiments match the current filters
 
@@ -253,54 +317,59 @@ class SolutionSFCSExperimentHandler:
         show_sted: bool = True,
         show_non_tdc_gated: bool = True,
         show_tdc_gated: bool = True,
+        backend=None,
         **kwargs,
     ):
         """
         Plot the correlation functions for a set of experiments.
         """
-        with Plotter(super_title="All Experiments, All ACFs", figsize=(8, 6)) as ax:
-            shared_kwargs = {
-                "parent_ax": ax,
-                "show_confocal": show_confocal,
-                "show_sted": show_sted,
-                "show_non_tdc_gated": show_non_tdc_gated,
-                "show_tdc_gated": show_tdc_gated,
-                **kwargs,
-            }
-            for label, exp in self.filtered_exp_dict.items():
-                with suppress(AttributeError):
+        with mpl_backend(backend):
+            with Plotter(super_title="All Experiments, All ACFs", figsize=(8, 6)) as ax:
+                shared_kwargs = {
+                    "parent_ax": ax,
+                    "show_confocal": show_confocal,
+                    "show_sted": show_sted,
+                    "show_non_tdc_gated": show_non_tdc_gated,
+                    "show_tdc_gated": show_tdc_gated,
+                    **kwargs,
+                }
+                for label, exp in self.filtered_exp_dict.items():
+                    with suppress(AttributeError):
 
-                    # normalized linear vt_um
-                    if plot_type == "norm_vs_vt_um":
-                        exp.plot_correlation_functions(
-                            x_scale="log",
-                            y_scale="linear",
-                            **shared_kwargs,
-                        )
+                        # normalized linear vt_um
+                        if plot_type == "norm_vs_vt_um":
+                            exp.plot_correlation_functions(
+                                x_scale="log",
+                                y_scale="linear",
+                                **shared_kwargs,
+                            )
 
-                    # normalized vs. log lag
-                    elif plot_type == "norm_vs_log_lag":
-                        exp.plot_correlation_functions(
-                            x_field="lag",
-                            **shared_kwargs,
-                        )
+                        # normalized vs. log lag
+                        elif plot_type == "norm_vs_log_lag":
+                            exp.plot_correlation_functions(
+                                x_field="lag",
+                                **shared_kwargs,
+                            )
 
-                    # avg_cf_cr vs. log lag
-                    elif plot_type == "avg_cf_cr_vs_log_lag":
-                        exp.plot_correlation_functions(
-                            x_field="lag",
-                            y_field="avg_cf_cr",
-                            **shared_kwargs,
-                        )
+                        # avg_cf_cr vs. log lag
+                        elif plot_type == "avg_cf_cr_vs_log_lag":
+                            exp.plot_correlation_functions(
+                                x_field="lag",
+                                y_field="avg_cf_cr",
+                                **shared_kwargs,
+                            )
 
-                    # log normalized vs. vt_um_sq
-                    elif plot_type == "log_norm_vs_vt_um_sq":
-                        exp.plot_correlation_functions(
-                            x_scale="quadratic",
-                            **shared_kwargs,
-                        )
+                        # log normalized vs. vt_um_sq
+                        elif plot_type == "log_norm_vs_vt_um_sq":
+                            exp.plot_correlation_functions(
+                                x_scale="quadratic",
+                                **shared_kwargs,
+                            )
 
-                print(f"\n{label} countrates:\nConfocal - {exp.confocal.avg_cnt_rate_khz:.2f} kHz")
+                    print(
+                        f"\n{label} countrates:\nConfocal - "
+                        f"{exp.confocal.avg_cnt_rate_khz:.2f} kHz"
+                    )
 
     @skip_if_all_exp_filtered
     def display_scan_images(self, n_images: int = 3, backend="inline"):
@@ -540,6 +609,7 @@ class SolutionSFCSExperimentHandler:
         rejection: int = 2,
         noise_thresh: float = 0.5,
         force: bool = False,
+        should_save: bool = False,
     ):
         """
         Re-average the ACFs for a set of experiments.
@@ -569,11 +639,22 @@ class SolutionSFCSExperimentHandler:
                             # plot kwargs
                             super_title=f"'{label}' - Split ACFs ({cf.name})",
                         )
+
+                    # save processed meas (data not re-saved - should be quick)
+                    if should_save:
+                        print(f"Saving '{label}'...")
+                        exp.save_processed_measurements(
+                            should_save_data=False,
+                            # processed files should already exist at this point,
+                            # so need to force
+                            should_force=True,
+                            data_root=self._data_root,
+                        )
                 else:
                     print(f"{label}: Using existing...")
 
     @skip_if_all_exp_filtered
-    def calculate_hankel_transforms(self, force: bool = False, save_data: bool = False, **kwargs):
+    def calculate_hankel_transforms(self, force: bool = False, **kwargs):
         """
         Calculate the Hankel transforms for a set of experiments.
         """
@@ -598,16 +679,13 @@ class SolutionSFCSExperimentHandler:
                             )
 
                             # save processed meas (data not re-saved - should be quick)
-                            if save_data:
-                                exp.save_processed_measurements(
-                                    should_save_data=False,
-                                    # processed files should already exist at this point,
-                                    # so need to force
-                                    should_force=True,
-                                    data_root=self._data_root,
-                                )
-                            else:
-                                print(f"{label}: Warning - data not saved! (save_data=False)")
+                            exp.save_processed_measurements(
+                                should_save_data=False,
+                                # processed files should already exist at this point,
+                                # so need to force
+                                should_force=True,
+                                data_root=self._data_root,
+                            )
 
                         else:
                             print(f"{label}: Using existing...")
@@ -628,7 +706,10 @@ class SolutionSFCSExperimentHandler:
 
     @skip_if_all_exp_filtered
     def calculate_structure_factors(
-        self, exp_label2cal_label: Dict[str, str], force: bool = False
+        self,
+        exp_label2cal_label: Dict[str, str],
+        force: bool = False,
+        save_measurements: bool = True,
     ):
         """
         Calculate the structure factors for a set of experiments.
@@ -643,13 +724,14 @@ class SolutionSFCSExperimentHandler:
                 exp.calculate_structure_factors(cal_exp, rmax=200, should_force=force)
 
                 # save processed meas (data not re-saved - should be quick)
-                exp.save_processed_measurements(
-                    should_save_data=False,
-                    # processed files should already exist at this point, so need to force
-                    should_force=True,
-                    data_root=self._data_root,
-                    verbose=False,
-                )
+                if save_measurements:
+                    exp.save_processed_measurements(
+                        should_save_data=False,
+                        # processed files should already exist at this point, so need to force
+                        should_force=True,
+                        data_root=self._data_root,
+                        verbose=False,
+                    )
 
     @skip_if_all_exp_filtered
     def plot_structure_factors(
@@ -659,18 +741,26 @@ class SolutionSFCSExperimentHandler:
         Plot the structure factors for a set of experiments,
         each with a unique marker shape.
         """
+        # Get the 'comparisons' kwarg from the kwargs
+        comparisons = kwargs.get("comparisons", [])
+
         with mpl_backend(backend):
             with Plotter(super_title="Structure Factors", figsize=(8, 6)) as ax:
                 # Create a marker cycle to assign a unique marker for each experiment
                 marker_cycle = cycle(["o", "^", "s", "D", "v", "p", "*"])
                 for exp_label, exp in self.filtered_exp_dict.items():
-                    if hasattr(exp, "cal_exp"):
-                        # Get the next marker from the cycle
-                        marker = next(marker_cycle)
-                        # Pass the marker to the plot_structure_factors method
-                        exp.plot_structure_factors(
-                            parent_ax=ax, marker=marker, plot_fit=plot_fits, **kwargs
-                        )
+                    # if hasattr(exp, "cal_exp"):
+                    # Get the next marker from the cycle
+                    marker = next(marker_cycle)
+                    # Pass the marker to the plot_structure_factors method
+                    exp.plot_structure_factors(
+                        parent_ax=ax,
+                        marker=marker,
+                        plot_fit=plot_fits,
+                        comparisons=kwargs.pop("comparisons", []),
+                        **kwargs,
+                    )
+                    move_labels_to_end_of_legend(ax, [model for model, _ in comparisons])
 
     @skip_if_all_exp_filtered
     def fit_structure_factors(self, meas_type: str, interp_type: str = "gaussian", **kwargs):
@@ -714,7 +804,7 @@ class SolutionSFCSExperimentHandler:
         Returns the appropriate structure factor fit function for the given label.
         The logic is as follows:
         * If the label contains " L " (linearized), return a "debye" fit function
-        * If the label contains " OC " (nicked), return a "dawson" fit function
+        * If the label contains " OC " (nicked), return a "casassa" fit function
         * If the label contains " D " (dilute), or "PL " (partially labeled),
             return a "regular" fit function
         * If the label contains " SD " (semi-dilute), return a "screened" fit function - in this
@@ -730,7 +820,8 @@ class SolutionSFCSExperimentHandler:
             dilute_label = semidilute_label.replace(" SD ", " D ")
 
             # Get the fit parameters for the dilute label
-            dilute_exp = self.filtered_exp_dict[dilute_label]
+            # dilute_exp = self.filtered_exp_dict[dilute_label]
+            dilute_exp = self.exp_dict[dilute_label]  # FIXME
             try:
                 dilute_cf = list(getattr(dilute_exp, meas_type).cf.values())[cf_idx]
             except IndexError:
@@ -757,7 +848,7 @@ class SolutionSFCSExperimentHandler:
                 # Circular topology
                 elif " OC " in semidilute_label:
                     dilute_Sq = functools.partial(
-                        dawson_structure_factor_fit,
+                        casassa_structure_factor_fit,
                         Rg=dilute_Rg,
                         B=1,
                     )
@@ -774,7 +865,7 @@ class SolutionSFCSExperimentHandler:
             if " L " in label:
                 return debye_structure_factor_fit
             elif " OC " in label:
-                return dawson_structure_factor_fit
+                return casassa_structure_factor_fit
             else:
                 raise ValueError(f"Label {label} contains ' D ' or 'PL ' but not ' L ' or ' OC '!")
         elif " SD " in label:
@@ -798,12 +889,12 @@ class SolutionSFCSExperimentHandler:
         Print the fitted parameters for the structure factors of a set of experiments.
         """
         for exp_label, exp in self.filtered_exp_dict.items():
-            if hasattr(exp, "cal_exp"):
-                meas = getattr(exp, meas_type)
-                for cf in meas.cf.values():
-                    if cf.structure_factors:
-                        structure_factor = cf.structure_factors["gaussian"]
-                        if structure_factor.fit_params is not None:
-                            print(f"{exp_label}, {cf.name}:")
-                            structure_factor.fit_params.print_fitted_params()
-                            print()
+            # if hasattr(exp, "cal_exp"):
+            meas = getattr(exp, meas_type)
+            for cf in meas.cf.values():
+                if cf.structure_factors:
+                    structure_factor = cf.structure_factors["gaussian"]
+                    if structure_factor.fit_params is not None:
+                        print(f"{exp_label}, {cf.name}:")
+                        structure_factor.fit_params.print_fitted_params()
+                        print()
