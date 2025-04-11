@@ -1715,8 +1715,8 @@ class SolutionSFCSMeasurement:
         with Plotter(super_title=f"'{self.type.capitalize()}' - ACFs", **kwargs) as ax:
             kwargs["parent_ax"] = ax
             for cf_idx, cf in enumerate(self.cf.values()):
-                # skip first if only gated are to be plotted
-                if not cf_idx and not show_non_tdc_gated:
+                # skip first if STED and only gated are to be plotted
+                if cf.name != "confocal" and not cf_idx and not show_non_tdc_gated:
                     continue
                 # skip rest if only non-gated are to be plotted
                 elif cf_idx and not show_tdc_gated:
