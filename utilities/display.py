@@ -17,6 +17,17 @@ import utilities.helper as helper
 plt.rcParams.update({"figure.max_open_warning": 300})
 default_colors = tuple(plt.rcParams["axes.prop_cycle"].by_key()["color"])
 
+# Crosshair appearance - visible from across the room (the screen is metres from the
+# mirrors the experimenter is turning). Tweak here if the colours clash with a sample.
+# Crosshair appearance - deliberately thick, so that the lines are readable on a screen
+# a couple of metres from the alignment mirrors. Change the four values below to taste.
+LIVE_CROSSHAIR_COLOR = "white"  # the beam currently on the camera
+LIVE_CROSSHAIR_LW = 2.5
+LIVE_CROSSHAIR_LS = (0, (8, 5))  # long dashes, to tell it apart from the solid reference
+REF_CROSSHAIR_COLOR = "red"  # the remembered (reference) beam, e.g. the excitation
+REF_CROSSHAIR_LW = 3.5
+REF_CROSSHAIR_LS = "-"
+
 
 class GuiDisplay:
     """Doc."""
@@ -29,6 +40,7 @@ class GuiDisplay:
 
     def __init__(self, layout, gui_parent=None):
         self.plotter = None
+        self.ref_pos = None  # remembered crosshair position (reference beam)
         self.figure = plt.figure(constrained_layout=True)
         self.canvas = FigureCanvasQTAgg(self.figure)
         if gui_parent is not None:
@@ -171,6 +183,8 @@ class Plotter:
         if self.gui_display is not None:
             try:
                 self.gui_display.last_pos = self.gui_display.axes[0].cursor.pos
+                # the reference crosshair persists across frames as well
+                self.gui_display.ref_pos = self.gui_display.axes[0].cursor.ref_pos
             except AttributeError:
                 self.gui_display.last_pos = (0, 0)
             except IndexError:
@@ -239,7 +253,9 @@ class Plotter:
                     ax.org_dims = tuple(lim.interval() for lim in ax.org_lims)
                     ax.zoom_func = zoom_factory(ax)
                 if self.gui_options.cursor:
-                    ax.cursor = cursor_factory(ax, self.gui_display.last_pos)
+                    ax.cursor = cursor_factory(
+                        ax, self.gui_display.last_pos, getattr(self.gui_display, "ref_pos", None)
+                    )
                 with suppress(TypeError):  # TODO: test this (is type error correct?)
                     ax.axis(self.gui_options.show_axis)
 
@@ -333,7 +349,7 @@ class NavigationToolbar(NavigationToolbar2QT):
     ]
 
 
-def cursor_factory(ax, init_cursor_pos):
+def cursor_factory(ax, init_cursor_pos, ref_pos=None):
     """Doc."""
 
     class Cursor:
@@ -346,10 +362,46 @@ def cursor_factory(ax, init_cursor_pos):
             self.ax = ax
             self.pos = init_cursor_pos
             x, y = init_cursor_pos
-            self.horizontal_line = ax.axhline(y=y, color="y", lw=1, ls="--")
-            self.vertical_line = ax.axvline(x=x, color="y", lw=1, ls="--")
+            self.horizontal_line = ax.axhline(
+                y=y, color=LIVE_CROSSHAIR_COLOR, lw=LIVE_CROSSHAIR_LW, ls=LIVE_CROSSHAIR_LS
+            )
+            self.vertical_line = ax.axvline(
+                x=x, color=LIVE_CROSSHAIR_COLOR, lw=LIVE_CROSSHAIR_LW, ls=LIVE_CROSSHAIR_LS
+            )
+            # the remembered reference crosshair (drawn solid and in another colour)
+            self.ref_pos = ref_pos
+            self.ref_horizontal_line = None
+            self.ref_vertical_line = None
+            if ref_pos is not None:
+                self.draw_reference(ref_pos)
             # text location in axes coordinates
             self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes)
+
+        def draw_reference(self, pos: Tuple[float, float]):
+            """Draw (or move) the remembered reference crosshair."""
+
+            x, y = pos
+            self.ref_pos = pos
+            if self.ref_horizontal_line is None:
+                self.ref_horizontal_line = self.ax.axhline(
+                    y=y, color=REF_CROSSHAIR_COLOR, lw=REF_CROSSHAIR_LW, ls=REF_CROSSHAIR_LS
+                )
+                self.ref_vertical_line = self.ax.axvline(
+                    x=x, color=REF_CROSSHAIR_COLOR, lw=REF_CROSSHAIR_LW, ls=REF_CROSSHAIR_LS
+                )
+            else:
+                self.ref_horizontal_line.set_ydata([y, y])
+                self.ref_vertical_line.set_xdata([x, x])
+            self.ax.figure.canvas.draw_idle()
+
+        def clear_reference(self):
+            """Remove the remembered reference crosshair."""
+
+            for line in (self.ref_horizontal_line, self.ref_vertical_line):
+                with suppress(AttributeError, ValueError):
+                    line.remove()
+            self.ref_horizontal_line = self.ref_vertical_line = self.ref_pos = None
+            self.ax.figure.canvas.draw_idle()
 
         def _set_crosshair_visible(self, visible):
             need_redraw = self.horizontal_line.get_visible() != visible
@@ -371,8 +423,8 @@ def cursor_factory(ax, init_cursor_pos):
             """Doc."""
 
             x, y = pos
-            self.horizontal_line.set_ydata(y)
-            self.vertical_line.set_xdata(x)
+            self.horizontal_line.set_ydata([y, y])
+            self.vertical_line.set_xdata([x, x])
             self.ax.figure.canvas.draw_idle()
             self.pos = pos
 

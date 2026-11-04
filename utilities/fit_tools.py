@@ -202,6 +202,75 @@ def _fit_and_get_param_dict(
     )
 
 
+def find_dark_core(data: np.ndarray, bg: float = None) -> Dict[str, Any]:
+    """
+    Locate the dark core of a vortex (donut) beam, and the beam's own centroid.
+
+    A phase singularity forces the field to zero on its own axis at every propagation
+    distance, so a camera placed anywhere after the vortex plate shows a dark core whose
+    transverse position IS the singularity's position (1:1, no magnification). The offset
+    between that core and the beam centroid is therefore the plate's decentring.
+
+    Returns a dict with 'core' (x, y), 'centroid' (x, y), 'offset' (dx, dy) in pixels,
+    'offset_px' (its magnitude), 'beam_radius' (px) and 'core_depth' (fraction of peak).
+    Raises FitError if no beam is found.
+    """
+
+    data = np.asarray(data, dtype=float)
+
+    # background: median of a 10% border frame
+    if bg is None:
+        h, w = data.shape
+        k = max(int(0.1 * min(h, w)), 2)
+        bg = float(
+            np.median(
+                np.concatenate(
+                    [data[:k].ravel(), data[-k:].ravel(), data[:, :k].ravel(), data[:, -k:].ravel()]
+                )
+            )
+        )
+    a = np.clip(data - bg, 0, None)
+    if a.max() <= 0:
+        raise FitError("No beam found in image (all background).")
+
+    # beam centroid - the small dark core barely biases it
+    yy, xx = np.indices(a.shape)
+    weights = np.where(a > 0.05 * a.max(), a, 0.0)
+    total = weights.sum()
+    if total <= 0:
+        raise FitError("No beam found in image.")
+    y_beam = (yy * weights).sum() / total
+    x_beam = (xx * weights).sum() / total
+
+    # beam radius from the second moment (1/e^2 radius for a Gaussian)
+    r_sq = (((yy - y_beam) ** 2 + (xx - x_beam) ** 2) * weights).sum() / total
+    beam_radius = float(np.sqrt(2 * r_sq))
+
+    # dark core: minimum of the smoothed image, searched inside the beam only
+    smoothed = sp.ndimage.uniform_filter(a, max(int(beam_radius / 15), 1))
+    r = np.hypot(yy - y_beam, xx - x_beam)
+    masked = np.where(r < 0.5 * beam_radius, smoothed, smoothed.max())
+    iy, ix = np.unravel_index(np.argmin(masked), masked.shape)
+
+    # refine: centroid of the inverted image in a small box about that minimum
+    box = max(int(0.08 * beam_radius), 3)
+    sl = (slice(max(iy - box, 0), iy + box + 1), slice(max(ix - box, 0), ix + box + 1))
+    patch_ = smoothed[sl].max() - smoothed[sl]
+    if patch_.sum() <= 0:
+        raise FitError("Could not localize a dark core.")
+    y_core = float((yy[sl] * patch_).sum() / patch_.sum())
+    x_core = float((xx[sl] * patch_).sum() / patch_.sum())
+
+    return dict(
+        core=(x_core, y_core),
+        centroid=(x_beam, y_beam),
+        offset=(x_core - x_beam, y_core - y_beam),
+        offset_px=float(np.hypot(x_core - x_beam, y_core - y_beam)),
+        beam_radius=beam_radius,
+        core_depth=float(smoothed[int(round(y_core)), int(round(x_core))] / a.max()),
+    )
+
+
 def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
     """Doc."""
 

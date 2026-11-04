@@ -24,7 +24,7 @@ from logic.timeout import TIMEOUT_INTERVAL
 from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.file_utilities import load_object, save_object
-from utilities.fit_tools import FitError, fit_2d_gaussian_to_image, linear_fit
+from utilities.fit_tools import FitError, find_dark_core, fit_2d_gaussian_to_image, linear_fit
 from utilities.helper import (
     Gate,
     Limits,
@@ -1560,12 +1560,17 @@ class BaseCamera:
 
     DEFAULT_PARAM_DICT: dict
 
+    # a dark core deeper than this (as a fraction of the peak) is accepted as a real hole;
+    # a Gaussian beam with no vortex plate in it gives ~0.5-1.0 and is rejected
+    MAX_HOLE_DEPTH = 0.5
+
     def __init__(self, *args):
         # TODO: Get these from the widgets during initialization!
         self.is_in_video_mode = False
         self.is_in_grayscale_mode = True
         self.is_in_transposed_mode = False
         self.should_get_diameter = False
+        self.should_find_hole = False
         self.is_auto_exposure_on = False
         self.last_snapshot = np.zeros((100, 100))
 
@@ -1619,6 +1624,9 @@ class BaseCamera:
             if self.should_get_diameter:
                 self.get_and_display_beam_width(img_arr)
 
+            if self.should_find_hole:
+                self.find_and_display_hole_center(img_arr)
+
     def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""
 
@@ -1642,6 +1650,79 @@ class BaseCamera:
 
         for name, value in param_dict.items():
             self.set_parameter(name, value)
+
+    def _as_grayscale_array(self, img_arr) -> np.ndarray:
+        """Return the frame as a 2D float array, whatever the camera mode."""
+
+        arr = np.asarray(img_arr)
+        if arr.ndim == 3:  # colour frame - average the channels
+            arr = arr.mean(axis=2)
+        return arr.astype(float)
+
+    def find_and_display_hole_center(self, img_arr):
+        """
+        Locate the dark core (hole) of a vortex/depletion beam and put the live
+        crosshair on it. Unlike the Gaussian fit this works for a donut, where the
+        centre of the beam is its darkest point rather than its brightest.
+        """
+
+        try:
+            res = find_dark_core(self._as_grayscale_array(img_arr))
+        except FitError as exc:
+            logging.debug(f"{self.log_ref}: Dark core not found! [{exc}]")
+            return
+
+        if res["core_depth"] > self.MAX_HOLE_DEPTH:
+            logging.debug(
+                f"{self.log_ref}: no clear dark core "
+                f"(darkest point is {100 * res['core_depth']:.0f} % of the peak) - "
+                "is the vortex plate in the beam, and is the image unsaturated?"
+            )
+            return
+
+        x_core, y_core = res["core"]
+        logging.debug(
+            f"{self.log_ref}: dark core at ({x_core:.1f}, {y_core:.1f}) px, "
+            f"{res['offset_px']:.1f} px from the beam centroid "
+            f"({100 * res['offset_px'] / max(res['beam_radius'], 1e-9):.1f} % of the beam radius), "
+            f"core depth {100 * res['core_depth']:.1f} % of peak"
+        )
+
+        cursor = self.display.obj.axes[0].cursor
+        cursor.move_to_pos((x_core, y_core))
+
+        # if a reference crosshair is remembered, report the residual misalignment
+        if getattr(cursor, "ref_pos", None) is not None:
+            x_ref, y_ref = cursor.ref_pos
+            logging.debug(
+                f"{self.log_ref}: dark core is "
+                f"({x_core - x_ref:+.1f}, {y_core - y_ref:+.1f}) px from the remembered centre"
+            )
+
+    def mark_reference(self, should_mark: bool) -> None:
+        """
+        Remember (or forget) the crosshair's current position as the reference beam -
+        normally the excitation beam's centre. It is drawn in a second colour and stays
+        put while the other beam's live crosshair is moved onto it.
+        """
+
+        try:
+            cursor = self.display.obj.axes[0].cursor
+        except (AttributeError, IndexError):
+            logging.debug(f"{self.log_ref}: no image displayed yet - nothing to remember")
+            return
+
+        if should_mark:
+            cursor.draw_reference(cursor.pos)
+            self.display.obj.ref_pos = cursor.pos
+            logging.debug(
+                f"{self.log_ref}: reference centre remembered at "
+                f"({cursor.pos[0]:.1f}, {cursor.pos[1]:.1f}) px"
+            )
+        else:
+            cursor.clear_reference()
+            self.display.obj.ref_pos = None
+            logging.debug(f"{self.log_ref}: reference centre cleared")
 
     def get_and_display_beam_width(self, img_arr):
         """Doc."""

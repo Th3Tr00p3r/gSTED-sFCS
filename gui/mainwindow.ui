@@ -12363,6 +12363,28 @@ Fit</string>
                   </property>
                  </widget>
                 </item>
+                <item>
+                 <widget class="QCheckBox" name="findBeamHole1">
+                  <property name="toolTip">
+                   <string>Find the dark core (hole) of a donut/vortex beam and put the live crosshair on it</string>
+                  </property>
+                  <property name="text">
+                   <string>Hole
+Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="markBeamRef1">
+                  <property name="toolTip">
+                   <string>Remember the current crosshair position as the reference (e.g. the excitation beam); it stays on screen in red while the other beam is aligned onto it</string>
+                  </property>
+                  <property name="text">
+                   <string>Remember
+Center</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </item>
               <item>
@@ -13109,6 +13131,28 @@ Fit</string>
                   <property name="text">
                    <string>Gaussian
 Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="findBeamHole2">
+                  <property name="toolTip">
+                   <string>Find the dark core (hole) of a donut/vortex beam and put the live crosshair on it</string>
+                  </property>
+                  <property name="text">
+                   <string>Hole
+Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="markBeamRef2">
+                  <property name="toolTip">
+                   <string>Remember the current crosshair position as the reference (e.g. the excitation beam); it stays on screen in red while the other beam is aligned onto it</string>
+                  </property>
+                  <property name="text">
+                   <string>Remember
+Center</string>
                   </property>
                  </widget>
                 </item>

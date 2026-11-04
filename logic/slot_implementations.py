@@ -1023,6 +1023,20 @@ class MainWin:
             camera = self.cameras[cam_num - 1]
             camera.should_get_diameter = is_checked
 
+    def find_beam_hole(self, cam_num: int, is_checked: bool):
+        """Continuously locate the dark core (hole) of a donut/vortex beam"""
+
+        if self.cameras:
+            camera = self.cameras[cam_num - 1]
+            camera.should_find_hole = is_checked
+
+    def mark_beam_reference(self, cam_num: int, is_checked: bool):
+        """Remember the current crosshair position as the reference beam centre"""
+
+        if self.cameras:
+            camera = self.cameras[cam_num - 1]
+            camera.mark_reference(is_checked)
+
     ####################
     ## Analysis Tab - Raw Data
     ####################

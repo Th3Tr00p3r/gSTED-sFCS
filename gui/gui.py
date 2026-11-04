@@ -285,6 +285,18 @@ class MainWin(QtWidgets.QMainWindow):
         self.measureBeamDiameter2.toggled.connect(
             lambda: self.impl.get_gaussian_diameter(2, self.measureBeamDiameter2.isChecked())
         )
+        self.findBeamHole1.toggled.connect(
+            lambda: self.impl.find_beam_hole(1, self.findBeamHole1.isChecked())
+        )
+        self.findBeamHole2.toggled.connect(
+            lambda: self.impl.find_beam_hole(2, self.findBeamHole2.isChecked())
+        )
+        self.markBeamRef1.toggled.connect(
+            lambda: self.impl.mark_beam_reference(1, self.markBeamRef1.isChecked())
+        )
+        self.markBeamRef2.toggled.connect(
+            lambda: self.impl.mark_beam_reference(2, self.markBeamRef2.isChecked())
+        )
         self.grayscaleMode1.toggled.connect(
             lambda: self.impl.set_grayscale_mode(1, self.grayscaleMode1.isChecked())
         )
