@@ -1248,6 +1248,14 @@ def dir_date_parts(data_path: str, sub_dir: str = "", month: str = None, year: s
         for dir_name in dir_name_list
     ]
 
+    # ignore any folder whose name is not a DD_MM_YYYY date (e.g. 'old', 'test_data'),
+    # which would otherwise crash the sort below on int()
+    dir_date_dict_list = [
+        dir_date_dict
+        for dir_date_dict in dir_date_dict_list
+        if dir_date_dict and all(date_val.isdigit() for date_val in dir_date_dict.values())
+    ]
+
     # get matching days
     if year and month:
         date_item_list = [

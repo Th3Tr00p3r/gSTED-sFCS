@@ -449,11 +449,18 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             lower_gate_ns = self.eff_delay_ns - self.sync_delay_ns
             self.set_delay_wdgt.set(lower_gate_ns)
 
-    def close(self):
-        """Doc."""
+    async def close(self):
+        """
+        Both 'toggle' and 'mpd_command' are coroutines - they must be awaited, or the
+        delayer output is never switched off and the device is left out of echo mode
+        (and Python warns that the coroutine was never awaited).
+        """
 
-        self.toggle(False)
-        self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
+        await self.toggle(False)
+        try:
+            await self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         self.close_instrument()
 
     async def set_lower_gate(self, lower_gate_ns=None):

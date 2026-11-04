@@ -212,14 +212,17 @@ class App:
     async def clean_up_app(self, should_clear_dump_path: bool):
         """Doc."""
 
-        def close_all_dvcs(app):
-            """Doc."""
+        async def close_all_dvcs(app):
+            """
+            Devices with an asynchronous close() must be awaited here: a task created
+            instead would never run, since the event loop is stopped a few lines below.
+            """
 
             for nick in self.device_nick_class_dict.keys():
                 dvc = getattr(app.devices, nick)
                 with suppress(DeviceError):
                     if asyncio.iscoroutinefunction(dvc.close):
-                        self.loop.create_task(dvc.close())
+                        await dvc.close()
                     else:
                         dvc.close()
 
@@ -249,7 +252,7 @@ class App:
             await self.gui.main.impl.cancel_queue()
 
         close_all_wins(self)
-        close_all_dvcs(self)
+        await close_all_dvcs(self)
 
         # stopping the event loop
         self.loop.stop()
