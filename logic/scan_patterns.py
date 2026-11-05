@@ -241,32 +241,56 @@ class ScanPatternAO:
         s = s - 1 / (2 * f)
         # TODO: need to center width as well?
 
-        x_ao = np.zeros(shape=(T, n_lines + 1))
-        y_ao = np.zeros(shape=(T, n_lines + 1))
+        # 'line_repeats' passes are made over each line before stepping to the next one.
+        # 1 (the default) is the plain scanning-FCS pattern: every line is visited once per
+        # cycle. R > 1 dwells on a line, which brings the shortest correlation lag for a
+        # given spot down from the cycle time to the single-line time.
+        #
+        # The passes cannot simply be copies of the same column: each pass carries half a
+        # 'line_shift_um' step through each of its turnarounds (shift_vec), so a pass ends
+        # one line over from where it began, and successive passes alternate direction. A
+        # repeated column would therefore ask the galvos to jump from the end of the line
+        # back to its start. Instead the repeats use a non-stepping waveform (shift_vec set
+        # to zero) at the perpendicular position where the line's stepping pass begins, and
+        # only the last pass over each line carries the step to the next one. Direction
+        # alternates over all passes, so the AO stays continuous for any 'line_repeats'.
+        line_repeats = max(int(self.scan_params.get("line_repeats", 1) or 1), 1)
+        n_passes = n_lines * line_repeats
+
+        x_ao = np.zeros(shape=(T, n_passes + 1))
+        y_ao = np.zeros(shape=(T, n_passes + 1))
+        # stepping waveforms (forward, backward) - as in the plain pattern
         X1 = linear_len_um * s * cos(ang_rad) + shift_vec * sin(ang_rad)
         Y1 = linear_len_um * s * sin(ang_rad) - shift_vec * cos(ang_rad)
         X2 = -X1 + 2 * shift_vec * sin(ang_rad)
         Y2 = -Y1 - 2 * shift_vec * cos(ang_rad)
-        for line_idx in range(n_lines):
-            if line_idx % 2 == 0:
-                XT = X1
-                YT = Y1
-            else:
-                XT = X2
-                YT = Y2
+        # non-stepping waveforms (forward, backward) - same line, no sideways drift
+        X1_flat = linear_len_um * s * cos(ang_rad)
+        Y1_flat = linear_len_um * s * sin(ang_rad)
+        X2_flat = -X1_flat
+        Y2_flat = -Y1_flat
 
-            x_ao[:, line_idx] = XT[:] + (line_idx - (n_lines + 1) / 2) * line_shift_um * sin(
-                ang_rad
-            )
-            y_ao[:, line_idx] = YT[:] - (line_idx - (n_lines + 1) / 2) * line_shift_um * cos(
-                ang_rad
-            )
+        pass_idx = 0
+        for line_idx in range(n_lines):
+            line_offset_um = (line_idx - (n_lines + 1) / 2) * line_shift_um
+            for repeat_idx in range(line_repeats):
+                is_forward = pass_idx % 2 == 0
+                if repeat_idx == line_repeats - 1:  # the pass that steps to the next line
+                    XT, YT = (X1, Y1) if is_forward else (X2, Y2)
+                    offset_um = line_offset_um
+                else:  # a repeat: stay where the stepping pass is about to begin
+                    XT, YT = (X1_flat, Y1_flat) if is_forward else (X2_flat, Y2_flat)
+                    offset_um = line_offset_um - line_shift_um / 2
+
+                x_ao[:, pass_idx] = XT[:] + offset_um * sin(ang_rad)
+                y_ao[:, pass_idx] = YT[:] - offset_um * cos(ang_rad)
+                pass_idx += 1
 
         # add one more line to walk back slowly to the beginning
         Xend = x_ao[-1, -2]
         Yend = y_ao[-1, -2]
-        x_ao[:, line_idx + 1] = Xend + np.arange(T) * (x_ao[0, 0] - Xend) / T
-        y_ao[:, line_idx + 1] = Yend + np.arange(T) * (y_ao[0, 0] - Yend) / T
+        x_ao[:, pass_idx] = Xend + np.arange(T) * (x_ao[0, 0] - Xend) / T
+        y_ao[:, pass_idx] = Yend + np.arange(T) * (y_ao[0, 0] - Yend) / T
 
         # convert to voltages
         x_um_v_ratio, y_um_v_ratio, z_um_v_ratio = self.um_v_ratio
@@ -296,6 +320,8 @@ class ScanPatternAO:
 
         self.scan_params["dt"] = 1 / (line_freq_hz * ppl)
         self.scan_params["n_lines"] = n_lines
+        self.scan_params["line_repeats"] = line_repeats
+        self.scan_params["n_passes"] = n_passes
         self.scan_params["samples_per_line"] = T
         self.scan_params["linear_len_um"] = linear_len_um
         self.scan_params["ppl"] = round(ppl)  # TESTESTEST
