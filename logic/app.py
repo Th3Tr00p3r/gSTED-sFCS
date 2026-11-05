@@ -31,7 +31,7 @@ from logic.devices import (
 from logic.timeout import Timeout
 from utilities.dialog import QuestionDialog
 from utilities.errors import DeviceError
-from utilities.file_utilities import DUMP_PATH
+from utilities.file_utilities import DUMP_ROOT
 
 
 class App:
@@ -259,7 +259,7 @@ class App:
 
         # clear temp folder
         if should_clear_dump_path:
-            shutil.rmtree(DUMP_PATH, ignore_errors=True)
+            shutil.rmtree(DUMP_ROOT, ignore_errors=True)
             logging.info("Dump path cleared.")
 
         logging.info("Quitting application.")
@@ -271,7 +271,7 @@ class App:
         try:
             if not self.exiting:
                 pressed = QuestionDialog(
-                    txt=f"Would you like to clear the temprary dump path?\n({DUMP_PATH})",
+                    txt=f"Would you like to clear the temprary dump path?\n({DUMP_ROOT})",
                     title="Quitting Program",
                     should_include_cancel=True,
                 ).display()
