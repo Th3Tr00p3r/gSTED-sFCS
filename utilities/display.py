@@ -107,6 +107,12 @@ class GuiDisplay:
 
         with self.plotter as ax:
             ax.imshow(image, interpolation="none", **imshow_kwargs)
+            # pin the view to the image, so that nothing drawn on top of it (a wild fit
+            # ellipse, an annotation, a crosshair) can rescale or shift the display
+            height, width = image.shape[:2]
+            ax.set_xlim(-0.5, width - 0.5)
+            ax.set_ylim(height - 0.5, -0.5)
+            ax.set_autoscale_on(False)
 
     def plot_acfs(self, *args, **kwargs):
         """Doc."""
@@ -127,20 +133,27 @@ class GuiDisplay:
                 artist.remove()
 
         with suppress(AttributeError):
+            ax = self.axes[0]
             patch.set_label("expandable")
-            # plot patch
-            self.axes[0].add_artist(patch)
-            # annotate
+            # plot patch (clipped, so an oversized patch cannot affect the view)
+            patch.set_clip_on(True)
+            ax.add_artist(patch)
+            # annotate - keep the text inside the axes, whatever the patch centre is
             if annotation:
-                self.axes[0].annotate(
+                x_lims, y_lims = sorted(ax.get_xlim()), sorted(ax.get_ylim())
+                x_text = min(max(patch._center[0], x_lims[0]), x_lims[1])
+                y_text = min(max(patch._center[1], y_lims[0]), y_lims[1])
+                text = ax.annotate(
                     annotation,
-                    patch._center,
+                    (x_text, y_text),
                     color="w",
                     weight="bold",
                     fontsize=11,
                     ha="center",
                     va="center",
+                    clip_on=True,
                 )
+                text.set_label("expandable")
             self.canvas.draw_idle()
 
 

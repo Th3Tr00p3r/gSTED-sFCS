@@ -1774,17 +1774,23 @@ class BaseCamera:
             fp.beta["phi"],
         )
 
-        max_sigma_y, max_sigma_x = resized_cropped_gs_img_arr.shape
+        # reject an implausible fit instead of drawing it: a centre outside the frame or a
+        # width comparable to the frame itself means the optimizer ran away, and drawing
+        # that makes the ellipse (and the crosshair) jump about between frames
+        n_rows, n_cols = resized_cropped_gs_img_arr.shape
+        max_sigma_x, max_sigma_y = n_cols / 3, n_rows / 3
         if (
-            x0 < 0
-            or y0 < 0
+            not (0 <= x0 <= n_cols)
+            or not (0 <= y0 <= n_rows)
             or abs(1 - sigma_x / sigma_y) > 2
             or sigma_x > max_sigma_x
             or sigma_y > max_sigma_y
         ):
-            #            print(
-            #                f"{self.log_ref}: Gaussian fit is irrational! Center on CCD and avoid saturation.\n({fp.beta})"
-            #            )
+            logging.debug(
+                f"{self.log_ref}: Gaussian fit is irrational - not displayed "
+                f"(x0={x0:.1f}, y0={y0:.1f}, sigma_x={sigma_x:.1f}, sigma_y={sigma_y:.1f}, "
+                f"frame={n_cols}x{n_rows}). Centre the beam on the CCD and avoid saturation."
+            )
             return
 
         # calculating the FWHM

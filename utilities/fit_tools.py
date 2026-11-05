@@ -272,7 +272,16 @@ def find_dark_core(data: np.ndarray, bg: float = None) -> Dict[str, Any]:
 
 
 def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
-    """Doc."""
+    """
+    Fit an elliptical 2D Gaussian to an image.
+
+    The initial guess is taken from the image's own moments rather than from the image
+    size: a guess of sigma = half the image is far from any real beam, and from there the
+    optimizer often walks off to a huge, almost flat Gaussian - which is what makes the
+    fitted centre (and the ellipse drawn from it) jump between frames. Moments cost one
+    pass over the image and land within a few percent of the answer for a beam that is
+    roughly centred, so the fit then only has to polish it.
+    """
 
     height, width = data.shape
     x1 = np.arange(height)
@@ -280,11 +289,41 @@ def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
     x1, x2 = np.meshgrid(x1, x2)
     y = data.ravel()
 
-    # estimate initial parameters from data
-    # (amplitude, x0, y0, sigma_x, sigma_y, theta, offset)
-    p0 = (y.max() - y.min(), height / 2, width / 2, height / 2, width / 2, 0, y.min())
+    # --- initial guess from the image moments ---
+    # background: median of a 10% border frame (robust to the beam itself)
+    k = max(int(0.1 * min(height, width)), 2)
+    offset_0 = float(
+        np.median(
+            np.concatenate(
+                [data[:k].ravel(), data[-k:].ravel(), data[:, :k].ravel(), data[:, -k:].ravel()]
+            )
+        )
+    )
+    pos = np.clip(data.astype(float) - offset_0, 0, None)
+    amplitude_0 = float(pos.max())
+    # weight only the bright part, so that camera background does not pull the centroid
+    weights = np.where(pos > 0.5 * amplitude_0, pos, 0.0)
+    if weights.sum() <= 0:  # featureless frame - fall back to the image centre
+        weights = np.ones_like(pos)
+    rows, cols = np.indices(data.shape)
+    total = weights.sum()
+    y0_0 = float((rows * weights).sum() / total)  # row index
+    x0_0 = float((cols * weights).sum() / total)  # column index
+    # NOTE: in this parametrization x0 is the column coordinate and y0 the row coordinate
+    sigma_x_0 = float(np.sqrt(max((((cols - x0_0) ** 2) * weights).sum() / total, 1.0)))
+    sigma_y_0 = float(np.sqrt(max((((rows - y0_0) ** 2) * weights).sum() / total, 1.0)))
 
-    return _fit_and_get_param_dict(gaussian_2d_fit, (x1, x2), y, p0)
+    # (amplitude, x0, y0, sigma_x, sigma_y, phi, offset)
+    p0 = (amplitude_0, x0_0, y0_0, sigma_x_0, sigma_y_0, 0.0, offset_0)
+
+    # keep the optimizer inside the image: a sigma larger than the frame, or a centre
+    # outside it, is never a physical beam - and is exactly what used to be returned
+    lower = (0.0, 0.0, 0.0, 0.5, 0.5, -np.pi, -np.inf)
+    upper = (np.inf, float(width), float(height), float(width), float(height), np.pi, np.inf)
+
+    return _fit_and_get_param_dict(
+        gaussian_2d_fit, (x1, x2), y, p0, curve_fit_kwargs=dict(bounds=(lower, upper))
+    )
 
 
 def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
