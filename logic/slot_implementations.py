@@ -1037,6 +1037,39 @@ class MainWin:
             camera = self.cameras[cam_num - 1]
             camera.mark_reference(is_checked)
 
+    def read_beam_positions(self, use_reference: bool = False):
+        """
+        Return (cam1_x, cam1_y, cam2_x, cam2_y) in pixels, taken from the crosshairs of
+        the two camera displays - the live ones (the latest Gaussian or hole fit), or the
+        remembered reference ones. Used by the beam walk assistant.
+        """
+
+        cameras = self.cameras or (self._app.devices.camera_1, self._app.devices.camera_2)
+        positions = []
+        for cam_num, camera in enumerate(cameras[:2], start=1):
+            try:
+                cursor = camera.display.obj.axes[0].cursor
+            except (AttributeError, IndexError):
+                raise RuntimeError(f"camera {cam_num} has no image displayed yet")
+            pos = cursor.ref_pos if use_reference else cursor.pos
+            if pos is None:
+                raise RuntimeError(
+                    f"camera {cam_num} has no "
+                    f"{'remembered centre' if use_reference else 'fitted centre'} yet"
+                )
+            positions += [float(pos[0]), float(pos[1])]
+        return positions
+
+    def open_beam_walk_dialog(self):
+        """Open the beam walk assistant (keeps one instance, so a calibration survives)"""
+
+        from gui.beam_walk import BeamWalkDialog
+
+        if getattr(self, "_beam_walk_dialog", None) is None:
+            self._beam_walk_dialog = BeamWalkDialog(self, parent=self.main_gui)
+        self._beam_walk_dialog.show()
+        self._beam_walk_dialog.raise_()
+
     ####################
     ## Analysis Tab - Raw Data
     ####################

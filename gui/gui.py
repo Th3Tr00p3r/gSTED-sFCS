@@ -297,6 +297,7 @@ class MainWin(QtWidgets.QMainWindow):
         self.markBeamRef2.toggled.connect(
             lambda: self.impl.mark_beam_reference(2, self.markBeamRef2.isChecked())
         )
+        self.beamWalkButton.released.connect(lambda: self.impl.open_beam_walk_dialog())
         self.grayscaleMode1.toggled.connect(
             lambda: self.impl.set_grayscale_mode(1, self.grayscaleMode1.isChecked())
         )

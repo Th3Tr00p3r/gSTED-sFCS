@@ -13156,6 +13156,17 @@ Center</string>
                   </property>
                  </widget>
                 </item>
+                <item>
+                 <widget class="QPushButton" name="beamWalkButton">
+                  <property name="toolTip">
+                   <string>Beam walk assistant: measure how each mirror moves the spot on both cameras, then compute the knob turns that put this beam on the remembered centres</string>
+                  </property>
+                  <property name="text">
+                   <string>Beam
+Walk...</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </item>
               <item>
