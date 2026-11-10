@@ -1706,6 +1706,27 @@ class BaseCamera:
                 f"({x_core - x_ref:+.1f}, {y_core - y_ref:+.1f}) px from the remembered centre"
             )
 
+    def set_waypoint(self, pos) -> None:
+        """
+        Show (or, with pos=None, remove) the beam walk waypoint crosshair - the point
+        this beam should be steered to with the first mirror.
+        """
+
+        try:
+            cursor = self.display.obj.axes[0].cursor
+        except (AttributeError, IndexError):
+            logging.debug(f"{self.log_ref}: no image displayed yet - cannot show a waypoint")
+            return
+
+        if pos is None:
+            cursor.clear_waypoint()
+            self.display.obj.waypoint_pos = None
+            logging.debug(f"{self.log_ref}: waypoint cleared")
+        else:
+            cursor.draw_waypoint((float(pos[0]), float(pos[1])))
+            self.display.obj.waypoint_pos = cursor.waypoint_pos
+            logging.debug(f"{self.log_ref}: waypoint at ({pos[0]:.1f}, {pos[1]:.1f}) px")
+
     def mark_reference(self, should_mark: bool) -> None:
         """
         Remember (or forget) the crosshair's current position as the reference beam -

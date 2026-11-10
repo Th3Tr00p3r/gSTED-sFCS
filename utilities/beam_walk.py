@@ -151,6 +151,67 @@ class BeamWalkCalibration:
             is_well_conditioned=self.condition_number <= MAX_USABLE_CONDITION_NUMBER,
         )
 
+    def plan_steps(self, current, target) -> dict:
+        """
+        Split the correction into one move per mirror, and say where the spot must land
+        after the first one - so the mirrors can be steered by eye, with no knob amounts.
+
+        Each mirror's two knobs span a 2-D plane of possible spot displacements in the
+        4-D space (cam1_x, cam1_y, cam2_x, cam2_y). If the two planes together span that
+        space, the misalignment splits uniquely into a part only mirror 1 can make and a
+        part only mirror 2 can make. Steering mirror 1 until its camera's spot reaches
+        the returned waypoint therefore also puts the other camera where it needs to be,
+        leaving exactly the part mirror 2 can null - at which point both cameras land on
+        the target together.
+
+        Returns the waypoint for each camera, which camera to watch during the first move
+        (the one whose response to mirror 1 is better conditioned), the other camera's
+        predicted position after that move - which is the check that the planes were
+        measured correctly - and the knob coefficients, in units of the calibration moves.
+        """
+
+        current = np.asarray(current, dtype=float).ravel()
+        target = np.asarray(target, dtype=float).ravel()
+        if current.size != 4 or target.size != 4:
+            raise BeamWalkError("Both positions must have 4 components (2 cameras x 2 axes).")
+
+        error_px = target - current
+        coefficients, *_ = np.linalg.lstsq(self.jacobian, error_px, rcond=None)
+        mirror1_part = self.jacobian[:, :2] @ coefficients[:2]
+        mirror2_part = self.jacobian[:, 2:] @ coefficients[2:]
+        residual = error_px - (mirror1_part + mirror2_part)
+
+        after_mirror1 = current + mirror1_part
+
+        # steer the first move on whichever camera responds to mirror 1 least degenerately
+        conditions = {
+            1: float(np.linalg.cond(self.jacobian[:2, :2])),
+            2: float(np.linalg.cond(self.jacobian[2:, :2])),
+        }
+        steer_camera = 1 if conditions[1] <= conditions[2] else 2
+        other_camera = 2 if steer_camera == 1 else 1
+
+        return dict(
+            steer_camera=steer_camera,
+            other_camera=other_camera,
+            waypoint={1: tuple(after_mirror1[:2]), 2: tuple(after_mirror1[2:])},
+            predicted_after_mirror1=dict(
+                cam1=tuple(after_mirror1[:2]), cam2=tuple(after_mirror1[2:])
+            ),
+            final_target=dict(cam1=tuple(target[:2]), cam2=tuple(target[2:])),
+            mirror1_knobs={
+                KNOB_NAMES[idx]: float(coefficients[idx]) for idx in (0, 1)
+            },
+            mirror2_knobs={
+                KNOB_NAMES[idx]: float(coefficients[idx]) for idx in (2, 3)
+            },
+            knob_unit=self.knob_unit,
+            error_norm_px=float(np.linalg.norm(error_px)),
+            predicted_residual_px=float(np.linalg.norm(residual)),
+            mirror1_conditions=conditions,
+            is_well_conditioned=self.condition_number <= MAX_USABLE_CONDITION_NUMBER,
+        )
+
     # ------------------------------------------------------------------ persistence
 
     def save(self, path) -> Path:

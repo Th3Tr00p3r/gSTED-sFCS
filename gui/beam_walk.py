@@ -13,8 +13,21 @@ The procedure:
      mirrors' axes are aligned with the cameras' - the 'cross-talk' figure says whether
      they are. Do not turn anything back; the moves accumulate and the final answer
      accounts for them.
-  4. Press 'Build calibration', then 'Compute correction'. The dialog says how much to
-     turn each knob to put the beam on the target.
+  4. Press 'Build calibration', then either:
+
+     'Compute correction'  - how much to turn each knob, in the units you recorded. Only
+                             useful if your knobs can be read.
+     'Plan two moves'      - no numbers needed. It puts a yellow waypoint crosshair on
+                             one camera: steer the FIRST mirror by eye until the spot
+                             sits on it, with however many turns it takes. The other
+                             camera then arrives where it must be on its own, so the
+                             SECOND mirror alone finishes the job, and both cameras land
+                             on their remembered centres together. 'Check step 1' then
+                             compares that camera against the prediction, which is the
+                             test of whether the calibration is trustworthy.
+
+  The four 'Record <knob>' buttons record a move without an amount, which is all the
+  waypoint route needs: the direction a knob moves the spots is enough, the size is not.
 
 The calibration can be saved and reloaded, in which case steps 3 is skipped entirely and
 an alignment costs one move per knob - as long as nothing in the beam path has changed.
@@ -144,6 +157,18 @@ class BeamWalkDialog(QDialog):
             buttons.addWidget(btn)
         grid.addLayout(buttons, 4, 0, 1, 4)
 
+        unit_buttons = QHBoxLayout()
+        unit_buttons.addWidget(QLabel("no amounts:"))
+        for knob_idx, label in enumerate(KNOB_LABELS):
+            btn = QPushButton(f"Record {label}")
+            btn.setToolTip(
+                f"Turn {label} by any convenient amount, then press this - the direction "
+                "is all the waypoint route needs"
+            )
+            btn.clicked.connect(lambda _, idx=knob_idx: self._record_unit_move(idx))
+            unit_buttons.addWidget(btn)
+        grid.addLayout(unit_buttons, 7, 0, 1, 4)
+
         self._moves_list = QListWidget()
         self._moves_list.setMaximumHeight(90)
         grid.addWidget(self._moves_list, 5, 0, 1, 4)
@@ -161,9 +186,20 @@ class BeamWalkDialog(QDialog):
     def _correction_group(self) -> QGroupBox:
         box = QGroupBox("Correction")
         layout = QVBoxLayout(box)
+        buttons = QHBoxLayout()
         compute_btn = QPushButton("Compute correction")
         compute_btn.clicked.connect(self._compute_correction)
-        layout.addWidget(compute_btn)
+        plan_btn = QPushButton("Plan two moves")
+        plan_btn.setToolTip(
+            "Steer by eye: shows a waypoint crosshair for the first mirror, no knob "
+            "amounts needed"
+        )
+        plan_btn.clicked.connect(self._plan_steps)
+        check_btn = QPushButton("Check step 1")
+        check_btn.clicked.connect(self._check_step)
+        for btn in (compute_btn, plan_btn, check_btn):
+            buttons.addWidget(btn)
+        layout.addLayout(buttons)
         self._output = QTextEdit()
         self._output.setReadOnly(True)
         self._output.setMinimumHeight(150)
@@ -301,6 +337,111 @@ class BeamWalkDialog(QDialog):
                 f"{result['condition_number']:.0f} - the cameras barely separate position "
                 "from angle. Move them further apart, or focus the far one."
             )
+        self._say("\n".join(lines))
+
+    def _record_unit_move(self, knob_idx: int):
+        """Record a move of one knob without an amount - direction only."""
+
+        if self._unit_edit.text() in ("turns", ""):
+            self._unit_edit.setText("recorded moves")
+        for idx, spin in enumerate(self._amount_boxes):
+            spin.setValue(1.0 if idx == knob_idx else 0.0)
+        self._record_move()
+
+    def _plan_steps(self):
+        """Doc."""
+
+        if self._calibration is None:
+            self._say("No calibration - build or load one first.")
+            return
+        current = self._refresh_positions()
+        if current is None:
+            return
+        target = np.array([spin.value() for spin in self._target_boxes], dtype=float)
+        try:
+            plan = self._calibration.plan_steps(current, target)
+        except BeamWalkError as exc:
+            self._say(f"Could not plan: {exc}")
+            return
+        self._plan = plan
+
+        steer, other = plan["steer_camera"], plan["other_camera"]
+        waypoint = plan["waypoint"][steer]
+        try:
+            self._impl.show_beam_waypoint(steer, waypoint)
+        except Exception as exc:
+            self._say(f"(could not draw the waypoint on camera {steer}: {exc})")
+
+        predicted_other = plan[f"predicted_after_mirror1"]["cam1" if other == 1 else "cam2"]
+        final_other = plan["final_target"]["cam1" if other == 1 else "cam2"]
+        lines = [
+            f"Misalignment: {plan['error_norm_px']:.1f} px. Two moves, no amounts needed:",
+            f"  STEP 1 - turn MIRROR 1 until the spot on camera {steer} sits on the "
+            f"yellow crosshair at ({waypoint[0]:.1f}, {waypoint[1]:.1f}).",
+            f"           Camera {other} should then read about "
+            f"({predicted_other[0]:.1f}, {predicted_other[1]:.1f}) by itself.",
+            "           Then press 'Check step 1'.",
+            f"  STEP 2 - turn MIRROR 2 until camera {other} reaches its remembered centre "
+            f"at ({final_other[0]:.1f}, {final_other[1]:.1f}).",
+            f"           Camera {steer} should stay on target while you do.",
+            f"Predicted residual: {plan['predicted_residual_px']:.2f} px",
+        ]
+        if not plan["is_well_conditioned"]:
+            lines.append(
+                f"WARNING: condition number {self._calibration.condition_number:.0f} - the "
+                "two cameras barely separate position from angle; the split into two moves "
+                "is poorly defined. Focus the far camera, or separate them further."
+            )
+        self._say("\n".join(lines))
+
+    def _check_step(self):
+        """Doc."""
+
+        plan = getattr(self, "_plan", None)
+        if plan is None:
+            self._say("Press 'Plan two moves' first.")
+            return
+        current = self._refresh_positions()
+        if current is None:
+            return
+
+        steer, other = plan["steer_camera"], plan["other_camera"]
+        reached = current[:2] if steer == 1 else current[2:]
+        waypoint = np.asarray(plan["waypoint"][steer], dtype=float)
+        other_now = np.asarray(current[:2] if other == 1 else current[2:], dtype=float)
+        other_predicted = np.asarray(
+            plan["predicted_after_mirror1"]["cam1" if other == 1 else "cam2"], dtype=float
+        )
+        final_other = np.asarray(
+            plan["final_target"]["cam1" if other == 1 else "cam2"], dtype=float
+        )
+
+        to_waypoint = float(np.linalg.norm(np.asarray(reached, dtype=float) - waypoint))
+        mismatch = float(np.linalg.norm(other_now - other_predicted))
+        lines = [
+            f"Camera {steer} is {to_waypoint:.1f} px from the waypoint.",
+            f"Camera {other} is {mismatch:.1f} px from where step 1 predicted "
+            f"(predicted ({other_predicted[0]:.1f}, {other_predicted[1]:.1f}), "
+            f"actual ({other_now[0]:.1f}, {other_now[1]:.1f})).",
+        ]
+        if to_waypoint > 15:
+            lines.append("Step 1 is not finished - keep steering mirror 1 to the yellow mark.")
+        elif mismatch > max(3 * to_waypoint, 15):
+            lines.append(
+                "That mismatch is larger than step 1's own error, so the calibration no "
+                "longer describes the mirrors: re-record the four moves."
+            )
+        else:
+            lines.append(
+                f"Step 1 done. Now turn MIRROR 2 until camera {other} reaches "
+                f"({final_other[0]:.1f}, {final_other[1]:.1f}) - its red crosshair. "
+                f"Camera {steer} should hold still. Remaining: "
+                f"{float(np.linalg.norm(final_other - other_now)):.1f} px."
+            )
+            try:
+                self._impl.show_beam_waypoint(steer, None)
+            except Exception:
+                pass
         self._say("\n".join(lines))
 
     def _save_calibration(self):

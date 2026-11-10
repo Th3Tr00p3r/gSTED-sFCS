@@ -27,6 +27,9 @@ LIVE_CROSSHAIR_LS = (0, (8, 5))  # long dashes, to tell it apart from the solid 
 REF_CROSSHAIR_COLOR = "red"  # the remembered (reference) beam, e.g. the excitation
 REF_CROSSHAIR_LW = 3.5
 REF_CROSSHAIR_LS = "-"
+WAYPOINT_CROSSHAIR_COLOR = "yellow"  # where to steer the first mirror to (beam walk)
+WAYPOINT_CROSSHAIR_LW = 3.0
+WAYPOINT_CROSSHAIR_LS = (0, (2, 3))
 
 
 class GuiDisplay:
@@ -41,6 +44,7 @@ class GuiDisplay:
     def __init__(self, layout, gui_parent=None):
         self.plotter = None
         self.ref_pos = None  # remembered crosshair position (reference beam)
+        self.waypoint_pos = None  # beam walk waypoint for the first mirror
         self.figure = plt.figure(constrained_layout=True)
         self.canvas = FigureCanvasQTAgg(self.figure)
         if gui_parent is not None:
@@ -198,6 +202,7 @@ class Plotter:
                 self.gui_display.last_pos = self.gui_display.axes[0].cursor.pos
                 # the reference crosshair persists across frames as well
                 self.gui_display.ref_pos = self.gui_display.axes[0].cursor.ref_pos
+                self.gui_display.waypoint_pos = self.gui_display.axes[0].cursor.waypoint_pos
             except AttributeError:
                 self.gui_display.last_pos = (0, 0)
             except IndexError:
@@ -267,7 +272,10 @@ class Plotter:
                     ax.zoom_func = zoom_factory(ax)
                 if self.gui_options.cursor:
                     ax.cursor = cursor_factory(
-                        ax, self.gui_display.last_pos, getattr(self.gui_display, "ref_pos", None)
+                        ax,
+                        self.gui_display.last_pos,
+                        getattr(self.gui_display, "ref_pos", None),
+                        getattr(self.gui_display, "waypoint_pos", None),
                     )
                 with suppress(TypeError):  # TODO: test this (is type error correct?)
                     ax.axis(self.gui_options.show_axis)
@@ -362,7 +370,7 @@ class NavigationToolbar(NavigationToolbar2QT):
     ]
 
 
-def cursor_factory(ax, init_cursor_pos, ref_pos=None):
+def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None):
     """Doc."""
 
     class Cursor:
@@ -387,6 +395,12 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None):
             self.ref_vertical_line = None
             if ref_pos is not None:
                 self.draw_reference(ref_pos)
+            # the beam walk waypoint: where this beam should be after the first mirror
+            self.waypoint_pos = waypoint_pos
+            self.waypoint_horizontal_line = None
+            self.waypoint_vertical_line = None
+            if waypoint_pos is not None:
+                self.draw_waypoint(waypoint_pos)
             # text location in axes coordinates
             self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes)
 
@@ -414,6 +428,39 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None):
                 with suppress(AttributeError, ValueError):
                     line.remove()
             self.ref_horizontal_line = self.ref_vertical_line = self.ref_pos = None
+            self.ax.figure.canvas.draw_idle()
+
+        def draw_waypoint(self, pos: Tuple[float, float]):
+            """Draw (or move) the beam walk waypoint crosshair."""
+
+            x, y = pos
+            self.waypoint_pos = pos
+            if self.waypoint_horizontal_line is None:
+                self.waypoint_horizontal_line = self.ax.axhline(
+                    y=y,
+                    color=WAYPOINT_CROSSHAIR_COLOR,
+                    lw=WAYPOINT_CROSSHAIR_LW,
+                    ls=WAYPOINT_CROSSHAIR_LS,
+                )
+                self.waypoint_vertical_line = self.ax.axvline(
+                    x=x,
+                    color=WAYPOINT_CROSSHAIR_COLOR,
+                    lw=WAYPOINT_CROSSHAIR_LW,
+                    ls=WAYPOINT_CROSSHAIR_LS,
+                )
+            else:
+                self.waypoint_horizontal_line.set_ydata([y, y])
+                self.waypoint_vertical_line.set_xdata([x, x])
+            self.ax.figure.canvas.draw_idle()
+
+        def clear_waypoint(self):
+            """Remove the beam walk waypoint crosshair."""
+
+            for line in (self.waypoint_horizontal_line, self.waypoint_vertical_line):
+                with suppress(AttributeError, ValueError):
+                    line.remove()
+            self.waypoint_horizontal_line = self.waypoint_vertical_line = None
+            self.waypoint_pos = None
             self.ax.figure.canvas.draw_idle()
 
         def _set_crosshair_visible(self, visible):

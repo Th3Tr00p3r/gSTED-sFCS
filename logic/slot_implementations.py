@@ -1060,6 +1060,12 @@ class MainWin:
             positions += [float(pos[0]), float(pos[1])]
         return positions
 
+    def show_beam_waypoint(self, cam_num: int, pos=None):
+        """Show or clear the beam walk waypoint crosshair on one camera display"""
+
+        cameras = self.cameras or (self._app.devices.camera_1, self._app.devices.camera_2)
+        cameras[cam_num - 1].set_waypoint(pos)
+
     def open_beam_walk_dialog(self):
         """Open the beam walk assistant (keeps one instance, so a calibration survives)"""
 
