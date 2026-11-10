@@ -1060,6 +1060,18 @@ class MainWin:
             positions += [float(pos[0]), float(pos[1])]
         return positions
 
+    def restart_camera(self, cam_num: int):
+        """Close and re-open a camera, clearing a latched error - no program restart"""
+
+        cameras = self.cameras or (self._app.devices.camera_1, self._app.devices.camera_2)
+        camera = cameras[cam_num - 1]
+        if camera.restart():
+            logging.info(f"Camera {cam_num} is back. Switch video on again if you need it.")
+        else:
+            logging.warning(
+                f"Camera {cam_num} did not come back - replug its USB cable and try again."
+            )
+
     def show_beam_waypoint(self, cam_num: int, pos=None):
         """Show or clear the beam walk waypoint crosshair on one camera display"""
 

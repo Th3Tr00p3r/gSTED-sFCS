@@ -1578,6 +1578,7 @@ class BaseCamera:
         self.is_in_transposed_mode = False
         self.should_get_diameter = False
         self.should_find_hole = False
+        self.is_fetching_frame = False  # guards against piling up frame requests
         self.is_auto_exposure_on = False
         self.last_snapshot = np.zeros((100, 100))
 
@@ -1599,6 +1600,25 @@ class BaseCamera:
         self.close_instrument()
 
     async def get_image(self, should_display=True) -> None:
+        """
+        Fetch one frame and (optionally) display it.
+
+        The timeout loop asks for a frame every GUI_UPDATE_INTERVAL, which is shorter
+        than a frame takes at a long exposure - and fetching plus converting, fitting and
+        redrawing a frame is not cheap. Without this guard the requests pile up as tasks
+        that all run in the same event loop, the loop saturates, and the whole GUI stops
+        responding. So a request made while one is still in flight is simply dropped.
+        """
+
+        if self.is_fetching_frame:
+            return
+        self.is_fetching_frame = True
+        try:
+            await self._get_image(should_display)
+        finally:
+            self.is_fetching_frame = False
+
+    async def _get_image(self, should_display=True) -> None:
         """Doc."""
 
         try:
@@ -1657,6 +1677,58 @@ class BaseCamera:
 
         for name, value in param_dict.items():
             self.set_parameter(name, value)
+
+    def restart(self) -> bool:
+        """
+        Close and re-open the camera without restarting the program.
+
+        This also clears a latched device error. Once err_hndlr() has recorded one, the
+        LED turns red and the video switch is disabled and nothing clears them, so a
+        camera that has recovered by itself still cannot be switched back on - which is
+        why a frozen camera has meant quitting the program. Replugging the USB cable on
+        its own does not help either, because the old handle is still held here; press
+        this afterwards (or instead).
+        """
+
+        logging.info(f"Restarting {self.log_ref} ...")
+
+        # stop the frame loop before touching the handle
+        was_in_video_mode = self.is_in_video_mode
+        self.is_in_video_mode = False
+        self.is_fetching_frame = False
+        self.is_waiting_for_frame = False
+        with suppress(Exception):
+            self.toggle_video_mode(False)
+        with suppress(Exception):
+            # the handle is usually already dead by this point - that is the normal case
+            self.close_instrument()
+
+        # release the latch, so the device is allowed to work again
+        self.error_dict = None
+        with suppress(AttributeError):
+            self.error_display.set("")
+
+        try:
+            self.open_instrument()
+        except Exception as exc:
+            err_hndlr(
+                IOError(f"{self.log_ref} did not come back [{exc}]"),
+                sys._getframe(),
+                locals(),
+                dvc=self,
+            )
+            return False
+
+        with suppress(Exception):
+            self.update_parameter_ranges()
+            self.set_parameters()
+        self.enable_switch()
+        self.change_icons("off")
+        logging.info(
+            f"{self.log_ref} restarted."
+            + (" Video was on - switch it back on." if was_in_video_mode else "")
+        )
+        return True
 
     def _as_grayscale_array(self, img_arr) -> np.ndarray:
         """Return the frame as a 2D float array, whatever the camera mode."""

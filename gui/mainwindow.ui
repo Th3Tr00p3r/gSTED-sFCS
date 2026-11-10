@@ -12375,6 +12375,17 @@ Fit</string>
                  </widget>
                 </item>
                 <item>
+                 <widget class="QPushButton" name="restartCam1">
+                  <property name="toolTip">
+                   <string>Close and re-open this camera without restarting the program (also clears a latched camera error, which is what keeps the video switch disabled)</string>
+                  </property>
+                  <property name="text">
+                   <string>Restart
+Camera</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QCheckBox" name="markBeamRef1">
                   <property name="toolTip">
                    <string>Remember the current crosshair position as the reference (e.g. the excitation beam); it stays on screen in red while the other beam is aligned onto it</string>
@@ -13142,6 +13153,17 @@ Fit</string>
                   <property name="text">
                    <string>Hole
 Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="restartCam2">
+                  <property name="toolTip">
+                   <string>Close and re-open this camera without restarting the program (also clears a latched camera error, which is what keeps the video switch disabled)</string>
+                  </property>
+                  <property name="text">
+                   <string>Restart
+Camera</string>
                   </property>
                  </widget>
                 </item>
