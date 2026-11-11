@@ -182,6 +182,27 @@ class MeasurementProcedure:
             self.delayer_dvc.settings if self.delayer_dvc.is_on else None
         )
 
+        # Where the scanners and the stage were, for every measurement type. In a static
+        # measurement the position IS the measurement, and nothing about it used to reach
+        # the file: 'scan_settings' below, which carries 'initial_ao' and the AI
+        # read-back, is only written for scanning measurements.
+        # These stay OUT of 'scan_settings' on purpose - the analysis treats the mere
+        # presence of that key as "this was a scan" and then demands 'speed_um_s'.
+        full_data["initial_stage_pos_steps"] = self.initial_stage_pos_steps
+        full_data["scanners_ao_int_v"] = tuple(self.scan_params.get("initial_ao") or ())
+        with suppress(Exception):
+            # the position the scanners actually report, in um from the origin, read at
+            # the end of the measurement (the AO above was recorded when it was queued)
+            full_data["scanners_pos_um"] = tuple(self.scanners_dvc.origin_disp_um)
+        with suppress(Exception):
+            ai = np.array(self.scanners_dvc.ai_buffer, dtype=np.float32)
+            if ai.size:
+                # mean and spread of the analogue read-back: (ai_x, ai_y, ai_z,
+                # ao_int_x, ao_int_y, ao_int_z) in volts - the spread shows whether the
+                # scanners actually held still
+                full_data["scanners_ai_mean_v"] = tuple(np.mean(ai, axis=0).tolist())
+                full_data["scanners_ai_std_v"] = tuple(np.std(ai, axis=0).tolist())
+
         if self.scanning:
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
             full_data["scan_settings"] = dict(
@@ -613,13 +634,24 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.should_fit_acf = kwargs.get("should_fit")
         self.processing_options = kwargs.get("processing_options")
 
+        self.scanning = not (self.scan_params["pattern"] == "static")
+
         if self.scan_params.get("floating_z_amplitude_um", 0) != 0:
             self.scan_params["plane_orientation"] = "XYZ"
         else:
             self.scan_params["plane_orientation"] = "XY"
 
         # stage pattern
-        if self.scan_params.get("stage_pattern") == "Snake":
+        if self.scan_params.get("stage_pattern") == "Snake" and not self.scanning:
+            # a snake needs the scanned area to tile the sample with, and a static
+            # measurement has none - this used to raise KeyError('max_line_len_um')
+            # before the measurement was ever queued
+            logging.warning(
+                "A 'Snake' stage pattern needs a scan pattern - ignoring it for this "
+                "static measurement. Move the stage by hand between measurements instead."
+            )
+            self.stage_pattern = None
+        elif self.scan_params.get("stage_pattern") == "Snake":
             enc_dims = helper.get_encompassing_rectangle_dims(
                 (self.scan_params["max_line_len_um"], self.scan_params["scan_width_um"]),
                 self.scan_params["angle_deg"],
@@ -636,7 +668,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
-        self.scanning = not (self.scan_params["pattern"] == "static")
 
     def build_filename(self, file_no: int) -> str:
         """Doc."""
@@ -819,6 +850,14 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.set_current_and_end_times()
         file_num = 1
         logging.info(f"Running {self.type} measurement")
+        if not self.scanning:
+            # a static measurement is defined by where it was taken - put it in the log
+            with suppress(Exception):
+                x_um, y_um, z_um = self.scanners_dvc.origin_disp_um
+                logging.info(
+                    f"Static measurement at (x, y, z) = "
+                    f"({x_um:.2f}, {y_um:.2f}, {z_um:.2f}) um from the scanners' origin"
+                )
 
         try:
             while self.is_running and self.time_passed_s < self.duration_s:
