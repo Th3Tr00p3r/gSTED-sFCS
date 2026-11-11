@@ -440,3 +440,184 @@ def ratio_of_lifetime_histograms_fit(t, sigma_x, sigma_y, t0):
         return np.sqrt(1 + sigma_x * (t - t0)) * np.sqrt(1 + sigma_y * (t - t0))
     else:
         return 1
+
+
+####################################################
+## Depletion with a GAUSSIAN beam (vortex plate out)
+####################################################
+# The donut case is 'sted_hist_fit' above: near a zero the depletion profile is
+# parabolic, I ~ A r^2, and averaging it over the detection volume gives the algebraic
+# factor 1/(1 + sigma t/tau).
+#
+# With the plate out the depletion maximum sits ON the detection volume, so the profile
+# is Gaussian there, and the average is an incomplete gamma function instead. Writing
+# s = t/tau, xi = I0/I_sat = k_-1 tau I0 and a = (w_dep/w_det)^2:
+#
+#     H(t) = A/tau e^-s Gamma(a) P(a, xi s) / (xi s)^a + bg          [P = gammainc]
+#
+# which tends to a pure exponential as xi -> 0, and to e^-s (xi s)^-a Gamma(a) at long
+# times - the UNDEPLETED lifetime times a power law, because the late photons come from
+# the wings where there is no depletion. Do NOT use an inverted parabola for this: it
+# goes negative beyond w_dep/sqrt(2), which is gain rather than depletion, and the
+# integral diverges.
+
+
+def gaussian_depletion_hist_fit(t, A, tau, xi, bg, a=1.0):
+    """
+    Fluorescence decay under a co-aligned Gaussian depletion beam.
+    'a' = (w_dep/w_det)^2 is a geometry constant, normally fixed, so it comes last.
+    """
+
+    s = np.asarray(t, dtype=float) / tau
+    x = np.atleast_1d(xi * s)
+    shape = np.full(x.shape, 1 / a)  # the xi*s -> 0 limit
+    big = x > 1e-8
+    if big.any():
+        xb = x[big]
+        shape[big] = sp.special.gamma(a) * sp.special.gammainc(a, xb) / xb**a
+    shape = shape.reshape(np.shape(s)) if np.shape(s) else shape[0]
+    return A / tau * np.exp(-s) * shape + bg
+
+
+def depletion_sweep_fit(delta, xi_eff, sigma, delta_0, bg):
+    """
+    The offset sweep: tau0/tau_init - 1 against the relative displacement of the two
+    foci. Exactly a Gaussian (only the n = 1 term of the offset series survives in the
+    initial decay rate), with
+
+        xi_eff = xi a/(a+1)              -> xi = xi_eff (a+1)/a
+        sigma  = sqrt(w_dep^2+w_det^2)/2 -> combined width = 2 sigma
+
+    'delta' and 'delta_0' in the same units (nm); 'bg' catches a constant offset.
+    """
+
+    return xi_eff * np.exp(-((np.asarray(delta, dtype=float) - delta_0) ** 2) / (2 * sigma**2)) + bg
+
+
+def fit_gaussian_depletion_hist(xs, ys, a, tau_ns=None, fit_range=None, **kwargs):
+    """
+    Fit a lifetime histogram taken with the Gaussian depletion beam on.
+
+    xs - time (ns), ys - counts, 'a' = (w_dep/w_det)^2.
+    'tau_ns' fixes the unquenched lifetime (measure it first with depletion OFF, e.g.
+    meas.tdc_calib.fit_lifetime_hist().beta["tau"]) - strongly recommended, since tau and
+    xi are correlated. 'fit_range' is an (min, max) tuple in ns, as TDCCalibration's own
+    fit uses (its default there is (3.5, 30)); without it the fit starts at the peak.
+    Pass ys_errors=... and should_weight_fits=True to use error_all_hist_norm.
+    """
+
+    xs, ys = np.asarray(xs, dtype=float), np.asarray(ys, dtype=float)
+    peak_idx = int(np.argmax(ys))
+    if tau_ns is None:
+
+        def gaussian_depletion_hist_free_tau_fit(t, A, tau, xi, bg):
+            return gaussian_depletion_hist_fit(t, A, tau, xi, bg, a)
+
+        fit_func = gaussian_depletion_hist_free_tau_fit
+        p0 = [ys.max(), 3.5, 1.0, max(ys.min(), 1e-9)]
+        bounds = ([0, 0, 0, 0], [np.inf, 20, 1e4, np.inf])
+    else:
+
+        def gaussian_depletion_hist_fixed_tau_fit(t, A, xi, bg):
+            return gaussian_depletion_hist_fit(t, A, tau_ns, xi, bg, a)
+
+        fit_func = gaussian_depletion_hist_fixed_tau_fit
+        p0 = [ys.max(), 1.0, max(ys.min(), 1e-9)]
+        bounds = ([0, 0, 0], [np.inf, 1e4, np.inf])
+
+    # NOTE: 'bounds' must go through 'curve_fit_kwargs' - a bare 'bounds=' argument to
+    # curve_fit_lims() lands in its **kwargs and never reaches scipy's curve_fit
+    return curve_fit_lims(
+        fit_func,
+        p0,
+        xs=xs,
+        ys=ys,
+        curve_fit_kwargs=dict(bounds=bounds),
+        x_limits=Limits(fit_range) if fit_range is not None else Limits(xs[peak_idx], np.inf),
+        plot_kwargs=dict(y_scale="log"),
+        **kwargs,
+    )
+
+
+def fit_depletion_sweep(offsets_nm, rate_ratios, a, **kwargs) -> Dict[str, Any]:
+    """
+    Fit the offset sweep.
+
+    offsets_nm   - relative displacement of the two foci (e.g. camera-2 pixels x 20.6 nm)
+    rate_ratios  - tau0/tau_init - 1 at each offset (NOT the lifetimes themselves)
+    a            - (w_dep/w_det)^2
+
+    Returns the FitParams plus the derived numbers: xi at best overlap, the combined
+    width of the two foci, and the best-overlap offset.
+    """
+
+    offsets_nm = np.asarray(offsets_nm, dtype=float)
+    rate_ratios = np.asarray(rate_ratios, dtype=float)
+    fp = curve_fit_lims(
+        depletion_sweep_fit,
+        [rate_ratios.max(), (offsets_nm.max() - offsets_nm.min()) / 4 or 150.0,
+         float(offsets_nm[np.argmax(rate_ratios)]), 0.0],
+        xs=offsets_nm,
+        ys=rate_ratios,
+        curve_fit_kwargs=dict(
+            bounds=(
+                [0, 1, offsets_nm.min() - 500, -np.inf],
+                [np.inf, 1e4, offsets_nm.max() + 500, np.inf],
+            )
+        ),
+        **kwargs,
+    )
+    xi_eff, sigma = fp.beta["xi_eff"], fp.beta["sigma"]
+    return dict(
+        fit_params=fp,
+        xi=xi_eff * (a + 1) / a,
+        xi_error=fp.beta_error["xi_eff"] * (a + 1) / a,
+        combined_width_nm=2 * sigma,
+        combined_width_error_nm=2 * fp.beta_error["sigma"],
+        best_offset_nm=fp.beta["delta_0"],
+    )
+
+
+def xi_from_initial_rate(tau0_ns, tau_init_ns, a) -> float:
+    """xi = I0/I_sat from the unquenched and initial (depleted) decay times."""
+
+    return (tau0_ns / tau_init_ns - 1) * (a + 1) / a
+
+
+def saturation_intensity(xi, power_w, w_dep_um) -> float:
+    """
+    I_sat in W/cm^2 from a measured xi, the power at the sample and the depletion focus
+    size (1/e^2 radius). The peak intensity of a Gaussian focus is I0 = 2P/(pi w^2).
+    """
+
+    peak_intensity = 2 * power_w / (np.pi * (w_dep_um * 1e-4) ** 2)
+    return peak_intensity / xi
+
+
+def donut_predictions(i_sat, power_w, w_dep_um, lambda_dep_nm=592, na=1.2) -> Dict[str, Any]:
+    """
+    Carry a Gaussian-beam calibration over to the donut.
+
+    An ideal vortex focus of the same total power and width has its crest at 0.368 of the
+    Gaussian peak (max of u e^-u), and the resolution follows the usual saturation law.
+    'sigma_over_xi_ideal' is the power-free figure of merit: measure sigma with the donut
+    and xi with the Gaussian at the SAME power, and their ratio should equal this.
+    """
+
+    peak_intensity = 2 * power_w / (np.pi * (w_dep_um * 1e-4) ** 2)
+    crest_intensity = np.exp(-1) * peak_intensity  # max of u e^-u, at r = 0.59 w_dep
+    confocal_nm = lambda_dep_nm / (2 * na)
+    saturation_factor = crest_intensity / i_sat
+    return dict(
+        gaussian_peak_w_cm2=peak_intensity,
+        donut_crest_w_cm2=crest_intensity,
+        crest_over_i_sat=saturation_factor,
+        confocal_resolution_nm=confocal_nm,
+        resolution_nm=confocal_nm / np.sqrt(1 + saturation_factor),
+        # power needed (W) for a target resolution, same optics
+        power_for_resolution_w=lambda target_nm: power_w
+        * ((confocal_nm / target_nm) ** 2 - 1)
+        / saturation_factor,
+        # the power-free check: measure sigma (donut) and xi (Gaussian) at the same power
+        sigma_over_xi_ideal=lambda w_det_um: (w_det_um / w_dep_um) ** 2,
+    )
