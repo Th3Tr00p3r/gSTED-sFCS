@@ -199,6 +199,16 @@ class BeamWalkDialog(QDialog):
         check_btn.clicked.connect(self._check_step)
         for btn in (compute_btn, plan_btn, check_btn):
             buttons.addWidget(btn)
+        buttons.addWidget(QLabel("tolerance (px)"))
+        self._tolerance_box = QDoubleSpinBox()
+        self._tolerance_box.setRange(0.1, 1000.0)
+        self._tolerance_box.setDecimals(1)
+        self._tolerance_box.setValue(15.0)
+        self._tolerance_box.setToolTip(
+            "How close to the waypoint counts as done. Raise it above the jitter of the "
+            "fitted centre on that camera; the check also accepts 2% of the planned move."
+        )
+        buttons.addWidget(self._tolerance_box)
         layout.addLayout(buttons)
         self._output = QTextEdit()
         self._output.setReadOnly(True)
@@ -416,28 +426,61 @@ class BeamWalkDialog(QDialog):
             plan["final_target"]["cam1" if other == 1 else "cam2"], dtype=float
         )
 
-        to_waypoint = float(np.linalg.norm(np.asarray(reached, dtype=float) - waypoint))
+        reached = np.asarray(reached, dtype=float)
+        to_waypoint = float(np.linalg.norm(reached - waypoint))
         mismatch = float(np.linalg.norm(other_now - other_predicted))
+        start = np.asarray(plan["start"][steer], dtype=float)
+        step_length = float(np.linalg.norm(waypoint - start))
+        # done means: inside the tolerance the user set, or within 2% of the move asked for
+        tolerance = max(self._tolerance_box.value(), 0.02 * step_length)
+        done_fraction = 100 * (1 - to_waypoint / step_length) if step_length > 0 else 100.0
+
         lines = [
-            f"Camera {steer} is {to_waypoint:.1f} px from the waypoint.",
-            f"Camera {other} is {mismatch:.1f} px from where step 1 predicted "
+            f"Camera {steer}: {to_waypoint:.1f} px from the waypoint "
+            f"({done_fraction:.0f}% of a {step_length:.0f} px move done, "
+            f"tolerance {tolerance:.1f} px).",
+            f"Camera {other}: {mismatch:.1f} px from the step-1 prediction "
             f"(predicted ({other_predicted[0]:.1f}, {other_predicted[1]:.1f}), "
             f"actual ({other_now[0]:.1f}, {other_now[1]:.1f})).",
         ]
-        if to_waypoint > 15:
-            lines.append("Step 1 is not finished - keep steering mirror 1 to the yellow mark.")
-        elif mismatch > max(3 * to_waypoint, 15):
+
+        previous = getattr(self, "_last_check_reading", None)
+        # only worth saying while the step is unfinished - otherwise it is just someone
+        # pressing the button twice
+        if (
+            previous is not None
+            and to_waypoint > max(self._tolerance_box.value(), 0.02 * step_length)
+            and np.allclose(previous, reached, atol=1e-6)
+        ):
             lines.append(
-                "That mismatch is larger than step 1's own error, so the calibration no "
-                "longer describes the mirrors: re-record the four moves."
+                "The reading has not changed at all since the last check - the fit is "
+                "probably not updating (watch the live crosshair on that display), so "
+                "this number is stale."
+            )
+        self._last_check_reading = reached.copy()
+
+        step_2 = (
+            f"MIRROR 2: turn until camera {other} reaches "
+            f"({final_other[0]:.1f}, {final_other[1]:.1f}) - its red crosshair - "
+            f"which is {float(np.linalg.norm(final_other - other_now)):.1f} px away. "
+            f"Camera {steer} should hold still."
+        )
+
+        if to_waypoint > tolerance:
+            lines.append(
+                "Not there yet. Keep steering mirror 1, or raise the tolerance above the "
+                "jitter of the fitted centre on that camera - the step is only meant to "
+                "get you close, and what remains is absorbed by the next 'Plan two moves'."
+            )
+            lines.append(f"When you are satisfied: {step_2}")
+        elif mismatch > max(3 * to_waypoint, tolerance):
+            lines.append(
+                "Step 1 reached, but camera "
+                f"{other} is further from its prediction than step 1's own error, so the "
+                "calibration no longer describes the mirrors: re-record the moves."
             )
         else:
-            lines.append(
-                f"Step 1 done. Now turn MIRROR 2 until camera {other} reaches "
-                f"({final_other[0]:.1f}, {final_other[1]:.1f}) - its red crosshair. "
-                f"Camera {steer} should hold still. Remaining: "
-                f"{float(np.linalg.norm(final_other - other_now)):.1f} px."
-            )
+            lines.append(f"Step 1 done. {step_2}")
             try:
                 self._impl.show_beam_waypoint(steer, None)
             except Exception:

@@ -194,6 +194,7 @@ class BeamWalkCalibration:
         return dict(
             steer_camera=steer_camera,
             other_camera=other_camera,
+            start={1: tuple(current[:2]), 2: tuple(current[2:])},
             waypoint={1: tuple(after_mirror1[:2]), 2: tuple(after_mirror1[2:])},
             predicted_after_mirror1=dict(
                 cam1=tuple(after_mirror1[:2]), cam2=tuple(after_mirror1[2:])
