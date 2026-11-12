@@ -1571,6 +1571,14 @@ class BaseCamera:
     # a Gaussian beam with no vortex plate in it gives ~0.5-1.0 and is rejected
     MAX_HOLE_DEPTH = 0.5
 
+    # How many nanometres in the SAMPLE one camera pixel corresponds to, for the live
+    # offset read-out. Only meaningful for a camera that reports beam ANGLE, i.e. one
+    # sitting at the focal plane of a lens in the collimated beam: there a tilt theta
+    # gives f_lens*theta at the camera and f_obj*theta at the sample, so
+    #     nm per px = pixel size * f_obj / f_lens
+    # e.g. 3.6 um * (180/63 mm) / 500 mm = 20.6 nm. Leave None to report pixels only.
+    SAMPLE_NM_PER_PX = None
+
     def __init__(self, *args):
         # TODO: Get these from the widgets during initialization!
         self.is_in_video_mode = False
@@ -1646,6 +1654,7 @@ class BaseCamera:
                 img_arr = np.asarray(PIL.Image.fromarray(img_arr, mode="RGB").convert("L"))
 
             # display in GUI
+            self.display.obj.nm_per_px = self.SAMPLE_NM_PER_PX
             self.display.obj.display_image(img_arr, cursor=True)
 
             if self.should_get_diameter:
@@ -1983,6 +1992,12 @@ class Camera1(ThorlabsCamera):
 
 class Camera2(ThorlabsCamera):
     """Doc."""
+
+    # camera 2 sits after the beam expander; with a 500 mm lens in front of it and the
+    # camera at that lens's focal plane, its spot position reports beam angle, so one
+    # pixel is 3.6 um * (180/63 mm) / 500 mm = 20.6 nm in the sample. Set to None if the
+    # lens is not in place, in which case only pixels are reported.
+    SAMPLE_NM_PER_PX = 20.6
 
     attrs = DeviceAttrs(
         log_ref="Camera 2",

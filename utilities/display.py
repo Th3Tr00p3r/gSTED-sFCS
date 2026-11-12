@@ -27,6 +27,8 @@ LIVE_CROSSHAIR_LS = (0, (8, 5))  # long dashes, to tell it apart from the solid 
 REF_CROSSHAIR_COLOR = "red"  # the remembered (reference) beam, e.g. the excitation
 REF_CROSSHAIR_LW = 3.5
 REF_CROSSHAIR_LS = "-"
+OFFSET_READOUT_COLOR = "yellow"  # live distance from the remembered centre
+OFFSET_READOUT_FONTSIZE = 15
 WAYPOINT_CROSSHAIR_COLOR = "yellow"  # where to steer the first mirror to (beam walk)
 WAYPOINT_CROSSHAIR_LW = 3.0
 WAYPOINT_CROSSHAIR_LS = (0, (2, 3))
@@ -45,6 +47,9 @@ class GuiDisplay:
         self.plotter = None
         self.ref_pos = None  # remembered crosshair position (reference beam)
         self.waypoint_pos = None  # beam walk waypoint for the first mirror
+        self.zoom_half_width = None  # None: whole image; otherwise a box of +/- this many px
+        self.user_view_limits = None  # a zoom/pan the user made with the toolbar or wheel
+        self.nm_per_px = None  # sample-plane scale, for the live offset read-out
         self.figure = plt.figure(constrained_layout=True)
         self.canvas = FigureCanvasQTAgg(self.figure)
         if gui_parent is not None:
@@ -109,14 +114,56 @@ class GuiDisplay:
         if not reuse_plotter or self.plotter is None:
             self.plotter = Plotter(gui_display=self, gui_options=options)
 
+        # what the axes were showing before this frame - the figure is cleared and
+        # rebuilt every frame, so without this a zoom (toolbar or scroll wheel) would
+        # last only until the next frame arrived, which is why zooming "did nothing"
+        previous_limits = None
+        with suppress(AttributeError, IndexError):
+            previous_limits = (self.axes[0].get_xlim(), self.axes[0].get_ylim())
+
         with self.plotter as ax:
             ax.imshow(image, interpolation="none", **imshow_kwargs)
-            # pin the view to the image, so that nothing drawn on top of it (a wild fit
-            # ellipse, an annotation, a crosshair) can rescale or shift the display
+            # the view is set explicitly, so that nothing drawn on top of the image (a
+            # wild fit ellipse, an annotation, a crosshair) can rescale or shift it
             height, width = image.shape[:2]
-            ax.set_xlim(-0.5, width - 0.5)
-            ax.set_ylim(height - 0.5, -0.5)
+            x_lims, y_lims = self._view_limits(width, height, previous_limits)
+            ax.set_xlim(*x_lims)
+            ax.set_ylim(*y_lims)
             ax.set_autoscale_on(False)
+            self._applied_limits = (tuple(x_lims), tuple(y_lims))
+
+    def _view_limits(self, width, height, previous_limits):
+        """
+        Decide what the axes should show: a zoom box about the crosshair if one was
+        asked for, otherwise whatever the user had zoomed to, otherwise the whole image.
+        """
+
+        full = ((-0.5, width - 0.5), (height - 0.5, -0.5))
+
+        # a zoom the USER made is one where the axes no longer show what we last set.
+        # Comparing against our own last setting (rather than against the full frame)
+        # is what distinguishes "they scrolled" from "we put it there last frame", and
+        # it is remembered until they zoom back out or pick a zoom level here.
+        applied = getattr(self, "_applied_limits", None)
+        if (
+            previous_limits is not None
+            and applied is not None
+            and not np.allclose(np.ravel(previous_limits), np.ravel(applied), atol=1.0)
+        ):
+            self.user_view_limits = previous_limits
+
+        if self.zoom_half_width:
+            self.user_view_limits = None
+            # zoom about the remembered centre if there is one, else the live crosshair
+            centre = self.ref_pos or getattr(self, "last_pos", None) or (width / 2, height / 2)
+            x, y = centre
+            half = self.zoom_half_width
+            return ((x - half, x + half), (y + half, y - half))
+
+        if self.user_view_limits is not None:
+            return self.user_view_limits
+
+        return full
 
     def plot_acfs(self, *args, **kwargs):
         """Doc."""
@@ -276,6 +323,7 @@ class Plotter:
                         self.gui_display.last_pos,
                         getattr(self.gui_display, "ref_pos", None),
                         getattr(self.gui_display, "waypoint_pos", None),
+                        getattr(self.gui_display, "nm_per_px", None),
                     )
                 with suppress(TypeError):  # TODO: test this (is type error correct?)
                     ax.axis(self.gui_options.show_axis)
@@ -370,7 +418,7 @@ class NavigationToolbar(NavigationToolbar2QT):
     ]
 
 
-def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None):
+def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None, nm_per_px=None):
     """Doc."""
 
     class Cursor:
@@ -390,6 +438,10 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None):
                 x=x, color=LIVE_CROSSHAIR_COLOR, lw=LIVE_CROSSHAIR_LW, ls=LIVE_CROSSHAIR_LS
             )
             # the remembered reference crosshair (drawn solid and in another colour)
+            # these must exist before any crosshair is drawn - drawing refreshes the
+            # read-out
+            self.nm_per_px = nm_per_px
+            self.offset_text = None
             self.ref_pos = ref_pos
             self.ref_horizontal_line = None
             self.ref_vertical_line = None
@@ -403,6 +455,9 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None):
                 self.draw_waypoint(waypoint_pos)
             # text location in axes coordinates
             self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes)
+            # live distance from the remembered centre, large enough to read from the
+            # alignment mirrors
+            self._update_offset_readout()
 
         def draw_reference(self, pos: Tuple[float, float]):
             """Draw (or move) the remembered reference crosshair."""
@@ -419,6 +474,7 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None):
             else:
                 self.ref_horizontal_line.set_ydata([y, y])
                 self.ref_vertical_line.set_xdata([x, x])
+            self._update_offset_readout()
             self.ax.figure.canvas.draw_idle()
 
         def clear_reference(self):
@@ -428,6 +484,7 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None):
                 with suppress(AttributeError, ValueError):
                     line.remove()
             self.ref_horizontal_line = self.ref_vertical_line = self.ref_pos = None
+            self._update_offset_readout()
             self.ax.figure.canvas.draw_idle()
 
         def draw_waypoint(self, pos: Tuple[float, float]):
@@ -452,6 +509,36 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None):
                 self.waypoint_horizontal_line.set_ydata([y, y])
                 self.waypoint_vertical_line.set_xdata([x, x])
             self.ax.figure.canvas.draw_idle()
+
+        def _update_offset_readout(self):
+            """Show how far the live crosshair is from the remembered one."""
+
+            if self.ref_pos is None or self.pos is None:
+                if self.offset_text is not None:
+                    self.offset_text.set_text("")
+                return
+
+            dx, dy = self.pos[0] - self.ref_pos[0], self.pos[1] - self.ref_pos[1]
+            label = f"\u0394 {dx:+.1f}, {dy:+.1f} px   ({np.hypot(dx, dy):.1f} px)"
+            if self.nm_per_px:
+                label += (
+                    f"\n   {dx * self.nm_per_px:+.0f}, {dy * self.nm_per_px:+.0f} nm"
+                    f"   ({np.hypot(dx, dy) * self.nm_per_px:.0f} nm)"
+                )
+            if self.offset_text is None:
+                self.offset_text = self.ax.text(
+                    0.02,
+                    0.98,
+                    label,
+                    transform=self.ax.transAxes,
+                    color=OFFSET_READOUT_COLOR,
+                    fontsize=OFFSET_READOUT_FONTSIZE,
+                    weight="bold",
+                    va="top",
+                    ha="left",
+                )
+            else:
+                self.offset_text.set_text(label)
 
         def clear_waypoint(self):
             """Remove the beam walk waypoint crosshair."""
@@ -485,8 +572,9 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None):
             x, y = pos
             self.horizontal_line.set_ydata([y, y])
             self.vertical_line.set_xdata([x, x])
-            self.ax.figure.canvas.draw_idle()
             self.pos = pos
+            self._update_offset_readout()
+            self.ax.figure.canvas.draw_idle()
 
     cursor = Cursor(ax)
     ax.figure.canvas.mpl_connect("button_press_event", cursor._on_mouse_press)

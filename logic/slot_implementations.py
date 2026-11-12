@@ -783,6 +783,14 @@ class MainWin:
             )
             self._app.curr_img_idx = img_idx
             self._app.curr_img = image
+            with suppress(Exception):
+                # the scan knows its own pixel size, so the offset read-out is in nm
+                scan_settings = self._app.last_image_scans[img_idx]["full_data"][
+                    "scan_settings"
+                ]
+                img_meas_wdgts["image_wdgt"].obj.nm_per_px = (
+                    scan_settings["dim1_um"] * 1e3 / image.shape[1]
+                )
             img_meas_wdgts["image_wdgt"].obj.display_image(
                 image, cursor=True, imshow_kwargs=dict(cmap="bone")
             )
@@ -1115,6 +1123,50 @@ class MainWin:
             getattr(self.main_gui, f"{param_name}{cam_num}").setValue(int(value * slider_const))
         self.update_slider_range(cam_num)
         logging.debug(f"Camera {cam_num}: {param_name} set to {value:.3f}")
+
+    def set_camera_zoom(self, cam_num: int, choice: str) -> None:
+        """
+        Zoom a camera display to a box about the crosshair. The crosshair lines keep
+        their width (they are drawn in points, not pixels), so zooming in makes the
+        image bigger around them without making the lines any thicker - which is the
+        point when judging a small offset from across the room.
+        """
+
+        cameras = self.cameras or (self._app.devices.camera_1, self._app.devices.camera_2)
+        display = cameras[cam_num - 1].display.obj
+        digits = "".join(character for character in choice if character.isdigit())
+        display.zoom_half_width = int(digits) if digits else None
+        display.user_view_limits = None  # picking a level overrides a hand-made zoom
+        logging.debug(
+            f"Camera {cam_num} display zoom: "
+            + (f"+/-{display.zoom_half_width} px about the crosshair" if digits else "full frame")
+        )
+
+    def mark_image_reference(self, is_checked: bool) -> None:
+        """
+        Remember the crosshair on the SCAN image display, the same way the cameras do:
+        fit the centre of a bead scan taken with the excitation beam, remember it, then
+        scan the same bead with the depletion beam and read the offset off the display.
+        """
+
+        display = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)["image_wdgt"].obj
+        try:
+            cursor = display.axes[0].cursor
+        except (AttributeError, IndexError):
+            logging.debug("No scan image displayed yet - nothing to remember")
+            return
+
+        if is_checked:
+            cursor.draw_reference(cursor.pos)
+            display.ref_pos = cursor.pos
+            logging.info(
+                f"Scan image reference centre remembered at "
+                f"({cursor.pos[0]:.1f}, {cursor.pos[1]:.1f}) px"
+            )
+        else:
+            cursor.clear_reference()
+            display.ref_pos = None
+            logging.debug("Scan image reference centre cleared")
 
     def toggle_camera_enlarged(self) -> None:
         """

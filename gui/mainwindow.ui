@@ -1509,6 +1509,16 @@ to Scan</string>
                         </widget>
                        </item>
                        <item>
+                        <widget class="QCheckBox" name="markImgRef">
+                         <property name="toolTip">
+                          <string>Remember the crosshair on this scan image as the reference, so the next scan shows its offset from it (in pixels and nm)</string>
+                         </property>
+                         <property name="text">
+                          <string>Remember Center</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
                         <widget class="QComboBox" name="imgShowMethod">
                          <property name="font">
                           <font>
@@ -12402,6 +12412,38 @@ Fit</string>
                  </widget>
                 </item>
                 <item>
+                 <widget class="QComboBox" name="camZoom1">
+                  <property name="toolTip">
+                   <string>Zoom the display to a box about the crosshair. The crosshair lines keep their width, so the image grows around them.</string>
+                  </property>
+                  <item>
+                   <property name="text">
+                    <string>Full</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>200 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>100 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>50 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>25 px</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QPushButton" name="restartCam1">
                   <property name="toolTip">
                    <string>Close and re-open this camera without restarting the program (also clears a latched camera error, which is what keeps the video switch disabled)</string>
@@ -13208,6 +13250,38 @@ Fit</string>
                    <string>Hole
 Fit</string>
                   </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="camZoom2">
+                  <property name="toolTip">
+                   <string>Zoom the display to a box about the crosshair. The crosshair lines keep their width, so the image grows around them.</string>
+                  </property>
+                  <item>
+                   <property name="text">
+                    <string>Full</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>200 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>100 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>50 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>25 px</string>
+                   </property>
+                  </item>
                  </widget>
                 </item>
                 <item>

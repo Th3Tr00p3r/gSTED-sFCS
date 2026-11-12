@@ -301,6 +301,15 @@ class MainWin(QtWidgets.QMainWindow):
         self.restartCam2.released.connect(lambda: self.impl.restart_camera(2))
         self.beamWalkButton.released.connect(lambda: self.impl.open_beam_walk_dialog())
         self.enlargeCamsButton.released.connect(lambda: self.impl.toggle_camera_enlarged())
+        self.camZoom1.currentTextChanged.connect(
+            lambda txt: self.impl.set_camera_zoom(1, txt)
+        )
+        self.camZoom2.currentTextChanged.connect(
+            lambda txt: self.impl.set_camera_zoom(2, txt)
+        )
+        self.markImgRef.toggled.connect(
+            lambda: self.impl.mark_image_reference(self.markImgRef.isChecked())
+        )
         # typing a camera parameter and pressing Enter sends it straight to the camera
         for cam_num in (1, 2):
             for param_name in ("pixel_clock", "framerate", "exposure"):
