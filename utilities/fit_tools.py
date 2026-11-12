@@ -578,6 +578,52 @@ def fit_depletion_sweep(offsets_nm, rate_ratios, a, **kwargs) -> Dict[str, Any]:
     )
 
 
+def initial_decay_time(xs, ys, max_t_ns=None, tau0_ns=None, bg=0.0, order=2) -> Dict[str, Any]:
+    """
+    Extract the INITIAL decay time (ns) of a depleted histogram - the observable the
+    offset-sweep law is written in - without the bias a straight-line slope carries.
+
+    The sweep width is power-free only for the rate at t -> 0: there no molecule has been
+    depleted yet, so the rate is linear in the local depletion intensity. A straight line
+    through log(H) over a finite window averages over the (strongly non-exponential) early
+    decay and so underestimates the dip at zero offset more than in the wings, which pulls
+    the fitted sweep width LOW - by ~3% at xi = 2 and ~9% at xi = 15 for a 0.5*tau0 window.
+    A quadratic over the same window and its slope AT the peak removes most of that:
+    164.4 nm truth -> 164.3 (xi = 0.5), 163.7 (xi = 2), 161 (xi = 5), 153 (xi = 15).
+    So run the sweep at a moderate xi (~1-3) and keep the high powers for the power sweep.
+
+    xs - time (ns), ys - counts. The fit starts at the histogram peak and runs for
+    'max_t_ns' (default 0.5*tau0_ns, or 2 ns). 'bg' is subtracted first. 'order' 1 gives
+    the plain log-slope, for comparison.
+    """
+
+    xs, ys = np.asarray(xs, dtype=float), np.asarray(ys, dtype=float)
+    peak_idx = int(np.argmax(ys))
+    if max_t_ns is None:
+        max_t_ns = 0.5 * tau0_ns if tau0_ns else 2.0
+    t0 = xs[peak_idx]
+    in_window = (xs >= t0) & (xs <= t0 + max_t_ns) & (ys > bg)
+    if in_window.sum() < order + 2:
+        raise ValueError(f"only {in_window.sum()} usable channels in the fit window")
+
+    t = xs[in_window] - t0
+    coeffs = np.polyfit(t, np.log(ys[in_window] - bg), order)
+    rate = -coeffs[-2]  # d log(H) / dt at t = 0
+    if rate <= 0:
+        raise ValueError("non-decaying histogram in the fit window")
+
+    out = dict(
+        tau_init_ns=1 / rate,
+        rate_per_ns=rate,
+        n_channels=int(in_window.sum()),
+        window_ns=(float(t0), float(t0 + max_t_ns)),
+        coeffs=coeffs,
+    )
+    if tau0_ns:  # the sweep observable itself
+        out["rate_ratio"] = tau0_ns / out["tau_init_ns"] - 1
+    return out
+
+
 def xi_from_initial_rate(tau0_ns, tau_init_ns, a) -> float:
     """xi = I0/I_sat from the unquenched and initial (depleted) decay times."""
 
