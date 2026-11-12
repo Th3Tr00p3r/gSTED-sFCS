@@ -926,11 +926,19 @@ class MainWin:
 
         with suppress(AttributeError):
             # AttributeError - camera not properly initialized
+            reported = {}
             for name in ("pixel_clock", "framerate", "exposure"):
-                range = tuple(
-                    int(limit * slider_const) for limit in getattr(camera, f"{name}_range")
-                )
+                reported[name] = tuple(getattr(camera, f"{name}_range"))
+                range = tuple(int(limit * slider_const) for limit in reported[name])
                 getattr(self.main_gui, f"{name}{cam_num}").setRange(*range)
+            # the camera's own limits, so they can be seen before typing into the boxes
+            # (exposure is in MILLISECONDS, and its minimum falls as the pixel clock rises)
+            logging.debug(
+                f"Camera {cam_num} ranges: "
+                f"pixel clock {reported['pixel_clock'][0]:.0f}-{reported['pixel_clock'][1]:.0f} MHz, "
+                f"framerate {reported['framerate'][0]:.2f}-{reported['framerate'][1]:.2f} Hz, "
+                f"exposure {reported['exposure'][0]:.3f}-{reported['exposure'][1]:.3f} ms"
+            )
 
     def set_parameter(self, cam_num: int, param_name: str, value) -> None:
         """Doc."""
@@ -1059,6 +1067,113 @@ class MainWin:
                 )
             positions += [float(pos[0]), float(pos[1])]
         return positions
+
+    def set_parameter_from_box(self, cam_num: int, param_name: str) -> None:
+        """
+        Apply a camera parameter typed into its spin box.
+
+        The boxes used to be read-only, so the only way in was the slider, whose range is
+        the camera's reported range rounded to 1/100 of a unit. Typing goes straight to
+        the camera, clamped to what it reports, and says so when it had to clamp - the
+        shortest exposure depends on the pixel clock and the frame rate, so raising the
+        pixel clock is what buys a shorter exposure.
+        """
+
+        if not self.cameras:
+            return
+
+        slider_const = 100
+        camera = self.cameras[cam_num - 1]
+        box = getattr(self.main_gui, f"{param_name}_val{cam_num}")
+        requested = box.value()
+
+        try:
+            limits = helper.Limits(getattr(camera, f"{param_name}_range"))
+        except AttributeError:
+            logging.debug(f"Camera {cam_num}: no {param_name} range known - not applied")
+            return
+
+        value = limits.clamp(requested)
+        if value != requested:
+            logging.info(
+                f"Camera {cam_num}: {param_name} {requested:.3f} is outside the camera's "
+                f"range ({limits.lower:.3f} - {limits.upper:.3f}) - using {value:.3f}. "
+                + (
+                    "A shorter exposure needs a higher pixel clock or a lower frame rate."
+                    if param_name == "exposure" and requested < limits.lower
+                    else ""
+                )
+            )
+
+        with suppress(DeviceError):
+            camera.set_parameters({param_name: value})
+            getattr(self.main_gui, f"autoExp{cam_num}").setChecked(False)
+
+        # keep the box and the slider showing what the camera actually took
+        box.setValue(value)
+        with suppress(AttributeError, TypeError):
+            getattr(self.main_gui, f"{param_name}{cam_num}").setValue(int(value * slider_const))
+        self.update_slider_range(cam_num)
+        logging.debug(f"Camera {cam_num}: {param_name} set to {value:.3f}")
+
+    def toggle_camera_enlarged(self) -> None:
+        """
+        Float the camera panel, lay the two displays side by side and fill the screen -
+        and put everything back when pressed again. The panel is a QDockWidget, so this
+        only has to float it, flip the direction of the box layout holding the two camera
+        groups, and lift the maximum sizes that keep it compact while docked.
+        """
+
+        from PyQt5.QtWidgets import QApplication, QBoxLayout
+
+        gui = self.main_gui
+        dock, layout = gui.cameraDock, gui.verticalLayout_101
+        button = gui.enlargeCamsButton
+        boxes = [
+            layout.itemAt(idx).widget()
+            for idx in range(layout.count())
+            if layout.itemAt(idx).widget() is not None
+        ]
+
+        if not getattr(self, "_cameras_enlarged", False):
+            self._camera_restore = dict(
+                was_floating=dock.isFloating(),
+                geometry=dock.geometry(),
+                direction=layout.direction(),
+                max_sizes=[(w, w.maximumSize()) for w in boxes],
+                dock_max=dock.maximumSize(),
+                dock_min=dock.minimumSize(),
+            )
+            dock.setVisible(True)
+            dock.setFloating(True)
+            dock.setMinimumSize(0, 0)
+            dock.setMaximumSize(int(1e5), int(1e5))
+            for widget in boxes:
+                widget.setMaximumSize(int(1e5), int(1e5))
+            layout.setDirection(QBoxLayout.LeftToRight)
+            screen = QApplication.primaryScreen().availableGeometry()
+            dock.setGeometry(
+                screen.x() + int(0.02 * screen.width()),
+                screen.y() + int(0.04 * screen.height()),
+                int(0.96 * screen.width()),
+                int(0.88 * screen.height()),
+            )
+            button.setText("Restore\nLayout")
+            self._cameras_enlarged = True
+            logging.debug("Camera displays enlarged")
+        else:
+            saved = getattr(self, "_camera_restore", {})
+            layout.setDirection(saved.get("direction", QBoxLayout.TopToBottom))
+            for widget, max_size in saved.get("max_sizes", []):
+                widget.setMaximumSize(max_size)
+            dock.setMinimumSize(saved.get("dock_min", dock.minimumSize()))
+            dock.setMaximumSize(saved.get("dock_max", dock.maximumSize()))
+            dock.setFloating(saved.get("was_floating", False))
+            if saved.get("was_floating") and saved.get("geometry") is not None:
+                dock.setGeometry(saved["geometry"])
+            button.setText("Enlarge\nDisplays")
+            self._cameras_enlarged = False
+            logging.debug("Camera displays restored")
 
     def restart_camera(self, cam_num: int):
         """Close and re-open a camera, clearing a latched error - no program restart"""

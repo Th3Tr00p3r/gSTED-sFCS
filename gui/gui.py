@@ -300,6 +300,15 @@ class MainWin(QtWidgets.QMainWindow):
         self.restartCam1.released.connect(lambda: self.impl.restart_camera(1))
         self.restartCam2.released.connect(lambda: self.impl.restart_camera(2))
         self.beamWalkButton.released.connect(lambda: self.impl.open_beam_walk_dialog())
+        self.enlargeCamsButton.released.connect(lambda: self.impl.toggle_camera_enlarged())
+        # typing a camera parameter and pressing Enter sends it straight to the camera
+        for cam_num in (1, 2):
+            for param_name in ("pixel_clock", "framerate", "exposure"):
+                getattr(self, f"{param_name}_val{cam_num}").editingFinished.connect(
+                    lambda cam_num=cam_num, param_name=param_name: self.impl.set_parameter_from_box(
+                        cam_num, param_name
+                    )
+                )
         self.grayscaleMode1.toggled.connect(
             lambda: self.impl.set_grayscale_mode(1, self.grayscaleMode1.isChecked())
         )

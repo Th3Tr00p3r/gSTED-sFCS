@@ -12154,7 +12154,7 @@ New Origin</string>
                      </sizepolicy>
                     </property>
                     <property name="readOnly">
-                     <bool>true</bool>
+                     <bool>false</bool>
                     </property>
                     <property name="buttonSymbols">
                      <enum>QAbstractSpinBox::NoButtons</enum>
@@ -12162,7 +12162,16 @@ New Origin</string>
                     <property name="maximum">
                      <double>9999.000000000000000</double>
                     </property>
-                   </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                   </item>
                  </layout>
                 </item>
@@ -12229,7 +12238,7 @@ New Origin</string>
                      </sizepolicy>
                     </property>
                     <property name="readOnly">
-                     <bool>true</bool>
+                     <bool>false</bool>
                     </property>
                     <property name="buttonSymbols">
                      <enum>QAbstractSpinBox::NoButtons</enum>
@@ -12237,7 +12246,16 @@ New Origin</string>
                     <property name="maximum">
                      <double>9999.000000000000000</double>
                     </property>
-                   </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                   </item>
                  </layout>
                 </item>
@@ -12312,7 +12330,7 @@ New Origin</string>
                        </sizepolicy>
                       </property>
                       <property name="readOnly">
-                       <bool>true</bool>
+                       <bool>false</bool>
                       </property>
                       <property name="buttonSymbols">
                        <enum>QAbstractSpinBox::NoButtons</enum>
@@ -12320,7 +12338,16 @@ New Origin</string>
                       <property name="maximum">
                        <double>9999.000000000000000</double>
                       </property>
-                     </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                     </item>
                     <item>
                      <widget class="QCheckBox" name="autoExp1">
@@ -12937,7 +12964,7 @@ Center</string>
                      </sizepolicy>
                     </property>
                     <property name="readOnly">
-                     <bool>true</bool>
+                     <bool>false</bool>
                     </property>
                     <property name="buttonSymbols">
                      <enum>QAbstractSpinBox::NoButtons</enum>
@@ -12945,7 +12972,16 @@ Center</string>
                     <property name="maximum">
                      <double>9999.000000000000000</double>
                     </property>
-                   </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                   </item>
                  </layout>
                 </item>
@@ -13012,7 +13048,7 @@ Center</string>
                      </sizepolicy>
                     </property>
                     <property name="readOnly">
-                     <bool>true</bool>
+                     <bool>false</bool>
                     </property>
                     <property name="buttonSymbols">
                      <enum>QAbstractSpinBox::NoButtons</enum>
@@ -13020,7 +13056,16 @@ Center</string>
                     <property name="maximum">
                      <double>9999.000000000000000</double>
                     </property>
-                   </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                   </item>
                  </layout>
                 </item>
@@ -13095,7 +13140,7 @@ Center</string>
                        </sizepolicy>
                       </property>
                       <property name="readOnly">
-                       <bool>true</bool>
+                       <bool>false</bool>
                       </property>
                       <property name="buttonSymbols">
                        <enum>QAbstractSpinBox::NoButtons</enum>
@@ -13103,7 +13148,16 @@ Center</string>
                       <property name="maximum">
                        <double>9999.000000000000000</double>
                       </property>
-                     </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                     </item>
                     <item>
                      <widget class="QCheckBox" name="autoExp2">
@@ -13175,6 +13229,17 @@ Camera</string>
                   <property name="text">
                    <string>Remember
 Center</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="enlargeCamsButton">
+                  <property name="toolTip">
+                   <string>Float the camera panel, place the two displays side by side and make it fill the screen - press again to put it back</string>
+                  </property>
+                  <property name="text">
+                   <string>Enlarge
+Displays</string>
                   </property>
                  </widget>
                 </item>
