@@ -1046,6 +1046,23 @@ class MainWin:
             camera = self.cameras[cam_num - 1]
             camera.should_find_hole = is_checked
 
+    def toggle_crosshairs(self, cam_num: int, is_checked: bool):
+        """
+        Show/hide the live (white) crosshair and the offset read-out on a camera display.
+        The crosshair position is still tracked while hidden, so the beam walk and the
+        'remember centre' reference keep working - only the painting is switched off.
+        """
+
+        if not self.cameras:
+            return
+        camera = self.cameras[cam_num - 1]
+        camera.display.obj.show_crosshairs = is_checked
+        # take effect now rather than on the next frame (the camera may be switched off)
+        try:
+            camera.display.obj.axes[0].cursor.set_live_visible(is_checked)
+        except (AttributeError, IndexError):
+            pass
+
     def mark_beam_reference(self, cam_num: int, is_checked: bool):
         """Remember the current crosshair position as the reference beam centre"""
 

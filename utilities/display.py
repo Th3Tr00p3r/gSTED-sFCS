@@ -50,6 +50,7 @@ class GuiDisplay:
         self.zoom_half_width = None  # None: whole image; otherwise a box of +/- this many px
         self.user_view_limits = None  # a zoom/pan the user made with the toolbar or wheel
         self.nm_per_px = None  # sample-plane scale, for the live offset read-out
+        self.show_crosshairs = True  # the live (white) crosshair and the offset read-out
         self.figure = plt.figure(constrained_layout=True)
         self.canvas = FigureCanvasQTAgg(self.figure)
         if gui_parent is not None:
@@ -324,6 +325,7 @@ class Plotter:
                         getattr(self.gui_display, "ref_pos", None),
                         getattr(self.gui_display, "waypoint_pos", None),
                         getattr(self.gui_display, "nm_per_px", None),
+                        getattr(self.gui_display, "show_crosshairs", True),
                     )
                 with suppress(TypeError):  # TODO: test this (is type error correct?)
                     ax.axis(self.gui_options.show_axis)
@@ -418,7 +420,9 @@ class NavigationToolbar(NavigationToolbar2QT):
     ]
 
 
-def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None, nm_per_px=None):
+def cursor_factory(
+    ax, init_cursor_pos, ref_pos=None, waypoint_pos=None, nm_per_px=None, show_live=True
+):
     """Doc."""
 
     class Cursor:
@@ -431,11 +435,23 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None, nm_per_
             self.ax = ax
             self.pos = init_cursor_pos
             x, y = init_cursor_pos
+            # 'show_live' is False when the user has unticked 'Crosshairs' - the lines
+            # are still there (so the fitted position is still readable by the beam walk)
+            # but nothing is painted on the image
+            self.show_live = show_live
             self.horizontal_line = ax.axhline(
-                y=y, color=LIVE_CROSSHAIR_COLOR, lw=LIVE_CROSSHAIR_LW, ls=LIVE_CROSSHAIR_LS
+                y=y,
+                color=LIVE_CROSSHAIR_COLOR,
+                lw=LIVE_CROSSHAIR_LW,
+                ls=LIVE_CROSSHAIR_LS,
+                visible=show_live,
             )
             self.vertical_line = ax.axvline(
-                x=x, color=LIVE_CROSSHAIR_COLOR, lw=LIVE_CROSSHAIR_LW, ls=LIVE_CROSSHAIR_LS
+                x=x,
+                color=LIVE_CROSSHAIR_COLOR,
+                lw=LIVE_CROSSHAIR_LW,
+                ls=LIVE_CROSSHAIR_LS,
+                visible=show_live,
             )
             # the remembered reference crosshair (drawn solid and in another colour)
             # these must exist before any crosshair is drawn - drawing refreshes the
@@ -454,7 +470,7 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None, nm_per_
             if waypoint_pos is not None:
                 self.draw_waypoint(waypoint_pos)
             # text location in axes coordinates
-            self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes)
+            self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes, visible=show_live)
             # live distance from the remembered centre, large enough to read from the
             # alignment mirrors
             self._update_offset_readout()
@@ -525,6 +541,11 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None, nm_per_
                     f"\n   {dx * self.nm_per_px:+.0f}, {dy * self.nm_per_px:+.0f} nm"
                     f"   ({np.hypot(dx, dy) * self.nm_per_px:.0f} nm)"
                 )
+            if not getattr(self, "show_live", True):
+                if self.offset_text is not None:
+                    self.offset_text.set_text("")
+                return
+
             if self.offset_text is None:
                 self.offset_text = self.ax.text(
                     0.02,
@@ -551,11 +572,22 @@ def cursor_factory(ax, init_cursor_pos, ref_pos=None, waypoint_pos=None, nm_per_
             self.ax.figure.canvas.draw_idle()
 
         def _set_crosshair_visible(self, visible):
+            visible = visible and self.show_live
             need_redraw = self.horizontal_line.get_visible() != visible
             self.horizontal_line.set_visible(visible)
             self.vertical_line.set_visible(visible)
             self.text.set_visible(visible)
             return need_redraw
+
+        def set_live_visible(self, visible: bool):
+            """Show/hide the live crosshair and its offset read-out."""
+
+            self.show_live = visible
+            self.horizontal_line.set_visible(visible)
+            self.vertical_line.set_visible(visible)
+            self.text.set_visible(visible)
+            self._update_offset_readout()
+            self.ax.figure.canvas.draw_idle()
 
         def _on_mouse_press(self, event):
             if not event.inaxes:

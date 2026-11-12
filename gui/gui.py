@@ -291,6 +291,12 @@ class MainWin(QtWidgets.QMainWindow):
         self.findBeamHole2.toggled.connect(
             lambda: self.impl.find_beam_hole(2, self.findBeamHole2.isChecked())
         )
+        self.showCrosshairs1.toggled.connect(
+            lambda: self.impl.toggle_crosshairs(1, self.showCrosshairs1.isChecked())
+        )
+        self.showCrosshairs2.toggled.connect(
+            lambda: self.impl.toggle_crosshairs(2, self.showCrosshairs2.isChecked())
+        )
         self.markBeamRef1.toggled.connect(
             lambda: self.impl.mark_beam_reference(1, self.markBeamRef1.isChecked())
         )

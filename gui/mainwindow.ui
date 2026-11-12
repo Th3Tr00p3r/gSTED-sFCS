@@ -12401,6 +12401,20 @@ Fit</string>
                  </widget>
                 </item>
                 <item>
+                 <widget class="QCheckBox" name="showCrosshairs1">
+                  <property name="toolTip">
+                   <string>Paint the live (white) crosshair and the offset read-out on the image. Untick to see the bare beam - the fitted position is still tracked.</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                  <property name="text">
+                   <string>Cross
+hairs</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QCheckBox" name="findBeamHole1">
                   <property name="toolTip">
                    <string>Find the dark core (hole) of a donut/vortex beam and put the live crosshair on it</string>
@@ -13238,6 +13252,20 @@ Center</string>
                   <property name="text">
                    <string>Gaussian
 Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="showCrosshairs2">
+                  <property name="toolTip">
+                   <string>Paint the live (white) crosshair and the offset read-out on the image. Untick to see the bare beam - the fitted position is still tracked.</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                  <property name="text">
+                   <string>Cross
+hairs</string>
                   </property>
                  </widget>
                 </item>
