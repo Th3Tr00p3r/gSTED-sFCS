@@ -1509,6 +1509,16 @@ to Scan</string>
                         </widget>
                        </item>
                        <item>
+                        <widget class="QPushButton" name="beadPositionButton">
+                         <property name="toolTip">
+                          <string>Move the bead at the crosshair to the centre of the scan, or to a chosen point, with the stepper stage</string>
+                         </property>
+                         <property name="text">
+                          <string>Move Bead...</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
                         <widget class="QCheckBox" name="markImgRef">
                          <property name="toolTip">
                           <string>Remember the crosshair on this scan image as the reference, so the next scan shows its offset from it (in pixels and nm)</string>

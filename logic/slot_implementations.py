@@ -1185,6 +1185,90 @@ class MainWin:
             display.ref_pos = None
             logging.debug("Scan image reference centre cleared")
 
+    def _scan_image_display(self):
+        """The scan image display, or a RuntimeError saying why there isn't one."""
+
+        display = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)["image_wdgt"].obj
+        if not getattr(display, "nm_per_px", None):
+            raise RuntimeError(
+                "the scan image has no pixel size yet - preview a scan first "
+                "(the size comes from the scan's own settings)"
+            )
+        return display
+
+    def read_scan_image_position_um(self, use_reference: bool = False):
+        """
+        Where the crosshair sits on the scan image, in microns of sample.
+
+        With 'use_reference', the remembered (red) crosshair instead of the live one.
+        Used by the bead positioning dialog, and by anything else that needs a position
+        in the sample rather than in pixels.
+        """
+
+        display = self._scan_image_display()
+        try:
+            cursor = display.axes[0].cursor
+        except (AttributeError, IndexError):
+            raise RuntimeError("no scan image displayed yet")
+        pos = cursor.ref_pos if use_reference else cursor.pos
+        if pos is None:
+            raise RuntimeError(
+                "no remembered centre on the scan image yet"
+                if use_reference
+                else "no crosshair on the scan image yet"
+            )
+        return (pos[0] * display.nm_per_px / 1e3, pos[1] * display.nm_per_px / 1e3)
+
+    def scan_image_centre_um(self):
+        """The centre of the scan image, in the same microns."""
+
+        display = self._scan_image_display()
+        image = getattr(self._app, "curr_img", None)
+        if image is None:
+            raise RuntimeError("no scan image loaded yet")
+        height, width = image.shape[:2]
+        return (
+            (width - 1) / 2 * display.nm_per_px / 1e3,
+            (height - 1) / 2 * display.nm_per_px / 1e3,
+        )
+
+    def stage_steps_per_um(self) -> float:
+        """The scalar from the stage settings, for the rough calibration shortcut."""
+
+        steps_per_um = self._app.devices.stage.steps_per_um
+        if not steps_per_um:
+            raise RuntimeError("'steps per um' is not set in the stage settings")
+        return float(steps_per_um)
+
+    def move_stage_steps(self, moves) -> None:
+        """
+        Make a sequence of relative stage moves, in steps, one after the other.
+
+        The sequence matters: the bead positioning plan overshoots the target and then
+        comes back along a fixed approach vector, so that backlash enters every
+        positioning the same way instead of randomly. Running the moves concurrently
+        would defeat that, hence the single task that awaits each in turn.
+        """
+
+        async def run_moves():
+            for dx, dy in moves:
+                if dx or dy:
+                    await self._app.devices.stage.move(
+                        helper.Vector(int(dx), int(dy), "steps")
+                    )
+
+        self._app.loop.create_task(run_moves())
+
+    def open_bead_positioning_dialog(self):
+        """Open the bead positioning dialog (one instance, so a calibration survives)"""
+
+        from gui.stage_mapping import BeadPositioningDialog
+
+        if getattr(self, "_bead_positioning_dialog", None) is None:
+            self._bead_positioning_dialog = BeadPositioningDialog(self, parent=self.main_gui)
+        self._bead_positioning_dialog.show()
+        self._bead_positioning_dialog.raise_()
+
     def toggle_camera_enlarged(self) -> None:
         """
         Float the camera panel, lay the two displays side by side and fill the screen -
