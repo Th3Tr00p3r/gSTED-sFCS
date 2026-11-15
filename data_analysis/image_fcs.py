@@ -136,6 +136,7 @@ class ScanGeometry:
     angle_deg: float
     ao_sampling_freq_hz: float
     laser_freq_hz: float
+    slow_axis: str = "xy"  # "z": the lines are stepped along z (an X-Z section)
 
     @classmethod
     def from_scan_settings(cls, scan_settings: dict, laser_freq_hz: float) -> ScanGeometry:
@@ -166,6 +167,7 @@ class ScanGeometry:
             angle_deg=float(first("angle_degrees", "angle_deg")),
             ao_sampling_freq_hz=float(ss["ao_sampling_freq_hz"]),
             laser_freq_hz=float(laser_freq_hz),
+            slow_axis=str(ss.get("slow_axis") or "xy").lower(),
         )
 
     @property
@@ -383,8 +385,21 @@ class ScanImage:
     def pixel_to_xy_um(self, col: float, row: float) -> Tuple[float, float]:
         """Image position (col, row) -> (x, y) in um from the origin of the scan."""
 
-        x_um, y_um = self.geom.to_xy_um(*self.pixel_to_scan_um(col, row))
-        return float(x_um), float(y_um)
+        x_um, y_um, _ = self.pixel_to_xyz_um(col, row)
+        return x_um, y_um
+
+    def pixel_to_xyz_um(self, col: float, row: float) -> Tuple[float, float, float]:
+        """
+        Image position (col, row) -> (x, y, z) in um from the origin of the scan. In an X-Z
+        section the rows are z and the columns run along the scan angle in the XY plane.
+        """
+
+        along_um, across_um = self.pixel_to_scan_um(col, row)
+        if self.geom.slow_axis == "z":
+            x_um, y_um = self.geom.to_xy_um(along_um, 0.0)
+            return float(x_um), float(y_um), float(across_um)
+        x_um, y_um = self.geom.to_xy_um(along_um, across_um)
+        return float(x_um), float(y_um), 0.0
 
 
 def scan_image(

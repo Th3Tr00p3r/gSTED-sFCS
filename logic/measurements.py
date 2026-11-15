@@ -237,6 +237,7 @@ class MeasurementProcedure:
                     n_passes=self.scan_params.get("n_passes", self.scan_params["n_lines"]),
                     n_unique_lines=self.scan_params["n_lines"],
                     line_repeats=self.scan_params.get("line_repeats", 1),
+                    slow_axis=self.scan_params.get("slow_axis", "xy"),
                     origin_ao_v=self.scan_params.get("origin_ao_v"),
                     linear_len_um=self.scan_params["linear_len_um"],
                     max_line_length_um=self.scan_params["max_line_len_um"],
@@ -980,6 +981,9 @@ class ImageFCSMeasurementProcedure(SolutionMeasurementProcedure):
         super().__init__(app=app, scan_params=scan_params, **kwargs)
         self.image_fcs_tab = kwargs["image_fcs_tab"]
         self.origin_override_ao_v = None
+        if str(self.scan_params.get("slow_axis", "xy")).lower() == "z":
+            # an X-Z section: the pattern drives the piezo too
+            self.scan_params["plane_orientation"] = "XYZ"
 
     async def run(self, should_save=True):
         """Doc."""
@@ -1017,7 +1021,12 @@ class ImageFCSMeasurementProcedure(SolutionMeasurementProcedure):
         idle; the next file starts with the new buffer.
         """
 
+        # z is given only when the image was an X-Z section
         z_v = self.scan_params["origin_ao_v"][2]
+        if len(target_xy_v) > 2 and target_xy_v[2] is not None:
+            z_v = target_xy_v[2]
+            with suppress(Exception):
+                self._app.gui.main.zAOV.setValue(z_v)
         self.origin_override_ao_v = (target_xy_v[0], target_xy_v[1], z_v)
         # when the measurement ends the scanners should rest on the new centre, not go
         # back to where they were before it started

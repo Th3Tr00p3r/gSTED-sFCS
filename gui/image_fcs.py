@@ -28,18 +28,43 @@ from utilities.display import GuiDisplay
 TAB_TITLE = "sFCS ImageFCS"
 MEAS_TYPE = "SFCSImageFCS"
 AO_LIMITS_V = (-5.0, 5.0)  # X and Y galvo command range
+Z_AO_LIMITS_V = (0.0, 10.0)  # Z piezo command range
+SLOW_AXES = {"In plane (XY image)": "xy", "Z (XZ section)": "z"}
 
 # Standard scans, as in the image tab: choosing one fills the 'Scan' boxes, which can then
 # be edited freely. Keys are the names of the spin-box attributes below.
 PRESETS = {
     # a single nucleoid: fast axis 10 um, slow axis 5 um, lines 50 nm apart
     "Nucleoid scan": dict(
-        field_len=10, field_width=5, line_spacing=50, line_repeats=2, speed=500, lin_frac=0.8
+        field_len=10,
+        field_width=5,
+        line_spacing=50,
+        line_repeats=2,
+        speed=500,
+        lin_frac=0.8,
+        slow_axis="xy",
+    ),
+    # a section through the nucleoid, to find its mid-plane: the same line, stepped 5 um
+    # along z in 0.25 um steps (the axial resolution does not justify finer ones)
+    "Nucleoid XZ scan": dict(
+        field_len=10,
+        field_width=5,
+        line_spacing=250,
+        line_repeats=2,
+        speed=500,
+        lin_frac=0.8,
+        slow_axis="z",
     ),
     # the field of the image tab's 'MFC - XY compartment' preset (70 x 70 um), with lines
     # 500 nm apart - at 50 nm it would be 1400 lines
     "Compartment scan": dict(
-        field_len=70, field_width=70, line_spacing=500, line_repeats=1, speed=5000, lin_frac=0.9
+        field_len=70,
+        field_width=70,
+        line_spacing=500,
+        line_repeats=1,
+        speed=5000,
+        lin_frac=0.9,
+        slow_axis="xy",
     ),
 }
 
@@ -56,7 +81,7 @@ class ImageFCSTab(QtWidgets.QWidget):
         self.last_image: Optional[image_fcs.ScanImage] = None
         self.last_origin_ao_v: Optional[Tuple[float, ...]] = None
         self.last_um_v_ratio: Optional[Tuple[float, ...]] = None
-        self.pending_origin_ao_v: Optional[Tuple[float, float]] = None
+        self.pending_origin_ao_v: Optional[Tuple[float, float, Optional[float]]] = None
         self.is_measuring = False
 
         self._build()
@@ -115,11 +140,20 @@ class ImageFCSTab(QtWidgets.QWidget):
             "Sweeps over each line before stepping to the next one. More sweeps bring the "
             "shortest correlation lag at a spot down from the frame time to the line time."
         )
-        self.angle = self._spin("imgFcsAngle", 0, 0, 180, 5, suffix=" deg")
+        # the same default as the scanning-FCS tab's angle
+        self.angle = self._spin("imgFcsAngle", 145, 0, 180, 5, suffix=" deg")
+        self.angle.setToolTip("Direction of the lines (the fast axis) in the XY plane.")
+        self.slow_axis = self._named(QtWidgets.QComboBox(self), "imgFcsSlowAxis")
+        self.slow_axis.addItems(list(SLOW_AXES))
+        self.slow_axis.setToolTip(
+            "Where the lines are stepped: sideways in the XY plane, or along z with the "
+            "piezo - an X-Z section along the scan angle. 'Width' is then the z range."
+        )
         self.speed = self._spin("imgFcsSpeed", 500, 1, 100000, 50, 1, " um/s")
         self.ao_freq = self._spin("imgFcsAoSampFreq", 10000, 100, 1000000, 1000, suffix=" Hz")
         self.lin_frac = self._spin("imgFcsLinFrac", 0.8, 0.1, 0.95, 0.05, 2)
         scan_form.addRow("Line length", self.field_len)
+        scan_form.addRow("Slow axis", self.slow_axis)
         scan_form.addRow("Width across lines", self.field_width)
         scan_form.addRow("Line spacing", self.line_spacing)
         scan_form.addRow("Sweeps per line", self.line_repeats)
@@ -231,6 +265,7 @@ class ImageFCSTab(QtWidgets.QWidget):
             self.lin_frac,
         ):
             box.valueChanged.connect(self.update_pattern)
+        self.slow_axis.currentTextChanged.connect(self.update_pattern)
         self.preset.activated[str].connect(self.apply_preset)
         self.live_button.released.connect(lambda: self.start_or_stop(live=True))
         self.acquire_button.released.connect(lambda: self.start_or_stop(live=False))
@@ -246,7 +281,10 @@ class ImageFCSTab(QtWidgets.QWidget):
         for attr, value in PRESETS.get(name, {}).items():
             box = getattr(self, attr)
             with QtCore.QSignalBlocker(box):
-                box.setValue(value)
+                if attr == "slow_axis":
+                    box.setCurrentIndex(list(SLOW_AXES.values()).index(value))
+                else:
+                    box.setValue(value)
         self.update_pattern()
         logging.debug(f"ImageFCS preset chosen: '{name}'")
 
@@ -269,6 +307,7 @@ class ImageFCSTab(QtWidgets.QWidget):
             max_scan_freq_Hz=max_scan_freq_hz,
             speed_um_s=self.speed.value(),
             line_repeats=self.line_repeats.value(),
+            slow_axis=SLOW_AXES.get(self.slow_axis.currentText(), "xy"),
         )
 
     def _scanner_calibration(self):
@@ -320,6 +359,12 @@ class ImageFCSTab(QtWidgets.QWidget):
             f"({samples_per_line / params['ao_sampling_freq_hz'] * 1e3:.1f} ms each)\n"
             f"{pixel_nm:.0f} nm per AO sample along the line\n"
             f"frame: {frame_s:.2f} s, {frame_samples:,} AO samples"
+            + (
+                f"\nz: {np.ptp(ao[2, :frame_samples]) * um_v_ratio[2]:.2f} um in "
+                f"{params['line_shift_um'] * 1e3:.0f} nm steps"
+                if params.get("slow_axis") == "z"
+                else ""
+            )
         )
         with suppress(Exception):
             # one frame only - the buffer may hold several
@@ -432,8 +477,11 @@ class ImageFCSTab(QtWidgets.QWidget):
             self.image_display.axes[0].set_aspect("equal")
             self.image_display.canvas.draw_idle()
 
-    def cursor_ao_v(self) -> Optional[Tuple[float, float]]:
-        """AO voltages (x, y) of the point under the crosshair of the displayed image."""
+    def cursor_ao_v(self) -> Optional[Tuple[float, float, Optional[float]]]:
+        """
+        AO voltages (x, y, z) of the point under the crosshair of the displayed image. z is
+        None for an XY image, which says nothing about z.
+        """
 
         if self.last_image is None:
             return None
@@ -441,10 +489,14 @@ class ImageFCSTab(QtWidgets.QWidget):
             col, row = self.image_display.axes[0].cursor.pos
         except (AttributeError, IndexError):
             return None
-        x_um, y_um = self.last_image.pixel_to_xy_um(col, row)
+        x_um, y_um, z_um = self.last_image.pixel_to_xyz_um(col, row)
         x_v = self.last_origin_ao_v[0] + x_um / self.last_um_v_ratio[0]
         y_v = self.last_origin_ao_v[1] + y_um / self.last_um_v_ratio[1]
-        return (float(np.clip(x_v, *AO_LIMITS_V)), float(np.clip(y_v, *AO_LIMITS_V)))
+        z_v = None
+        if self.last_image.geom.slow_axis == "z":
+            z_v = self.last_origin_ao_v[2] + z_um / self.last_um_v_ratio[2]
+            z_v = float(np.clip(z_v, *Z_AO_LIMITS_V))
+        return (float(np.clip(x_v, *AO_LIMITS_V)), float(np.clip(y_v, *AO_LIMITS_V)), z_v)
 
     def centre_on_cursor(self):
         """Move the centre of the scan to the crosshair."""
@@ -454,25 +506,24 @@ class ImageFCSTab(QtWidgets.QWidget):
             self.status.setText("Take an image and click in it first.")
             return
 
+        where = f"({target[0]:.4f}, {target[1]:.4f}) V"
+        if target[2] is not None:
+            where = f"({target[0]:.4f}, {target[1]:.4f}, z {target[2]:.4f}) V"
         if self.is_measuring:
             # the scanners are busy with the pattern - the measurement picks this up
             # between files and rebuilds the pattern around the new centre
             self.pending_origin_ao_v = target
-            self.status.setText(
-                f"Scan centre moves to ({target[0]:.4f}, {target[1]:.4f}) V with the next "
-                "file/refresh."
-            )
+            self.status.setText(f"Scan centre moves to {where} with the next file/refresh.")
         else:
             self._main.xAOV.setValue(target[0])
             self._main.yAOV.setValue(target[1])
-            self._main.impl.move_scanners("XY")
-            self.status.setText(
-                f"Scanners moved to ({target[0]:.4f}, {target[1]:.4f}) V - the next scan is "
-                "centred there."
-            )
+            if target[2] is not None:
+                self._main.zAOV.setValue(target[2])
+            self._main.impl.move_scanners("XY" if target[2] is None else "XYZ")
+            self.status.setText(f"Scanners moved to {where} - the next scan is centred there.")
         logging.debug(f"ImageFCS: scan centre -> {target} V")
 
-    def take_pending_origin(self) -> Optional[Tuple[float, float]]:
+    def take_pending_origin(self) -> Optional[Tuple[float, float, Optional[float]]]:
         """Hand a requested new scan centre to the running measurement (once)."""
 
         target, self.pending_origin_ao_v = self.pending_origin_ao_v, None
