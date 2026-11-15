@@ -413,6 +413,26 @@ class MainWin:
             self._gui.main.measQueue.setCurrentItem(new_item)
             logging.info(f"{meas_type} measurement added to FIFO queue.")
 
+        elif meas_type == "SFCSImageFCS":
+            # image scanning with the scanning-FCS routines: the scan comes from the
+            # ImageFCS tab, everything else is a solution measurement
+            tab = self.main_gui.imgFcsTab
+            scan_params = tab.scan_params()
+            scan_params["floating_z_amplitude_um"] = 0
+            scan_params["stage_pattern"] = "None"
+            scan_params["stage_dwelltime_s"] = None
+            sol_kwargs = wdgts.SOL_MEAS_COLL.gui_to_dict(self._app.gui)
+            sol_kwargs.update(tab.measurement_kwargs(live=kwargs.get("live", False)))
+            self._app.meas_queue.append(
+                meas.ImageFCSMeasurementProcedure(
+                    app=self._app,
+                    scan_params=scan_params,
+                    laser_mode=laser_mode.lower(),
+                    processing_options={},
+                    **sol_kwargs,
+                )
+            )
+
         elif meas_type == "SFCSImage":
             # get parameters from GUI
             kwargs = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)

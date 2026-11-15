@@ -7,6 +7,7 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtGui import QIcon
 
 import logic.slot_implementations as impl
+from gui.image_fcs import add_image_fcs_tab
 from utilities.display import GuiDisplay
 
 try:
@@ -56,6 +57,9 @@ class MainWin(QtWidgets.QMainWindow):
         self.solExpTDC2 = GuiDisplay(self.solAnalysisTDCLayout2, self)
         self.solExpGSTED = GuiDisplay(self.solExpGSTEDLayout, self)
         self.solExpResolution = GuiDisplay(self.solAnalysisResolutionLayout, self)
+
+        # the ImageFCS tab (image scanning with the scanning-FCS routines) is built in code
+        add_image_fcs_tab(self, app)
 
         # scan patterns
         # image
