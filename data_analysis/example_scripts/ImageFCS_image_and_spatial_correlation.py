@@ -1,40 +1,45 @@
 """
-ImageFCS measurements (the 'sFCS ImageFCS' tab): the image and the spatial correlation.
+ImageFCS measurements (the 'sFCS ImageFCS' tab): the image and the spatial correlation,
+in the project's standard structures.
 
-An ImageFCS measurement is saved like any scanning-FCS measurement - files
+An ImageFCS measurement is saved like any angular scanning-FCS measurement - files
 '<template>_angular_<laser>_<time>_<n>.pkl' with '<...>_byte_data.npy' beside each, in the
-'solution' folder of the day. Everything below is rebuilt from the photon time-stamps
-(data_analysis/image_fcs.py); only NumPy and matplotlib are needed, not the correlator
-library.
+'solution' folder of the day - and it is processed by the same classes:
 
-Set DAY_DIR and TEMPLATE below and run (Spyder, a notebook cell, or 'python <this file>').
-Afterwards:
+    meas = SolutionSFCSMeasurement(...)      the measurement
+    meas.data[i].raw                         photons of file i: .pulse_runtime, .coarse,
+                                             .fine, .delay_time (after calibrate_tdc),
+                                             .line_num
+    meas.scan_images_dstack, meas.rois       the scan image of each file (one row per
+                                             sweep) and the region used
+    meas.tdc_calib                           lifetime histogram (.t_hist, .all_hist_norm)
+    cf = meas.cf[CF_NAME]                    the CorrFunc object:
+        cf.lag (ms), cf.vt_um                lag, and lag x scan speed = distance
+        cf.corrfunc, cf.cf_cr, cf.weights    one row per scan line of each file
+        cf.avg_corrfunc, cf.error_corrfunc   weighted average over the lines kept
+        cf.avg_cf_cr, cf.error_cf_cr         the same, times the count rate
+        cf.normalized, cf.g0                 avg_cf_cr / g0
+        cf.j_good, cf.j_bad                  rows kept / rejected by the outlier score
+        cf.countrate                         count rate inside the region
 
-    files[i]       one dict per file: 'runtime' (photon times in laser pulses), 'geom',
-                   'image' (a ScanImage: .counts, .rate_khz, .pixel_um, .offset_samples),
-                   'corr' (the spatial correlation of that file) and 'scan_settings'
-    image_khz      the image summed over the files, as a count rate
-    corr           the spatial correlation averaged over the files:
-                   corr['lag_um'], corr['g'], corr['g_err'], corr['g_lines'] (per line)
+Two settings matter for images and differ from a solution measurement:
 
-What the spatial correlation is
--------------------------------
-Every sweep of the beam along a line is one independent measurement. Its photons are binned
-along the line and G(dx) = <n(x) n(x+dx)> / <n>^2 - 1 is computed, without self-pairs (so no
-shot-noise spike at dx = 0). The sweeps are averaged with weights equal to their photon
-numbers, and sweeps with fewer than MIN_LINE_FRACTION of the photons of the brightest ones
-are dropped (they pass outside the object). A sweep takes tens of milliseconds, so G(dx)
-is the correlation of the structure as it was during that sweep; repeated sweeps of a
-line only add statistics.
+ROI_SELECTION = "bright lines"
+    Whole lines (their linear part) are correlated, and only lines holding at least
+    MIN_LINE_FRACTION of the photons of the bright ones are used - the others pass beside
+    the object. ("auto", the solution default, thresholds the image for a uniform sample
+    and fails on a structured one; "all" uses every line.)
 
-Two things to keep in mind when reading G(dx):
- * it contains everything that makes the brightness vary along a line - the structure of
-   the object, but also its overall envelope (a 3 um wide object in a 10 um line gives a
-   3 um wide pedestal under the fine structure);
- * the first one or two points (dx below ~ speed x 10 us) include detector afterpulsing.
+SUBTRACT_MEAN_IMAGE_CORR
+    The solution analysis subtracts the correlation of the time-averaged image from every
+    line ('subtract_spatial_bg_corr'), which removes whatever does not move and leaves the
+    fluctuating part. True: that (for a static object nothing is left). False: the full
+    spatial correlation of the lines, structure and envelope of the object included.
 
-For an X-Z section ('slow axis' = Z) the same code applies; the rows of the image are then
-z-steps, and the correlation is still along the fast (in-plane) direction.
+The scan shift is found from the sweeps themselves (data_analysis/image_fcs.py); this is
+automatic for files written by the ImageFCS-era program.
+
+A properly proportioned image (square pixels, all files summed) comes from image_fcs.
 """
 
 import os
@@ -52,111 +57,69 @@ if PROJECT_ROOT.exists():
 from matplotlib import pyplot as plt  # noqa: E402
 
 from data_analysis import image_fcs  # noqa: E402
+from data_analysis.correlation_function import SolutionSFCSMeasurement  # noqa: E402
 from utilities.file_utilities import load_file_dict  # noqa: E402
 
 ######################
 # what to process
 ######################
 DAY_DIR = Path("/Users/oleg/Documents/Experiments/tmp/17_11_2026/solution")
-TEMPLATE = "imgfcs_angular_exc_*"  # all files of one measurement ('_1', '_2', ...)
+TEMPLATE = "imgfcs_angular_exc_101010_*.pkl"  # one measurement: all its file numbers
+MEAS_TYPE = "confocal"  # or "sted"
+CF_NAME = "confocal"
 
-# the scan offset (see the docstring of data_analysis/image_fcs.py): None finds it from
-# each file; a number (AO samples) uses that for all files
-OFFSET_SAMPLES = None
-
-PIXEL_UM = None  # image pixel along the line; None = the line spacing (square pixels)
-CORR_BIN_UM = None  # resolution of the correlation; None = half an AO sample of travel
-CORR_MAX_LAG_UM = 3.0
-MIN_LINE_FRACTION = 0.3  # drop sweeps with fewer photons than this fraction of the bright
-
-
-def file_number(path: Path) -> int:
-    return int(path.stem.split("_")[-1])
+ROI_SELECTION = "bright lines"
+MIN_LINE_FRACTION = 0.3
+SUBTRACT_MEAN_IMAGE_CORR = False
+SHOULD_CALIBRATE_TDC = True  # lifetime histogram and per-photon delay times
+MAX_DISTANCE_UM = 5.0  # range of the correlation plots
 
 
-def load_files() -> list:
-    """Read every file of the measurement and build its image and correlation."""
+def process() -> SolutionSFCSMeasurement:
+    """Load the measurement and correlate it - the standard objects."""
 
-    paths = sorted(
-        (p for p in DAY_DIR.glob(TEMPLATE + ".pkl") if p.stem.split("_")[-1].isdigit()),
-        key=file_number,
+    meas = SolutionSFCSMeasurement(MEAS_TYPE)
+    meas.read_fpga_data(
+        DAY_DIR / TEMPLATE,
+        roi_selection=ROI_SELECTION,
+        min_line_fraction=MIN_LINE_FRACTION,
+        is_verbose=True,
     )
-    if not paths:
-        raise FileNotFoundError(f"No files like '{TEMPLATE}.pkl' in '{DAY_DIR}'")
+    if SHOULD_CALIBRATE_TDC:
+        try:
+            meas.calibrate_tdc()
+        except Exception as exc:
+            print(f"TDC calibration failed [{exc}] - continuing without delay times.")
+    meas.correlate_and_average(cf_name=CF_NAME, subtract_spatial_bg_corr=SUBTRACT_MEAN_IMAGE_CORR)
+    return meas
 
-    files = []
-    for path in paths:
+
+def summed_image():
+    """All files of the measurement as one image with square pixels (image_fcs)."""
+
+    images = []
+    for path in sorted(DAY_DIR.glob(TEMPLATE)):
         full_data = load_file_dict(path)["full_data"]
-        scan_settings = full_data["scan_settings"]
-        laser_freq_hz = full_data["laser_freq_mhz"] * 1e6
         byte_data = np.load(path.with_name(path.stem + "_byte_data.npy"), mmap_mode="r")
-
-        geom = image_fcs.ScanGeometry.from_scan_settings(scan_settings, laser_freq_hz)
-        runtime = image_fcs.photon_runtime(byte_data)
-        image = image_fcs.scan_image(
-            runtime, geom, offset_samples=OFFSET_SAMPLES, pixel_um=PIXEL_UM
-        )
-        corr = image_fcs.line_correlations(
-            runtime,
-            geom,
-            image.offset_samples,
-            bin_um=CORR_BIN_UM,
-            max_lag_um=CORR_MAX_LAG_UM,
-            min_line_fraction=MIN_LINE_FRACTION,
-        )
-        how = "" if OFFSET_SAMPLES is not None else f" (quality {image.offset_quality:.0f})"
-        print(
-            f"{path.name}: {runtime.size:,} photons, {image.duration_s:.1f} s, "
-            f"{runtime.size / max(image.duration_s, 1e-9) * 1e-3:.1f} kHz; "
-            f"scan offset {image.offset_samples:+.2f} samples{how}; "
-            f"{corr['n_sweeps_used']}/{corr['n_sweeps']} sweeps in the correlation"
-        )
-        if OFFSET_SAMPLES is None and not image.offset_quality >= 5:
-            print("   WARNING: the offset could not be found from this file - set it by hand")
-        files.append(
-            dict(
-                path=path,
-                scan_settings=scan_settings,
-                geom=geom,
-                runtime=runtime,
-                image=image,
-                corr=corr,
+        images.append(
+            image_fcs.scan_image_from_bytes(
+                byte_data, full_data["scan_settings"], full_data["laser_freq_mhz"] * 1e6
             )
         )
-    return files
+        print(
+            f"{path.name}: scan offset {images[-1].offset_samples:+.2f} samples "
+            f"(quality {images[-1].offset_quality:.0f})"
+        )
+    counts = sum(image.counts for image in images)
+    dwell_s = sum(image.dwell_s for image in images)
+    return counts / dwell_s * 1e-3, images[0]
 
 
-def combine(files: list):
-    """Sum the images and average the correlations (weighted by sweeps used)."""
+def plot(meas: SolutionSFCSMeasurement, image_khz: np.ndarray, image):
+    """The image, the averaged correlation, and the correlation of every line."""
 
-    counts = sum(f["image"].counts for f in files)
-    dwell_s = sum(f["image"].dwell_s for f in files)
-    image_khz = counts / dwell_s * 1e-3
-
-    weights = np.array([f["corr"]["n_sweeps_used"] for f in files], dtype=float)
-    g = np.array([f["corr"]["g"] for f in files])
-    g_err = np.array([f["corr"]["g_err"] for f in files])
-    # per-line correlations: average over the files in which the line was used
-    stack = np.array([f["corr"]["g_lines"] for f in files])
-    n_used = np.isfinite(stack).sum(axis=0)
-    g_lines = np.where(
-        n_used > 0, np.nan_to_num(stack).sum(axis=0) / np.maximum(n_used, 1), np.nan
-    )
-    corr = dict(
-        lag_um=files[0]["corr"]["lag_um"],
-        g=(g * weights[:, None]).sum(axis=0) / weights.sum(),
-        g_err=np.sqrt(((g_err * weights[:, None]) ** 2).sum(axis=0)) / weights.sum(),
-        g_lines=g_lines,
-        line_photons=np.mean([f["corr"]["line_photons"] for f in files], axis=0),
-        line_used=np.mean([f["corr"]["line_used"] for f in files], axis=0),
-    )
-    return image_khz, corr
-
-
-def plot(files: list, image_khz: np.ndarray, corr: dict):
-    """The image, the correlation, and the correlation line by line."""
-
-    geom, image = files[0]["geom"], files[0]["image"]
+    cf = meas.cf[CF_NAME]
+    geom = image.geom
     line_offsets = geom.line_offsets_um()
     extent = (
         -geom.linear_len_um / 2,
@@ -164,7 +127,6 @@ def plot(files: list, image_khz: np.ndarray, corr: dict):
         line_offsets[-1] + geom.line_shift_um / 2,
         line_offsets[0] - geom.line_shift_um / 2,
     )
-    slow_label = "z (um)" if geom.slow_axis == "z" else "across the lines (um)"
 
     fig, axes = plt.subplots(1, 3, figsize=(17, 5))
     ax = axes[0]
@@ -178,38 +140,52 @@ def plot(files: list, image_khz: np.ndarray, corr: dict):
     )
     fig.colorbar(shown, ax=ax, label="kHz", shrink=0.8)
     ax.set_xlabel(f"along the lines (um), at {geom.angle_deg:.0f} deg")
-    ax.set_ylabel(slow_label)
+    ax.set_ylabel("z (um)" if geom.slow_axis == "z" else "across the lines (um)")
     ax.set_title(
-        f"{image_khz.shape[0]} x {image_khz.shape[1]} pixels of {image.pixel_um * 1e3:.0f} nm"
+        f"{image_khz.shape[0]} x {image_khz.shape[1]} px of {image.pixel_um * 1e3:.0f} nm"
     )
 
+    in_range = (cf.vt_um > 0) & (cf.vt_um <= MAX_DISTANCE_UM)
     ax = axes[1]
-    lag, g, g_err = corr["lag_um"], corr["g"], corr["g_err"]
-    ax.errorbar(lag[1:], g[1:], g_err[1:], fmt=".", ms=4, elinewidth=0.6)
+    ax.errorbar(
+        cf.vt_um[in_range],
+        cf.avg_corrfunc[in_range],
+        cf.error_corrfunc[in_range],
+        fmt=".",
+        ms=4,
+        elinewidth=0.6,
+    )
     ax.axhline(0, color="k", lw=0.5)
-    ax.set_xlabel("distance along the line (um)")
-    ax.set_ylabel("G(dx)")
-    ax.set_title("Spatial correlation, all used sweeps")
+    ax.set_xscale("log")
+    ax.set_xlabel("distance = lag x scan speed (um)")
+    ax.set_ylabel("G  (cf.avg_corrfunc)")
+    ax.set_title(f"Average of {len(cf.j_good)} lines ({len(cf.j_bad)} rejected)")
 
     ax = axes[2]
-    shown = ax.imshow(
-        corr["g_lines"][:, 1:],
-        aspect="auto",
+    rows = cf.corrfunc[:, in_range]
+    shown = ax.pcolormesh(
+        cf.vt_um[in_range],
+        np.arange(rows.shape[0]),
+        rows,
+        shading="nearest",
         cmap="viridis",
-        extent=(lag[1], lag[-1], extent[2], extent[3]),
+        vmin=np.percentile(rows, 1),
+        vmax=np.percentile(rows, 99),
     )
-    fig.colorbar(shown, ax=ax, label="G(dx)", shrink=0.8)
-    ax.set_xlabel("distance along the line (um)")
-    ax.set_ylabel(slow_label)
-    ax.set_title("Spatial correlation, line by line (blank: line not used)")
+    fig.colorbar(shown, ax=ax, label="G", shrink=0.8)
+    ax.set_xscale("log")
+    ax.set_xlabel("distance (um)")
+    ax.set_ylabel("row of cf.corrfunc (lines in the region, file after file)")
+    ax.set_title("Every line")
 
-    fig.suptitle(f"{files[0]['path'].parent.parent.name} - {TEMPLATE}")
+    fig.suptitle(f"{DAY_DIR.parent.name} - {TEMPLATE}")
     fig.tight_layout()
     return fig
 
 
 if __name__ == "__main__":
-    files = load_files()
-    image_khz, corr = combine(files)
-    figure = plot(files, image_khz, corr)
+    meas = process()
+    cf = meas.cf[CF_NAME]
+    image_khz, first_image = summed_image()
+    figure = plot(meas, image_khz, first_image)
     plt.show()

@@ -14,6 +14,7 @@ import numpy as np
 import scipy
 import skimage
 
+from data_analysis import image_fcs
 from data_analysis.workers import N_CPU_CORES
 from utilities.display import Plotter
 from utilities.file_utilities import MemMapping, load_object, save_object
@@ -70,9 +71,22 @@ class AngularScanDataMixin:
         samples_per_line,
         n_lines,
         should_fix_shift=True,
+        scan_geometry=None,
+        shift_method="auto",
         **kwargs,
     ):
-        """Converts angular scan pulse_runtime into an image."""
+        """
+        Converts angular scan pulse_runtime into an image.
+
+        The shift between the photon clock and the scan ('should_fix_shift') is found in
+        one of two ways ('shift_method'):
+          "legacy" - the original search for the roll that makes neighbouring rows mirror
+                     each other, after flattening bright pixels. Made for uniform solutions.
+          "sweeps" - image_fcs.estimate_scan_offset(): forward and backward sweeps are
+                     matched using the structure in the data. Needs 'scan_geometry'.
+          "auto"   - "sweeps" when a geometry was supplied and the data can decide
+                     (quality >= 5), otherwise "legacy".
+        """
         # TODO: check out rolling initally made image instead of recursing
 
         # calculate the sample index at each photon arrival, since beginning of file/section
@@ -94,7 +108,18 @@ class AngularScanDataMixin:
             # TODO: (low priority) if there are multiple sections in the raw data, perhpas the pixel shift can be calculated only for the first section and the same shift used for the rest.
             if kwargs.get("is_verbose"):
                 print("Fixing data shift...", end=" ")
-            pix_shift = self._get_data_shift(img, **kwargs)
+            pix_shift = None
+            if scan_geometry is not None and shift_method in {"auto", "sweeps"}:
+                offset, quality = image_fcs.estimate_scan_offset(
+                    np.asarray(pulse_runtime), scan_geometry
+                )
+                if quality >= 5 or shift_method == "sweeps":
+                    # the same shift, counted forwards within one scan period
+                    pix_shift = int(round(offset)) % img.size
+                    if kwargs.get("is_verbose"):
+                        print(f"(from sweeps, quality {quality:.0f})", end=" ")
+            if pix_shift is None:
+                pix_shift = self._get_data_shift(img, **kwargs)
             if kwargs.get("is_verbose"):
                 print(f"shifting {pix_shift} pixels...", end=" ")
             img = np.roll(img, pix_shift)
@@ -1712,6 +1737,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         roi_selection="auto",
         should_alleviate_bright_pixels=False,
         agg_ratio=0.001,
+        min_line_fraction=0.3,
         **kwargs,
     ) -> TDCPhotonFileData:
         """
@@ -1736,6 +1762,15 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
         p.general.samples_per_line = int(scan_settings["samples_per_line"])
         p.general.n_lines = int(scan_settings["n_lines"])
+
+        # Files written since the ImageFCS work carry what is needed to find the scan
+        # shift from the sweeps themselves, which also works on structured images.
+        scan_geometry = None
+        if scan_settings.get("line_repeats") is not None:
+            with suppress(KeyError, TypeError, ValueError):
+                scan_geometry = image_fcs.ScanGeometry.from_scan_settings(
+                    scan_settings, self.laser_freq_hz
+                )
 
         if kwargs.get("is_verbose"):
             print("Converting angular scan to image...", end=" ")
@@ -1776,6 +1811,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 ao_sampling_freq_hz,
                 p.general.samples_per_line,
                 p.general.n_lines,
+                scan_geometry=scan_geometry,
                 **kwargs,
             )
             sec_prt_shift = sec_pixel_shift * (self.laser_freq_hz // ao_sampling_freq_hz)
@@ -1791,9 +1827,18 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     raise RuntimeError("Automatic ROI selection: Thresholding failed")
             elif roi_selection == "all":
                 sec_image_mask = np.full(sec_image.shape, True)
+            elif roi_selection == "bright lines":
+                # whole lines (their linear part), keeping only those that hold at least
+                # 'min_line_fraction' of the photons of the bright ones - for scans over
+                # an object, where the other lines pass beside it
+                row_sums = sec_image[:-1].sum(axis=1)  # the last row is the walk back
+                is_bright = row_sums >= min_line_fraction * np.percentile(row_sums, 95)
+                sec_image_mask = np.full(sec_image.shape, False)
+                sec_image_mask[:-1][is_bright] = True
             else:
                 raise ValueError(
-                    f"roi_selection='{roi_selection}' is not supported. Only 'auto' is, at the moment."
+                    f"roi_selection='{roi_selection}' is not supported. "
+                    "Use 'auto', 'all' or 'bright lines'."
                 )
 
             # cut edges
