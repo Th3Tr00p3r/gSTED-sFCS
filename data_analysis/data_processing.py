@@ -1244,7 +1244,12 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 )
             byte_data = byte_data[byte_data_slice]
 
-        section_slices, tot_single_errors = self._find_all_section_edges(byte_data)
+        
+        #temp check whether the new method gives same results
+        section_slices, tot_single_errors = self._find_all_section_edges_2(byte_data)
+        #stop checking
+     #   section_slices, tot_single_errors = self._find_all_section_edges(byte_data)
+        
         section_lengths = [sec_slice.stop - sec_slice.start for sec_slice in section_slices]
 
         photon_idxs_list: List[int] = []
@@ -1431,6 +1436,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             new_edge_start += last_edge_stop
             new_edge_stop += last_edge_stop
             section_edges.append(slice(new_edge_start, new_edge_stop))
+            #debug
+            #print("No. section edges: " + str(len(section_edges)))
             last_edge_stop = section_edges[-1].stop
             total_single_errors += n_single_errors
 
@@ -1545,6 +1552,80 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             except IndexError:
                 break
         return None
+    
+    def _find_all_section_edges_2( #try a new approach at finding sections
+        self,
+        byte_data: np.ndarray,
+    ) -> Tuple[List[slice], int]:
+        """
+        Find all contiguous sections of complete 7-byte chunks in a NumPy byte array.
+        Each chunk starts with 248 and ends with 254.
+        Filters out false positives where consecutive diffs sum to 7 (e.g., 3 and 4).
+        Returns a list of slice objects (section_start, section_stop) for each valid section.
+        """
+        n = len(byte_data)
+        if n < self.GROUP_LEN:
+            return [], 0 
+        # Step 1: Identify potential chunk starts (bytes equal to 248)
+        start_candidates = np.where(byte_data == 248)[0]
+        
+        # Step 2: Filter out candidates where index + 6 is out of bounds
+        valid_mask = start_candidates + self.GROUP_LEN - 1 < n
+        start_candidates = start_candidates[valid_mask]
+        
+        # Step 3: Filter for valid chunks (7th byte from start is 254) 
+        #and the 6th byte should be smaller than 128 (length of the TDC)
+        if len(start_candidates) == 0:
+            return [], 0
+        valid_starts = start_candidates[np.logical_and(byte_data[start_candidates + self.GROUP_LEN - 1] == 254,
+                                                       byte_data[start_candidates + self.GROUP_LEN - 2] < 128)]
+                                                               
+        if len(valid_starts) == 0:
+            return [], 0
+        
+        # Step 4: Compute differences and identify initial breaks
+        diffs = np.diff(valid_starts)
+        breaks = np.where(diffs != self.GROUP_LEN)[0]
+        
+        # Step 5: Filter out breaks where two consecutive diffs sum to 7
+        if len(breaks) > 1:
+            # Check pairs of consecutive breaks
+            invalid_breaks = []
+            for i in range(len(breaks) - 1):
+                # If breaks[i] and breaks[i+1] correspond to diffs that sum to 7
+                if breaks[i + 1] == breaks[i] + 1 and diffs[breaks[i]] + diffs[breaks[i] + 1] == self.GROUP_LEN:
+                    invalid_breaks.extend([breaks[i], breaks[i + 1]])
+            # Remove invalid breaks
+            valid_breaks = np.setdiff1d(breaks, invalid_breaks)
+        else:
+            valid_breaks = breaks
+        
+        # Step 6: Determine start and end indices of contiguous sections
+        group_starts = np.concatenate(([0], valid_breaks + 1))
+        group_ends = np.concatenate((valid_breaks, [len(valid_starts) - 1]))
+        
+        # Step 7: Create slice objects for each valid section
+        sections = []
+        for g_start, g_end in zip(group_starts, group_ends):
+            section_start = valid_starts[g_start]
+            #test section start: sometimes the first 248 bracket comes from one of the bytes
+            #in the global clock. Test the byte right after it: it should be smaller and close 
+            #the same byte after the next 248
+            if byte_data[section_start+1+self.GROUP_LEN] > 0:
+                if not ((byte_data[section_start+1] == byte_data[section_start+1+self.GROUP_LEN])
+                        or (byte_data[section_start+1] == byte_data[section_start+1+self.GROUP_LEN]-1)):
+                    section_start += self.GROUP_LEN
+            else: #byte_data[section_start+1+self.GROUP_LEN] == 0
+                if not ((byte_data[section_start+1] == byte_data[section_start+1+self.GROUP_LEN])
+                        or (byte_data[section_start+1] == 255)):
+                    section_start += self.GROUP_LEN
+                
+            section_stop = valid_starts[g_end] + self.GROUP_LEN - 1
+            sections.append(slice(section_start, section_stop))
+        
+        return sections, 0
+        
+        
 
     def _process_image_scan_plane_data(
         self,
