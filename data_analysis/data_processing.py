@@ -2276,7 +2276,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 for p in data
             ]
             # Use the pool to parallelize the processing of data
-            delay_time_list = pool.map(self.get_delay_time, args_list)
+            #begin Oleg
+            #delay_time_list = pool.map(self.get_delay_time, args_list)
+            delay_time_list = pool.map(get_delay_time, args_list)
+            #end Oleg
 
         if kwargs.get("is_verbose"):
             print("Collecting total pulses... ", end="")
@@ -2491,3 +2494,53 @@ class ImageStackData:
             img -= self.gate_ns.lower
 
         return img
+    
+#begin Oleg:
+# taking get_delay_time function outside TDCPhotonDataProcessor class
+# hoping that standalone function will resolve the error caused by pickle in multiprocessing
+
+def get_delay_time(args):
+    """Doc."""
+
+    (
+        p,
+        coarse_bins,
+        first_coarse_bin,
+        last_coarse_bin,
+        max_j,
+        l_quarter_tdc,
+        r_quarter_tdc,
+        t_calib,
+        fpga_freq_hz,
+        NAN_PLACEBO,
+    ) = args
+
+    _delay_time = np.full(p.raw.coarse.shape, np.nan, dtype=np.float64)
+    crs = np.minimum(p.raw.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
+    crs[crs < 0] += last_coarse_bin - first_coarse_bin + 1
+
+    delta_coarse = p.raw.coarse2 - p.raw.coarse
+    delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
+
+    # in the TDC midrange use "coarse" counter
+    in_mid_tdc = (p.raw.fine >= l_quarter_tdc) & (p.raw.fine <= r_quarter_tdc)
+    delta_coarse[in_mid_tdc] = 0
+
+    # on the right of TDC use "coarse2" counter (no change in delta)
+    # on the left of TDC use "coarse2" counter decremented by 1
+    on_left_tdc = p.raw.fine < l_quarter_tdc
+    delta_coarse[on_left_tdc] -= 1
+
+    photon_idxs = p.raw.fine != NAN_PLACEBO
+    try:
+        _delay_time[photon_idxs] = (
+            t_calib[p.raw.fine[photon_idxs]]
+            + (crs[photon_idxs] + delta_coarse[photon_idxs]) / fpga_freq_hz * 1e9
+        )
+    except IndexError as exc:
+        print(
+            f"\n[WORKER] Error in file {p.file_num}: {exc}. Please remove/fix the file, and re-run the processing."
+        )
+        sys.stdout.flush()
+    p.raw.delay_time = _delay_time
+    return _delay_time[photon_idxs]
