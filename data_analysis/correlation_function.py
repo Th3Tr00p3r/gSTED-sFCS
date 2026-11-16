@@ -2850,11 +2850,11 @@ class ImageSFCSMeasurement:
 
         # load file if needed
         if file_path is not None:
+            self.file_path = file_path
+            self._file_dict = load_file_dict(file_path)
             if is_verbose:
                 print("\nLoading image FPGA data from disk -")
                 print(f"File path: '{self.file_path}'")
-            self.file_path = file_path
-            self._file_dict = load_file_dict(file_path)
 
         # determine type
         self.type = "sted" if self._file_dict["full_data"]["laser_mode"] == "sted" else "confocal"
@@ -3006,14 +3006,14 @@ class ImageSFCSMeasurement:
         if gate_ns:
             # calibrate TDC
             self.calibrate_tdc()
-            delay_time = data.raw._delay_time  # using just the first plane
+            delay_time = data.raw.delay_time  # using just the first plane
             in_gate_idxs = gate_ns.valid_indices(delay_time)
         # ungated
         else:
             in_gate_idxs = slice(None)
 
         # define sample runtime
-        pulse_runtime = data.raw._pulse_runtime
+        pulse_runtime = data.raw.pulse_runtime
         sample_runtime = pulse_runtime * self.ao_sampling_freq_hz // self.laser_freq_hz
 
         # get pixel_num
