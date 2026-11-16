@@ -1458,6 +1458,22 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         missed_248_idxs = np.where(data_presumed_248 != 248)[0]
         tot_248s_missed = missed_248_idxs.size
         missed_254_idxs = np.where(data_presumed_254 != 254)[0]
+        
+        #Begin Oleg
+        #there is a rare possibility that a 254 byte that belongs to the global time is counted as 
+        # a bracket 254 byte. A signature of it is missed_248_idxs[0] == missed_254_idxs[0]-1 
+        # making an imperfect test for it by looking for nearby 254 bytes that are in registry
+        if missed_248_idxs.size != 0:
+            if missed_248_idxs[0] == missed_254_idxs[0]-1:
+                doubtful_254_byte_idx = edge_start + missed_254_idxs[0] * self.GROUP_LEN  - 1
+                temp_254_byte_idx = np.where(byte_data[doubtful_254_byte_idx - 6: doubtful_254_byte_idx + 13] == 254)[0]
+                #remove doubtful byte
+                temp_254_byte_idx = np.delete(temp_254_byte_idx, np.where(temp_254_byte_idx == 6)[0])
+                # expect to be 3 254 bytes separated by self.GROUP_LEN
+                if np.logical_and(temp_254_byte_idx.size == 3, all(np.diff(temp_254_byte_idx) == self.GROUP_LEN)):
+                    #insert one more value to missed_254_idxs
+                    missed_254_idxs = np.insert(missed_254_idxs, 0, missed_248_idxs[0])
+        #end Oleg 
         tot_254s_missed = missed_254_idxs.size
 
         data_end = False
