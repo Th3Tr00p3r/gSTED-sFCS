@@ -1284,10 +1284,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # calculate the global pulse_runtime (the number of laser pulses at each photon arrival since the beginning of the file)
         # each index in pulse_runtime represents a photon arrival into the TDC
         pulse_runtime = (
-            byte_data[photon_idxs + 1] * 256**2
-            + byte_data[photon_idxs + 2] * 256
-            + byte_data[photon_idxs + 3]
-        ).astype(np.int64)
+            byte_data[photon_idxs + 1].astype(np.int64) * 256**2
+            + byte_data[photon_idxs + 2].astype(np.int64) * 256
+            + byte_data[photon_idxs + 3].astype(np.int64)
+        )
 
         time_stamps = np.diff(pulse_runtime)
 
