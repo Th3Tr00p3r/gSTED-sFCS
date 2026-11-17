@@ -334,6 +334,79 @@ def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
     )
 
 
+def locate_beam(frame: np.ndarray, max_samples: int = 100) -> Dict[str, Any]:
+    """
+    Fit a 2D Gaussian to a beam anywhere in a camera frame, at a resolution matched to it.
+
+    A whole frame is too many pixels to fit at video rate, and shrinking it by a fixed
+    factor fails for small beams: a beam 25 px across, sampled every 10 px, is two samples
+    wide, so its fitted centre can only land on a coarse grid and its width means little.
+    Instead the beam is first located roughly (moments of a coarse, block-averaged copy),
+    a window of +/- 4 sigma is cut around it, and that window is block-averaged by just
+    enough to keep it within 'max_samples' per side - so a small beam is fitted at full
+    resolution and a large one keeps several samples per sigma.
+
+    Returns a dict in FULL-FRAME pixel coordinates (column x, row y; pixel centres at
+    integer positions): x0, y0, sigma_x, sigma_y (px), phi (radians), chi_sq_norm, and the
+    'factor' and 'window' (x_start, y_start, width, height) used. Raises FitError.
+    """
+
+    frame = np.asarray(frame, dtype=np.float64)
+    if frame.ndim != 2:
+        raise FitError("locate_beam() needs a 2D (grayscale) frame")
+    height, width = frame.shape
+
+    # --- rough position and size, from a coarse copy
+    coarse_f = max(1, int(min(height, width) // 128))
+    coarse = _block_mean(frame, coarse_f)
+    bg = float(np.median(coarse))
+    pos = np.clip(coarse - bg, 0, None)
+    peak = float(pos.max())
+    if peak <= 0:
+        raise FitError("flat frame - no beam")
+    weights = np.where(pos > 0.2 * peak, pos, 0.0)
+    rows, cols = np.indices(coarse.shape)
+    total = weights.sum()
+    cy = (rows * weights).sum() / total * coarse_f + (coarse_f - 1) / 2
+    cx = (cols * weights).sum() / total * coarse_f + (coarse_f - 1) / 2
+    s_x = np.sqrt((((cols * coarse_f - cx) ** 2) * weights).sum() / total)
+    s_y = np.sqrt((((rows * coarse_f - cy) ** 2) * weights).sum() / total)
+    sigma = max(float(np.hypot(s_x, s_y) / np.sqrt(2)), coarse_f, 2.0)
+
+    # --- window of +/- 4 sigma (at least +/- 15 px), and the sampling for it
+    half = int(np.ceil(max(4 * sigma, 15)))
+    x_start, x_stop = max(int(round(cx)) - half, 0), min(int(round(cx)) + half + 1, width)
+    y_start, y_stop = max(int(round(cy)) - half, 0), min(int(round(cy)) + half + 1, height)
+    factor = max(1, int(np.ceil(max(x_stop - x_start, y_stop - y_start) / max_samples)))
+    window = _block_mean(frame[y_start:y_stop, x_start:x_stop], factor)
+    if min(window.shape) < 5:
+        raise FitError("beam too close to the frame edge to fit")
+
+    fp = fit_2d_gaussian_to_image(window)
+    # a block of 'factor' pixels starting at pixel i*factor has its centre at
+    # i*factor + (factor - 1)/2 in full-frame pixel-centre coordinates
+    return dict(
+        x0=x_start + fp.beta["x0"] * factor + (factor - 1) / 2,
+        y0=y_start + fp.beta["y0"] * factor + (factor - 1) / 2,
+        sigma_x=abs(fp.beta["sigma_x"]) * factor,
+        sigma_y=abs(fp.beta["sigma_y"]) * factor,
+        phi=float(fp.beta["phi"]),
+        chi_sq_norm=fp.chi_sq_norm,
+        factor=factor,
+        window=(x_start, y_start, x_stop - x_start, y_stop - y_start),
+    )
+
+
+def _block_mean(image: np.ndarray, factor: int) -> np.ndarray:
+    """Average non-overlapping factor x factor blocks (the ragged edge is dropped)."""
+
+    if factor <= 1:
+        return np.asarray(image, dtype=np.float64)
+    h, w = (np.array(image.shape) // factor) * factor
+    trimmed = np.asarray(image[:h, :w], dtype=np.float64)
+    return trimmed.reshape(h // factor, factor, w // factor, factor).mean(axis=(1, 3))
+
+
 def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
     """Doc."""
     # TODO: Merge - have 'fit_lifetime_hist' method of 'TDCCalibration' use this.
