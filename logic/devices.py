@@ -24,7 +24,8 @@ from logic.timeout import TIMEOUT_INTERVAL
 from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.file_utilities import load_object, save_object
-from utilities.fit_tools import FitError, find_dark_core, fit_2d_gaussian_to_image, linear_fit
+from utilities import fit_tools
+from utilities.fit_tools import FitError, find_dark_core, linear_fit
 from utilities.helper import (
     Gate,
     Limits,
@@ -1834,59 +1835,36 @@ class BaseCamera:
             logging.debug(f"{self.log_ref}: reference centre cleared")
 
     def get_and_display_beam_width(self, img_arr):
-        """Doc."""
+        """
+        Fit a 2D Gaussian to the beam and draw its 1/e^2 ellipse; the crosshair follows it.
 
-        # properly convert to grayscale
-        if not self.is_in_grayscale_mode:
-            gs_img = PIL.Image.fromarray(img_arr, mode="RGB").convert("L")
-        else:
-            gs_img = PIL.Image.fromarray(img_arr)
+        The fit is done by fit_tools.locate_beam(), at a resolution matched to the beam.
+        (It used to be done on the whole frame shrunk 10x by nearest-neighbour sampling:
+        a beam ~25 px across - as on the far-field camera - was then only two samples
+        wide, and the centre came out shifted by about 5 px up and to the left, because
+        the shrinking samples the middle of each 10 px block while the result was mapped
+        back as if it sampled its corner.)
+        """
 
-        # cropping to square - assuming beam is centered, takes the same amount from both sides of the longer dimension
-        width, height = gs_img.size
-        crop_delta_x = abs(width - height) / 2 if width > height else 0
-        crop_delta_y = abs(width - height) / 2 if width < height else 0
-        crop_dims = (crop_delta_x, crop_delta_y, width - crop_delta_x, height - crop_delta_y)
-        cropped_gs_img = gs_img.crop(crop_dims)
-
-        # resizing
-        RESCALE_FACTOR = 10
-        resized_cropped_gs_img = cropped_gs_img.resize(
-            (
-                round(min(width, height) / RESCALE_FACTOR),
-                round(min(width, height) / RESCALE_FACTOR),
-            ),
-            resample=PIL.Image.NEAREST,
-        )
-
-        # converting back to Numpy array
-        resized_cropped_gs_img_arr = np.asarray(resized_cropped_gs_img)
-
-        # fitting
+        gs_img_arr = self._as_grayscale_array(img_arr)
         try:
-            fp = fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
+            beam = fit_tools.locate_beam(gs_img_arr)
         except FitError as exc:
             logging.debug(f"{self.log_ref}: Gaussian fit failed! [{exc}]")
             return
-        x0, y0, sigma_x, sigma_y, phi = (
-            fp.beta["x0"],
-            fp.beta["y0"],
-            fp.beta["sigma_x"],
-            fp.beta["sigma_y"],
-            fp.beta["phi"],
-        )
+        x0, y0 = beam["x0"], beam["y0"]
+        sigma_x, sigma_y, phi = beam["sigma_x"], beam["sigma_y"], beam["phi"]
 
         # reject an implausible fit instead of drawing it: a centre outside the frame or a
         # width comparable to the frame itself means the optimizer ran away, and drawing
         # that makes the ellipse (and the crosshair) jump about between frames
-        n_rows, n_cols = resized_cropped_gs_img_arr.shape
-        max_sigma_x, max_sigma_y = n_cols / 3, n_rows / 3
+        n_rows, n_cols = gs_img_arr.shape
         if (
             not (0 <= x0 <= n_cols)
             or not (0 <= y0 <= n_rows)
-            or abs(1 - sigma_x / sigma_y) > 2
-            or sigma_x > max_sigma_x
-            or sigma_y > max_sigma_y
+            or max(sigma_x, sigma_y) > 3 * min(sigma_x, sigma_y)
+            or sigma_x > n_cols / 3
+            or sigma_y > n_rows / 3
         ):
             logging.debug(
                 f"{self.log_ref}: Gaussian fit is irrational - not displayed "
@@ -1895,41 +1873,31 @@ class BaseCamera:
             )
             return
 
-        # calculating the FWHM
-        FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))  # 1/e^2 width is FWHM * 1.699
-        one_over_e2_factor = 1.699 * FWHM_FACTOR
-        diameter_mm = (
-            np.mean([sigma_x, sigma_y])
-            * one_over_e2_factor
-            * self.PIXEL_SIZE_UM
-            * 1e-3
-            * RESCALE_FACTOR
-        )
-        diameter_mm_err = (
-            np.std([sigma_x, sigma_y])
-            * one_over_e2_factor
-            * self.PIXEL_SIZE_UM
-            * 1e-3
-            * RESCALE_FACTOR
-        )
+        # 1/e^2 diameter = 4 sigma
+        px_mm = self.PIXEL_SIZE_UM * 1e-3
+        diameter_mm = 2 * (sigma_x + sigma_y) * px_mm
+        diameter_mm_err = 2 * abs(sigma_x - sigma_y) * px_mm
 
         logging.debug(
-            f"{self.log_ref}: 1/e^2 width determined to be {diameter_mm:.2f} +/- {diameter_mm_err:.2f} mm"
+            f"{self.log_ref}: 1/e^2 width determined to be {diameter_mm:.3f} +/- "
+            f"{diameter_mm_err:.3f} mm (fitted at {beam['factor']} px per sample)"
         )
 
-        # plotting the FWHM on top of the image
+        # plotting the 1/e^2 ellipse on top of the image. Ellipse wants degrees, and the
+        # fit's phi turns the other way (checked: with -phi the drawn ellipse runs along
+        # the 1/e^2 contour; with +phi a tilted beam got a mirrored ellipse)
         ellipse = Ellipse(
-            xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
-            width=sigma_y * one_over_e2_factor * RESCALE_FACTOR,
-            height=sigma_x * one_over_e2_factor * RESCALE_FACTOR,
-            angle=phi,
+            xy=(x0, y0),
+            width=4 * sigma_x,
+            height=4 * sigma_y,
+            angle=-np.degrees(phi),
         )
         ellipse.set_facecolor((0, 0, 0, 0))
         ellipse.set_edgecolor("red")
 
         self.display.obj.add_patch(
             ellipse,
-            annotation=f"$1/e^2$: {diameter_mm:.2f}$\\pm${diameter_mm_err:.2f} mm\n$\\chi^2$={fp.chi_sq_norm:.2f}",
+            annotation=f"$1/e^2$: {diameter_mm:.3f}$\\pm${diameter_mm_err:.3f} mm\n$\\chi^2$={beam['chi_sq_norm']:.2f}",
         )
 
         # move crosshair to ellipse center (for beam co-alignment) - TESTESTEST
