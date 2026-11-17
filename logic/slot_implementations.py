@@ -1216,6 +1216,15 @@ class MainWin:
             )
         return display
 
+    def _image_fcs_tab_if_shown(self):
+        """The ImageFCS tab if it is the tab on screen, else None (the image tab is meant)."""
+
+        tab = getattr(self.main_gui, "imgFcsTab", None)
+        with suppress(AttributeError):
+            if tab is not None and self.main_gui.tabWidget.currentWidget() is tab:
+                return tab
+        return None
+
     def read_scan_image_position_um(self, use_reference: bool = False):
         """
         Where the crosshair sits on the scan image, in microns of sample.
@@ -1224,6 +1233,17 @@ class MainWin:
         Used by the bead positioning dialog, and by anything else that needs a position
         in the sample rather than in pixels.
         """
+
+        # With the ImageFCS tab on screen its image is the one meant. Positions there are
+        # in um along the scanners' X and Y from the scan centre - the same directions as
+        # the columns and rows of an XY image-tab scan, whatever the ImageFCS scan angle.
+        if (tab := self._image_fcs_tab_if_shown()) is not None:
+            if use_reference:
+                raise RuntimeError(
+                    "there is no remembered centre in the ImageFCS tab - use the scan "
+                    "centre as the target"
+                )
+            return tab.cursor_xy_um()
 
         display = self._scan_image_display()
         try:
@@ -1241,6 +1261,9 @@ class MainWin:
 
     def scan_image_centre_um(self):
         """The centre of the scan image, in the same microns."""
+
+        if self._image_fcs_tab_if_shown() is not None:
+            return (0.0, 0.0)  # ImageFCS positions are measured from the scan centre
 
         display = self._scan_image_display()
         image = getattr(self._app, "curr_img", None)
