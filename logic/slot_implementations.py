@@ -1164,6 +1164,17 @@ class MainWin:
             camera = self.cameras[cam_num - 1]
             camera.should_find_hole = is_checked
 
+    def balance_ring(self, cam_num: int, is_checked: bool):
+        """
+        Continuously measure how evenly the light is spread around a donut's dark core
+        (for centring the vortex plate), averaged over frames, and draw it on the display.
+        """
+
+        if self.cameras:
+            camera = self.cameras[cam_num - 1]
+            camera.reset_ring_balance()
+            camera.should_balance_ring = is_checked
+
     def toggle_crosshairs(self, cam_num: int, is_checked: bool):
         """
         Show/hide the live (white) crosshair and the offset read-out on a camera display.
