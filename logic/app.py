@@ -4,6 +4,7 @@ import asyncio
 import logging
 import logging.config
 import shutil
+import time
 from collections import deque
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -115,11 +116,10 @@ class App:
         self.init_devices()
         print("        Done.")
 
-        # init AO as origin (actual AO is measured in internal AO if last position is needed)
-        [
-            getattr(self.gui.main, f"{axis}AOV").setValue(org_vltg)
-            for axis, org_vltg in zip("xyz", self.devices.scanners.origin)
-        ]
+        # send the scanners to the origin. The DAQ card keeps outputting its last voltages
+        # after the program closes, so without an actual move the scanners started wherever
+        # they were last left, while the AO boxes already showed the origin.
+        self.move_scanners_to_origin_at_start()
 
         # init scan patterns
         print("    Calculating initial scan patterns...", end=" ")
@@ -146,6 +146,34 @@ class App:
 
         print("Application initialized.")
         logging.info("Application started")
+
+    def move_scanners_to_origin_at_start(self) -> None:
+        """
+        Move the scanners (X, Y and Z) to the origin, as on pressing 'Go to origin'.
+
+        The continuous AI read is sampled once first, so that the Z move starts from the
+        real current position and is ramped (the smooth start reads the position from the
+        AI buffer, which the timeout loop has not begun filling yet).
+        """
+
+        scanners = self.devices.scanners
+        [
+            getattr(self.gui.main, f"{axis}AOV").setValue(org_vltg)
+            for axis, org_vltg in zip("xyz", scanners.origin)
+        ]
+        if scanners.error_dict:
+            logging.warning("Scanners not available - not moved to the origin.")
+            return
+        try:
+            for _ in range(20):  # up to ~1 s for the first AI samples to arrive
+                scanners.fill_ai_buffer()
+                if len(scanners.ai_buffer):
+                    break
+                time.sleep(0.05)
+            self.gui.main.impl.go_to_origin("XYZ")
+            logging.info(f"Scanners moved to the origin {scanners.origin} V")
+        except Exception as exc:  # never let this stop the program from starting
+            logging.warning(f"Could not move the scanners to the origin at start-up: {exc}")
 
     def config_logging(self):
         """
