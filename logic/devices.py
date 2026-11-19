@@ -1667,6 +1667,7 @@ class BaseCamera:
             # display in GUI
             self.display.obj.nm_per_px = self.SAMPLE_NM_PER_PX
             self.display.obj.display_image(img_arr, cursor=True)
+            self._show_brightest_pixel(img)
 
             if self.should_get_diameter:
                 self.get_and_display_beam_width(img_arr)
@@ -1676,6 +1677,63 @@ class BaseCamera:
 
             if self.should_balance_ring:
                 self.measure_and_display_ring_balance(img_arr)
+
+    def _show_brightest_pixel(self, img) -> None:
+        """
+        Write the frame's brightest pixel value in a corner of the display, and paint
+        saturated pixels red. The display stretches every frame to its own range, so a
+        saturated beam looks no different from a dim one - and a saturated ring flattens
+        the hole and ring measurements. Uses the raw frame (all colour channels).
+        """
+
+        try:
+            ax = self.display.obj.axes[0]
+        except (AttributeError, IndexError):
+            return
+        arr = np.asarray(img)
+        full_scale = np.iinfo(arr.dtype).max if np.issubdtype(arr.dtype, np.integer) else None
+        peak = arr.max()
+        # a colour frame can saturate in one channel only (the 592 nm depletion fills the
+        # red one) while its grey level - what is displayed and fitted - stays well below
+        # full scale, so each channel is reported
+        if arr.ndim == 3 and arr.shape[2] == 3:
+            peak_text = "R {} G {} B {}".format(*(int(v) for v in arr.reshape(-1, 3).max(axis=0)))
+        else:
+            peak_text = f"{peak}"
+        saturated = (arr >= full_scale) if full_scale is not None else None
+        if saturated is not None and saturated.ndim == 3:
+            saturated = saturated.any(axis=2)
+        n_saturated = int(saturated.sum()) if saturated is not None else 0
+
+        if n_saturated:
+            # red over the saturated pixels, drawn only over their bounding box
+            rows, cols = np.nonzero(saturated)
+            r0, r1, c0, c1 = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
+            overlay = np.zeros((r1 - r0, c1 - c0, 4))
+            overlay[saturated[r0:r1, c0:c1]] = (1.0, 0.0, 0.0, 0.9)
+            ax.imshow(
+                overlay,
+                extent=(c0 - 0.5, c1 - 0.5, r1 - 0.5, r0 - 0.5),
+                interpolation="none",
+                zorder=3,
+            )
+            label = f"SATURATED: {n_saturated} px  (max {peak_text})"
+            color = "red"
+        else:
+            label = f"max {peak_text}" + (f"  (of {full_scale})" if full_scale is not None else "")
+            color = "yellow" if full_scale is not None and peak > 0.9 * full_scale else "white"
+        ax.text(
+            0.98,
+            0.02,
+            label,
+            transform=ax.transAxes,
+            color=color,
+            fontsize=11,
+            weight="bold",
+            va="bottom",
+            ha="right",
+            bbox=dict(facecolor="black", alpha=0.5, edgecolor="none", pad=2),
+        )
 
     def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""
