@@ -12436,6 +12436,17 @@ Fit</string>
                  </widget>
                 </item>
                 <item>
+                 <widget class="QCheckBox" name="ringBalance1">
+                  <property name="toolTip">
+                   <string>Measure how evenly the light is spread around the donut's hole (averaged over frames) - for centring the vortex plate: turn its micrometers to bring the imbalance down</string>
+                  </property>
+                  <property name="text">
+                   <string>Ring
+Balance</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QComboBox" name="camZoom1">
                   <property name="toolTip">
                    <string>Zoom the display to a box about the crosshair. The crosshair lines keep their width, so the image grows around them.</string>
@@ -13287,6 +13298,17 @@ hairs</string>
                   <property name="text">
                    <string>Hole
 Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="ringBalance2">
+                  <property name="toolTip">
+                   <string>Measure how evenly the light is spread around the donut's hole (averaged over frames) - for centring the vortex plate: turn its micrometers to bring the imbalance down</string>
+                  </property>
+                  <property name="text">
+                   <string>Ring
+Balance</string>
                   </property>
                  </widget>
                 </item>

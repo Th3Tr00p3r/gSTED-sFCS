@@ -25,7 +25,7 @@ from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.file_utilities import load_object, save_object
 from utilities import fit_tools
-from utilities.fit_tools import FitError, find_dark_core, linear_fit
+from utilities.fit_tools import FitError, find_dark_core, linear_fit, ring_balance
 from utilities.helper import (
     Gate,
     Limits,
@@ -1572,6 +1572,14 @@ class BaseCamera:
     # a Gaussian beam with no vortex plate in it gives ~0.5-1.0 and is rejected
     MAX_HOLE_DEPTH = 0.5
 
+    # 'Ring Balance': the azimuthal harmonics are averaged over about this many frames
+    # (an exponential running average), so the read-out is steady but still follows a
+    # turn of the plate's micrometer within a second or so at ~15 frames/s
+    RING_AVERAGE_FRAMES = 8
+    # the outline drawn around the donut exaggerates the ring's unevenness this many
+    # times, so that a few percent is visible
+    RING_OUTLINE_GAIN = 3.0
+
     # How many nanometres in the SAMPLE one camera pixel corresponds to, for the live
     # offset read-out. Only meaningful for a camera that reports beam ANGLE, i.e. one
     # sitting at the focal plane of a lens in the collimated beam: there a tilt theta
@@ -1587,6 +1595,8 @@ class BaseCamera:
         self.is_in_transposed_mode = False
         self.should_get_diameter = False
         self.should_find_hole = False
+        self.should_balance_ring = False
+        self._ring = None  # running state of 'Ring Balance'
         self.is_fetching_frame = False  # guards against piling up frame requests
         self.is_auto_exposure_on = False
         self.last_snapshot = np.zeros((100, 100))
@@ -1663,6 +1673,9 @@ class BaseCamera:
 
             if self.should_find_hole:
                 self.find_and_display_hole_center(img_arr)
+
+            if self.should_balance_ring:
+                self.measure_and_display_ring_balance(img_arr)
 
     def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""
@@ -1833,6 +1846,109 @@ class BaseCamera:
             cursor.clear_reference()
             self.display.obj.ref_pos = None
             logging.debug(f"{self.log_ref}: reference centre cleared")
+
+    def reset_ring_balance(self) -> None:
+        """Forget the running average and the best value (on switching 'Ring Balance' on)."""
+
+        self._ring = None
+
+    def measure_and_display_ring_balance(self, img_arr) -> None:
+        """
+        Show how evenly the light is spread around the donut's dark core - for centring
+        the vortex plate on the beam by making the far-field ring uniform.
+
+        Draws, around the donut, its brightness against angle as an outline (exaggerated
+        RING_OUTLINE_GAIN times; a dashed circle marks a perfectly even ring) and writes
+        the imbalance - the first azimuthal harmonic, i.e. one side brighter than the
+        other, which is what a decentred plate does - and the two-fold part (two lobes,
+        i.e. astigmatism, which the plate cannot fix). Both are running averages over
+        ~RING_AVERAGE_FRAMES frames, and the best imbalance since switching on is kept,
+        so the micrometer can be turned through the minimum and brought back to it.
+        """
+
+        state = self._ring
+        try:
+            if state is None:
+                res = ring_balance(img_arr)
+            else:
+                res = ring_balance(img_arr, near=state["core"], ring_radius=state["ring_radius"])
+        except FitError as exc:
+            logging.debug(f"{self.log_ref}: ring balance - no donut found [{exc}]")
+            self._ring = None  # look over the whole frame next time
+            return
+
+        alpha = 1.0 / max(self.RING_AVERAGE_FRAMES, 1)
+        harmonics = res["harmonics"]
+        moved = state is not None and np.hypot(
+            res["core"][0] - state["core"][0], res["core"][1] - state["core"][1]
+        ) > max(res["ring_radius"], 3.0)
+        if state is None or moved:  # (re)start the average - the beam jumped
+            state = dict(
+                harmonics=dict(harmonics),
+                best=None if state is None else state["best"],
+                n_frames=0,
+            )
+        else:
+            for m, c in harmonics.items():
+                state["harmonics"][m] += alpha * (c - state["harmonics"][m])
+        state["core"] = res["core"]
+        state["ring_radius"] = res["ring_radius"]
+        state["n_frames"] += 1
+        avg = state["harmonics"]
+        imbalance = 2 * abs(avg[1])
+        bright_deg = float(np.degrees(np.angle(avg[1])))
+        two_fold = 2 * abs(avg[2])
+        # the best value counts only once the average has settled
+        if state["n_frames"] >= self.RING_AVERAGE_FRAMES and (
+            state["best"] is None or imbalance < state["best"]
+        ):
+            state["best"] = imbalance
+        self._ring = state
+
+        try:
+            ax = self.display.obj.axes[0]
+        except (AttributeError, IndexError):
+            return
+        x0, y0 = res["core"]
+        radius = 2.0 * res["ring_radius"]  # drawn outside the ring, so it hides nothing
+        theta = np.linspace(-np.pi, np.pi, 181)
+        # brightness against angle, from the averaged harmonics (normalised to 1 on average)
+        relative = 1 + 2 * sum((c * np.exp(-1j * m * theta)).real for m, c in avg.items())
+        outline = radius * (1 + self.RING_OUTLINE_GAIN * (relative - 1))
+        ax.plot(
+            x0 + radius * np.cos(theta), y0 + radius * np.sin(theta),
+            color="cyan", lw=1.0, ls="--", clip_on=True,
+        )
+        ax.plot(
+            x0 + outline * np.cos(theta), y0 + outline * np.sin(theta),
+            color="cyan", lw=2.0, clip_on=True,
+        )
+        # an arrow pointing at the bright side, as long as the imbalance (x gain)
+        tip = radius * self.RING_OUTLINE_GAIN * imbalance
+        ax.annotate(
+            "",
+            xy=(x0 + tip * np.cos(np.radians(bright_deg)), y0 + tip * np.sin(np.radians(bright_deg))),
+            xytext=(x0, y0),
+            arrowprops=dict(arrowstyle="->", color="cyan", lw=2),
+            annotation_clip=True,
+        )
+        best = state["best"]
+        settling = "" if state["n_frames"] >= self.RING_AVERAGE_FRAMES else "  (averaging...)"
+        ax.text(
+            0.02,
+            0.02,
+            f"ring imbalance {100 * imbalance:.1f} %"
+            + (f"   best {100 * best:.1f} %" if best is not None else "")
+            + f"{settling}\nbright side at {bright_deg:+.0f}\u00b0 (0\u00b0 = right, +90\u00b0 = down)"
+            + f"\ntwo-fold (astigmatism) {100 * two_fold:.1f} %",
+            transform=ax.transAxes,
+            color="cyan",
+            fontsize=11,
+            weight="bold",
+            va="bottom",
+            ha="left",
+        )
+        self.display.obj.canvas.draw_idle()
 
     def get_and_display_beam_width(self, img_arr):
         """

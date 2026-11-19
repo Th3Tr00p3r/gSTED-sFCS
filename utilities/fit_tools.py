@@ -240,7 +240,10 @@ def find_dark_core(data: np.ndarray, bg: float = None) -> Dict[str, Any]:
 
     # beam centroid - the small dark core barely biases it
     yy, xx = np.indices(a.shape)
-    weights = np.where(a > 0.05 * a.max(), a, 0.0)
+    # (thresholded on a lightly smoothed copy, so that camera noise over the whole dark
+    # frame does not pass the threshold and inflate the beam radius)
+    a_3 = sp.ndimage.uniform_filter(a, 3)
+    weights = np.where(a_3 > 0.05 * a_3.max(), a, 0.0)
     total = weights.sum()
     if total <= 0:
         raise FitError("No beam found in image.")
@@ -262,19 +265,25 @@ def find_dark_core(data: np.ndarray, bg: float = None) -> Dict[str, Any]:
     search = r < 0.5 * beam_radius
     if not search.any():
         raise FitError("Beam too small to search for a dark core.")
-    masked = np.where(search, smoothed, np.inf)
-    iy, ix = np.unravel_index(np.argmin(masked), masked.shape)
-    floor = smoothed[iy, ix]
+    floor = float(smoothed[search].min())
     ring = float(np.percentile(smoothed[search], 99))  # the bright ring around the hole
+    # pixels on the rim of the search disk: a dark patch touching it is not enclosed by
+    # the ring (it is the dark outside of a small donut, or a gap in a broken ring)
+    edge = search & ~sp.ndimage.binary_erosion(search)
     core_region = None
-    for fraction in (0.5, 0.35, 0.2):
+    for fraction in (0.5, 0.35, 0.2, 0.65):
         level = floor + fraction * (ring - floor)
-        labels, _ = sp.ndimage.label(search & (smoothed < level))
-        region = labels == labels[iy, ix]
-        # a closed hole does not reach the edge of the search disk
-        edge = search & ~sp.ndimage.binary_erosion(search)
-        if labels[iy, ix] and not (region & edge).any():
-            core_region, core_level = region, level
+        labels, n_labels = sp.ndimage.label(search & (smoothed < level))
+        if not n_labels:
+            continue
+        touching = set(np.unique(labels[edge & (labels > 0)]))
+        enclosed = [k for k in range(1, n_labels + 1) if k not in touching]
+        if enclosed:
+            # the darkest enclosed patch, weighted by its size (ignores single dim pixels)
+            index = np.arange(1, n_labels + 1)
+            darkness_sum = sp.ndimage.sum(level - smoothed, labels, index)
+            best = max(enclosed, key=lambda k: darkness_sum[k - 1])
+            core_region, core_level = labels == best, level
             break
     if core_region is None:
         raise FitError("No closed dark core inside the beam.")
@@ -422,6 +431,103 @@ def _block_mean(image: np.ndarray, factor: int) -> np.ndarray:
     h, w = (np.array(image.shape) // factor) * factor
     trimmed = np.asarray(image[:h, :w], dtype=np.float64)
     return trimmed.reshape(h // factor, factor, w // factor, factor).mean(axis=(1, 3))
+
+
+def ring_balance(
+    data: np.ndarray, near=None, ring_radius=None, max_harmonic: int = 3
+) -> Dict[str, Any]:
+    """
+    How evenly the light is spread around the dark core of a donut beam.
+
+    For centring a vortex plate: a plate off the beam axis leaves the far-field ring
+    brighter on one side (the first azimuthal harmonic), astigmatism splits it into two
+    lobes (the second). Both are measured as azimuthal Fourier coefficients of the light
+    in an annulus about the hole, weighted by intensity - every pixel of the ring
+    contributes, so a single frame already gives a fairly steady number, and the camera
+    averages it further over frames.
+
+        harmonics[m] = sum(I * exp(i m theta)) / sum(I)   over the annulus
+
+    2|harmonics[1]| is the ring's imbalance: (max - min) / (max + min) for a ring whose
+    brightness varies as 1 + a cos(theta - theta0), with the bright side at
+    theta0 = angle(harmonics[1]). Angles are in image coordinates (x right, y DOWN), so
+    a positive angle is clockwise on the screen.
+
+    'near' (x, y) and 'ring_radius' from the previous frame let it look only at a box
+    around the donut (and shrink a big donut), which keeps it fast enough for live video.
+    Raises FitError if no closed dark core is found.
+    """
+
+    data = np.asarray(data, dtype=float)
+    if data.ndim == 3:
+        data = data.mean(axis=2)
+    n_rows, n_cols = data.shape
+
+    # a box around where the donut was, and a sampling coarse enough for a big one
+    x_start = y_start = 0
+    factor = 1
+    if near is not None and ring_radius:
+        half = int(max(8 * ring_radius, 40))
+        x_start = int(max(near[0] - half, 0))
+        y_start = int(max(near[1] - half, 0))
+        data = data[y_start : int(min(near[1] + half, n_rows)), x_start : int(min(near[0] + half, n_cols))]
+        factor = max(int(ring_radius / 25), 1)
+    elif max(n_rows, n_cols) > 400:  # first look at a full frame: find it, then zoom in
+        first = find_dark_core(data)
+        return ring_balance(
+            data,
+            near=first["core"],
+            ring_radius=0.5 * first["beam_radius"],
+            max_harmonic=max_harmonic,
+        )
+    image = _block_mean(data, factor)
+
+    core = find_dark_core(image)
+    if core["core_depth"] > 0.5:  # a dim patch in a beam, not a vortex's dark core
+        raise FitError(f"No dark core (darkest point is {core['core_depth']:.0%} of the peak).")
+    xc, yc = core["core"]
+
+    # background: the dimmest tenth of the box (the box is mostly outside the ring)
+    bg = float(np.percentile(image, 10))
+    light = np.clip(image - bg, 0, None)
+    yy, xx = np.indices(image.shape)
+    r = np.hypot(xx - xc, yy - yc)
+    theta = np.arctan2(yy - yc, xx - xc)
+
+    # the ring: the peak of the azimuthally averaged profile
+    r_max = min(core["beam_radius"] * 1.5, r.max())
+    edges = np.arange(0.0, r_max + 1.0, 1.0)
+    idx = np.digitize(r.ravel(), edges) - 1
+    ok = (idx >= 0) & (idx < len(edges) - 1)
+    sums = np.bincount(idx[ok], light.ravel()[ok], minlength=len(edges) - 1)
+    counts = np.bincount(idx[ok], minlength=len(edges) - 1)
+    profile = sums / np.maximum(counts, 1)
+    k = int(np.argmax(profile[1:])) + 1
+    if 1 <= k < len(profile) - 1:  # parabolic refinement of the peak
+        denom = profile[k - 1] - 2 * profile[k] + profile[k + 1]
+        shift = 0.5 * (profile[k - 1] - profile[k + 1]) / denom if denom < 0 else 0.0
+    else:
+        shift = 0.0
+    radius = (k + 0.5 + float(np.clip(shift, -0.5, 0.5)))
+
+    annulus = (r > 0.4 * radius) & (r < 2.0 * radius)
+    weights = np.where(annulus, light, 0.0)
+    total = weights.sum()
+    if total <= 0:
+        raise FitError("No light around the dark core.")
+    harmonics = {
+        m: complex((weights * np.exp(1j * m * theta)).sum() / total)
+        for m in range(1, max_harmonic + 1)
+    }
+
+    return dict(
+        core=(x_start + xc * factor + (factor - 1) / 2, y_start + yc * factor + (factor - 1) / 2),
+        ring_radius=radius * factor,
+        harmonics=harmonics,
+        imbalance=2 * abs(harmonics[1]),
+        bright_angle_deg=float(np.degrees(np.angle(harmonics[1]))),
+        two_fold=2 * abs(harmonics[2]) if max_harmonic >= 2 else None,
+    )
 
 
 def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
