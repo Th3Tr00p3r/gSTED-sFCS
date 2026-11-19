@@ -251,20 +251,37 @@ def find_dark_core(data: np.ndarray, bg: float = None) -> Dict[str, Any]:
     r_sq = (((yy - y_beam) ** 2 + (xx - x_beam) ** 2) * weights).sum() / total
     beam_radius = float(np.sqrt(2 * r_sq))
 
-    # dark core: minimum of the smoothed image, searched inside the beam only
-    smoothed = sp.ndimage.uniform_filter(a, max(int(beam_radius / 15), 1))
+    # dark core. Searched in the image itself, smoothed but NOT background-clipped: when
+    # the beam fills the frame, the 'background' read from the border is beam light, and
+    # clipping at it turns the whole hole into a flat floor of zeros - whose arg-min is
+    # just the first zero pixel, which jumps about by tens of pixels from frame to frame.
+    # Instead the core is the centroid of the darkness over the whole closed dark region
+    # around the minimum: every pixel of the hole contributes, so noise averages out.
+    smoothed = sp.ndimage.uniform_filter(data, max(int(beam_radius / 15), 1))
     r = np.hypot(yy - y_beam, xx - x_beam)
-    masked = np.where(r < 0.5 * beam_radius, smoothed, smoothed.max())
+    search = r < 0.5 * beam_radius
+    if not search.any():
+        raise FitError("Beam too small to search for a dark core.")
+    masked = np.where(search, smoothed, np.inf)
     iy, ix = np.unravel_index(np.argmin(masked), masked.shape)
-
-    # refine: centroid of the inverted image in a small box about that minimum
-    box = max(int(0.08 * beam_radius), 3)
-    sl = (slice(max(iy - box, 0), iy + box + 1), slice(max(ix - box, 0), ix + box + 1))
-    patch_ = smoothed[sl].max() - smoothed[sl]
-    if patch_.sum() <= 0:
-        raise FitError("Could not localize a dark core.")
-    y_core = float((yy[sl] * patch_).sum() / patch_.sum())
-    x_core = float((xx[sl] * patch_).sum() / patch_.sum())
+    floor = smoothed[iy, ix]
+    ring = float(np.percentile(smoothed[search], 99))  # the bright ring around the hole
+    core_region = None
+    for fraction in (0.5, 0.35, 0.2):
+        level = floor + fraction * (ring - floor)
+        labels, _ = sp.ndimage.label(search & (smoothed < level))
+        region = labels == labels[iy, ix]
+        # a closed hole does not reach the edge of the search disk
+        edge = search & ~sp.ndimage.binary_erosion(search)
+        if labels[iy, ix] and not (region & edge).any():
+            core_region, core_level = region, level
+            break
+    if core_region is None:
+        raise FitError("No closed dark core inside the beam.")
+    darkness = np.where(core_region, core_level - smoothed, 0.0)
+    y_core = float((yy * darkness).sum() / darkness.sum())
+    x_core = float((xx * darkness).sum() / darkness.sum())
+    a_smoothed = sp.ndimage.uniform_filter(a, max(int(beam_radius / 15), 1))
 
     return dict(
         core=(x_core, y_core),
@@ -272,7 +289,7 @@ def find_dark_core(data: np.ndarray, bg: float = None) -> Dict[str, Any]:
         offset=(x_core - x_beam, y_core - y_beam),
         offset_px=float(np.hypot(x_core - x_beam, y_core - y_beam)),
         beam_radius=beam_radius,
-        core_depth=float(smoothed[int(round(y_core)), int(round(x_core))] / a.max()),
+        core_depth=float(a_smoothed[int(round(y_core)), int(round(x_core))] / a.max()),
     )
 
 
