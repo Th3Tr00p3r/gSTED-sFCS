@@ -1036,21 +1036,139 @@ class MainWin:
         camera = self.cameras[cam_num - 1]
         camera.is_in_grayscale_mode = is_checked
 
+    CAMERA_IMAGE_FILTERS = {
+        "PNG image, raw camera pixels (*.png)": ".png",
+        "NumPy array, raw camera pixels (*.npy)": ".npy",
+        "Compressed pickle, as before (*.pkl)": ".pkl",
+    }
+
+    def camera_images_folder(self) -> Path:
+        """
+        Today's folder for camera images: '<data path>/<DD_MM_YYYY>/Camera Images', next to
+        the day's measurements (same date format). Created if it does not exist yet.
+        """
+
+        folder = (
+            Path(self._gui.settings.dataPath.text())
+            / dt.now().strftime("%d_%m_%Y")
+            / "Camera Images"
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
+
     def save_last_image(self, cam_num: int):
-        """Doc."""
+        """
+        Save the last camera frame - the camera's own pixels, not a picture of the display -
+        with a file dialog.
+
+        The dialog opens in the folder used last today, or else in today's 'Camera
+        Images' folder (created if needed), and suggests the name used last for this camera,
+        so that a series only needs its last part edited (the dialog asks before
+        overwriting). A small text file with the same name and '.txt' records the camera
+        settings at the time: exposure, pixel clock, frame rate and the crosshairs.
+        """
 
         camera = self.cameras[cam_num - 1]
+        frame = getattr(camera, "last_snapshot", None)
+        if frame is None or not np.size(frame):
+            logging.info(f"Camera {cam_num}: no frame to save yet")
+            return
+        # copy NOW: the camera driver hands out its live buffer, and the next frame would
+        # overwrite it while the dialog is open
+        frame = np.array(frame, copy=True)
+        settings = self._camera_settings_text(cam_num, camera, frame)
 
-        file_path = Path(self._gui.settings.camDataPath.text()) / Path(
-            f"cam{cam_num}_" + dt.now().strftime("%d%m%y_%H%M%S") + ".pkl"
+        today = dt.now().strftime("%d_%m_%Y")
+        last_day, last_folder = getattr(self, "_camera_save_folder", (None, None))
+        if last_day == today and last_folder is not None and Path(last_folder).is_dir():
+            folder = Path(last_folder)
+        else:
+            try:
+                folder = self.camera_images_folder()
+            except OSError as exc:
+                logging.warning(f"Cannot create today's camera image folder [{exc}]")
+                folder = Path.home()
+        names = getattr(self, "_camera_save_names", {})
+        name = names.get(cam_num) or f"cam{cam_num}_{dt.now().strftime('%H%M%S')}"
+        filters = list(self.CAMERA_IMAGE_FILTERS)
+        chosen_filter = getattr(self, "_camera_save_filter", filters[0])
+
+        path_str, chosen_filter = QFileDialog.getSaveFileName(
+            self.main_gui,
+            f"Save camera {cam_num} image",
+            str(folder / name),
+            ";;".join(filters),
+            chosen_filter,
         )
-        with suppress(AttributeError):
+        if not path_str:
+            return  # cancelled
+        file_path = Path(path_str)
+        suffix = self.CAMERA_IMAGE_FILTERS.get(chosen_filter, ".png")
+        if file_path.suffix.lower() not in {".png", ".npy", ".pkl"}:
+            file_path = file_path.with_name(file_path.name + suffix)
+
+        try:
+            self._write_camera_frame(file_path, frame, settings, cam_num)
+            file_path.with_suffix(".txt").write_text(settings)
+        except Exception as exc:
+            err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
+            return
+
+        self._camera_save_folder = (today, file_path.parent)
+        self._camera_save_names = {**names, cam_num: file_path.stem}
+        self._camera_save_filter = chosen_filter
+        logging.info(f"Camera {cam_num} image saved: {file_path}")
+
+    @staticmethod
+    def _write_camera_frame(file_path: Path, frame: np.ndarray, settings: str, cam_num: int):
+        """Write the frame in the format given by the file's suffix."""
+
+        suffix = file_path.suffix.lower()
+        if suffix == ".npy":
+            np.save(file_path, frame, allow_pickle=False)
+        elif suffix == ".pkl":
             file_utilities.save_object(
-                camera.last_snapshot,
-                file_path,
-                compression_method="gzip",
-                obj_name=f"cam{cam_num}_image",
+                frame, file_path, compression_method="gzip", obj_name=f"cam{cam_num}_image"
             )
+        else:  # PNG, lossless, with the settings in its text chunk as well
+            from PIL import Image
+            from PIL.PngImagePlugin import PngInfo
+
+            image_arr = frame
+            if image_arr.dtype != np.uint8 and image_arr.ndim == 2:
+                image_arr = image_arr.astype(np.uint16)
+            elif image_arr.dtype != np.uint8:
+                image_arr = np.clip(image_arr, 0, 255).astype(np.uint8)
+            info = PngInfo()
+            info.add_text("camera settings", settings)
+            Image.fromarray(image_arr).save(file_path, pnginfo=info)
+
+    def _camera_settings_text(self, cam_num: int, camera, frame: np.ndarray) -> str:
+        """The camera's settings and crosshairs, as 'name: value' lines."""
+
+        lines = [
+            f"camera: {cam_num} ({getattr(camera, 'log_ref', '')})",
+            f"saved: {dt.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"frame shape: {tuple(frame.shape)}, dtype {frame.dtype}",
+            f"pixel size um: {getattr(camera, 'PIXEL_SIZE_UM', '?')}",
+        ]
+        for param, unit in (("exposure", "ms"), ("pixel_clock", "MHz"), ("framerate", "Hz")):
+            with suppress(AttributeError):
+                value = getattr(self.main_gui, f"{param}_val{cam_num}").value()
+                lines.append(f"{param} {unit}: {value:g}")
+        with suppress(AttributeError):
+            auto_exposure = getattr(self.main_gui, f"autoExp{cam_num}").isChecked()
+            lines.append(f"auto exposure: {auto_exposure}")
+        lines.append(f"transposed: {getattr(camera, 'is_in_transposed_mode', '?')}")
+        with suppress(AttributeError, IndexError, TypeError):
+            cursor = camera.display.obj.axes[0].cursor
+            lines.append(f"crosshair (x, y) px: ({cursor.pos[0]:.1f}, {cursor.pos[1]:.1f})")
+            if cursor.ref_pos is not None:
+                lines.append(
+                    f"reference crosshair (x, y) px: "
+                    f"({cursor.ref_pos[0]:.1f}, {cursor.ref_pos[1]:.1f})"
+                )
+        return "\n".join(lines) + "\n"
 
     def get_gaussian_diameter(self, cam_num: int, is_checked: bool):
         """Returns the Gaussian FWHM diameter (mm) of a beam image"""
