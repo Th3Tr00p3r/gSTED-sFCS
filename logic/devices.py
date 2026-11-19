@@ -13,7 +13,6 @@ from typing import Callable, List, Tuple, Union, cast
 
 import nidaqmx.constants as ni_consts
 import numpy as np
-import PIL
 from matplotlib.patches import Ellipse
 from nidaqmx.errors import DaqError
 
@@ -1662,7 +1661,13 @@ class BaseCamera:
             img_arr = img
 
             if self.is_in_grayscale_mode:
-                img_arr = np.asarray(PIL.Image.fromarray(img_arr, mode="RGB").convert("L"))
+                # grey = the brightest colour channel of each pixel, not the usual
+                # 0.30 R + 0.59 G + 0.11 B: with that mix a beam that clips one channel
+                # (the 485 nm excitation fills blue, the 592 nm depletion red) still
+                # shows well below 255 - a saturated blue pixel came out as ~40 - and the
+                # fits saw the beam diluted. With the brightest channel, 255 on the
+                # display means saturated, and each beam is fitted on its own channel.
+                img_arr = self._as_grayscale_array(img_arr).astype(np.uint8)
 
             # display in GUI
             self.display.obj.nm_per_px = self.SAMPLE_NM_PER_PX
@@ -1812,11 +1817,14 @@ class BaseCamera:
         return True
 
     def _as_grayscale_array(self, img_arr) -> np.ndarray:
-        """Return the frame as a 2D float array, whatever the camera mode."""
+        """
+        Return the frame as a 2D float array, whatever the camera mode: for a colour
+        frame, the brightest channel of each pixel (see _display_img for why).
+        """
 
         arr = np.asarray(img_arr)
-        if arr.ndim == 3:  # colour frame - average the channels
-            arr = arr.mean(axis=2)
+        if arr.ndim == 3:
+            arr = arr[..., :3].max(axis=2)
         return arr.astype(float)
 
     def find_and_display_hole_center(self, img_arr):
@@ -1927,9 +1935,13 @@ class BaseCamera:
         state = self._ring
         try:
             if state is None:
-                res = ring_balance(img_arr)
+                res = ring_balance(self._as_grayscale_array(img_arr))
             else:
-                res = ring_balance(img_arr, near=state["core"], ring_radius=state["ring_radius"])
+                res = ring_balance(
+                    self._as_grayscale_array(img_arr),
+                    near=state["core"],
+                    ring_radius=state["ring_radius"],
+                )
         except FitError as exc:
             logging.debug(f"{self.log_ref}: ring balance - no donut found [{exc}]")
             self._ring = None  # look over the whole frame next time
