@@ -315,6 +315,7 @@ class MainWin(QtWidgets.QMainWindow):
             lambda: self.impl.open_bead_positioning_dialog()
         )
         self.beamWalkButton.released.connect(lambda: self.impl.open_beam_walk_dialog())
+        self.calibrationsButton.released.connect(lambda: self.impl.open_calibrations_dialog())
         self.enlargeCamsButton.released.connect(lambda: self.impl.toggle_camera_enlarged())
         self.camZoom1.currentTextChanged.connect(
             lambda txt: self.impl.set_camera_zoom(1, txt)
