@@ -1518,6 +1518,16 @@ class MainWin:
         cameras = self.cameras or (self._app.devices.camera_1, self._app.devices.camera_2)
         cameras[cam_num - 1].set_waypoint(pos)
 
+    def open_calibrations_dialog(self):
+        """Open the Calibrations window (one instance, so its results survive closing it)"""
+
+        from gui.calibrations import CalibrationsDialog
+
+        if getattr(self, "_calibrations_dialog", None) is None:
+            self._calibrations_dialog = CalibrationsDialog(self, parent=self.main_gui)
+        self._calibrations_dialog.show()
+        self._calibrations_dialog.raise_()
+
     def open_beam_walk_dialog(self):
         """Open the beam walk assistant (keeps one instance, so a calibration survives)"""
 

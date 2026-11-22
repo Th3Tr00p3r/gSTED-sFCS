@@ -510,6 +510,12 @@ def ring_balance(
         shift = 0.0
     radius = (k + 0.5 + float(np.clip(shift, -0.5, 0.5)))
 
+    if ring_radius and not 0.5 < radius * factor / ring_radius < 2.0:
+        # tracking found something of quite another size where the donut was - most likely
+        # a dark patch of background after the donut moved away; look again from scratch
+        raise FitError(
+            f"Ring radius {radius * factor:.1f} px, expected about {ring_radius:.1f} px."
+        )
     annulus = (r > 0.4 * radius) & (r < 2.0 * radius)
     weights = np.where(annulus, light, 0.0)
     total = weights.sum()

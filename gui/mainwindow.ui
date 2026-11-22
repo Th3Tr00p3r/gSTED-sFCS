@@ -13388,6 +13388,17 @@ Walk...</string>
                   </property>
                  </widget>
                 </item>
+                <item>
+                 <widget class="QPushButton" name="calibrationsButton">
+                  <property name="toolTip">
+                   <string>Occasional alignment tools: the donut field scan (how the donut changes with scanner position - for aligning the tube lens)</string>
+                  </property>
+                  <property name="text">
+                   <string>Calibra-
+tions...</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </item>
               <item>
