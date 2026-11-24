@@ -1,6 +1,7 @@
 """Devices Module."""
 
 import asyncio
+import inspect
 import logging
 import sys
 import time
@@ -1644,6 +1645,8 @@ class BaseCamera:
                 img = await self.get_latest_frame()  # fast (~0.3 ms)
             else:
                 img = self.capture_image()  # slow (~70 ms)
+                if inspect.isawaitable(img):  # the uc480 one runs on the camera's worker
+                    img = await img
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
@@ -1788,6 +1791,11 @@ class BaseCamera:
         with suppress(Exception):
             # the handle is usually already dead by this point - that is the normal case
             self.close_instrument()
+
+        # a fresh driver worker: if a call got stuck in the old one, it is abandoned there
+        # (closing the old handle would only get stuck as well)
+        if hasattr(self, "reset_camera_worker"):
+            self.reset_camera_worker()
 
         # release the latch, so the device is allowed to work again
         self.error_dict = None

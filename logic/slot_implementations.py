@@ -981,12 +981,24 @@ class MainWin:
 
         getattr(self.main_gui, f"{param_name}_val{cam_num}").setValue(value)
 
-        camera = self.cameras[cam_num - 1]
-        with suppress(DeviceError):
-            # DeviceError - camera not properly initialized
-            camera.set_parameters({param_name: value})
-            getattr(self.main_gui, f"autoExp{cam_num}").setChecked(False)
-        self.update_slider_range(cam_num)
+        # A dragged slider fires this for every step it passes. Each used to go straight
+        # to the camera driver, a burst of calls while frames were being read - so only
+        # the value where the slider comes to rest (0.2 s without movement) is sent.
+        timers = self.__dict__.setdefault("_camera_param_timers", {})
+        key = (cam_num, param_name)
+        if (pending := timers.pop(key, None)) is not None:
+            pending.cancel()
+
+        def apply():
+            timers.pop(key, None)
+            camera = self.cameras[cam_num - 1]
+            with suppress(DeviceError):
+                # DeviceError - camera not properly initialized
+                camera.set_parameters({param_name: value})
+                getattr(self.main_gui, f"autoExp{cam_num}").setChecked(False)
+            self.update_slider_range(cam_num)
+
+        timers[key] = self._app.loop.call_later(0.2, apply)
 
     def take_and_show_image(self, cam_num: int):
         """Doc."""
