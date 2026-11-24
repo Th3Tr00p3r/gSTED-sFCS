@@ -1445,6 +1445,7 @@ class MainWin:
             for widget in boxes:
                 widget.setMaximumSize(int(1e5), int(1e5))
             layout.setDirection(QBoxLayout.LeftToRight)
+            self._split_camera_controls(True)
             screen = QApplication.primaryScreen().availableGeometry()
             dock.setGeometry(
                 screen.x() + int(0.02 * screen.width()),
@@ -1458,6 +1459,7 @@ class MainWin:
         else:
             saved = getattr(self, "_camera_restore", {})
             layout.setDirection(saved.get("direction", QBoxLayout.TopToBottom))
+            self._split_camera_controls(False)
             for widget, max_size in saved.get("max_sizes", []):
                 widget.setMaximumSize(max_size)
             dock.setMinimumSize(saved.get("dock_min", dock.minimumSize()))
@@ -1468,6 +1470,61 @@ class MainWin:
             button.setText("Enlarge\nDisplays")
             self._cameras_enlarged = False
             logging.debug("Camera displays restored")
+
+    # the column of checkboxes and buttons beside each camera display, and the layout that
+    # holds it (both from mainwindow.ui)
+    CAMERA_CONTROL_COLUMNS = (
+        ("verticalLayout_93", "horizontalLayout_10"),
+        ("verticalLayout_100", "horizontalLayout_11"),
+    )
+
+    def _split_camera_controls(self, should_split: bool) -> None:
+        """
+        With the displays side by side, the controls under each one are a single tall
+        column, which pushes the display up and leaves the space beside it empty. So while
+        enlarged, the second half of each column goes into a second column next to it, and
+        back again on 'Restore Layout'.
+        """
+
+        from PyQt5.QtWidgets import QVBoxLayout
+
+        gui = self.main_gui
+        split = self.__dict__.setdefault("_camera_control_split", {})
+        for column_name, parent_name in self.CAMERA_CONTROL_COLUMNS:
+            column = getattr(gui, column_name, None)
+            parent = getattr(gui, parent_name, None)
+            if column is None or parent is None:
+                continue
+            if should_split and column_name not in split:
+                widgets = [
+                    column.itemAt(idx).widget()
+                    for idx in range(column.count())
+                    if column.itemAt(idx).widget() is not None
+                ]
+                moved = widgets[(len(widgets) + 1) // 2 :]
+                second = QVBoxLayout()
+                second.setSpacing(column.spacing())
+                for widget in moved:
+                    column.removeWidget(widget)
+                    second.addWidget(widget)
+                second.addStretch()
+                column.addStretch()
+                position = next(
+                    idx for idx in range(parent.count()) if parent.itemAt(idx).layout() is column
+                )
+                parent.insertLayout(position + 1, second)
+                split[column_name] = (second, moved)
+            elif not should_split and column_name in split:
+                second, moved = split.pop(column_name)
+                # drop the stretch added at the end of the first column
+                last = column.itemAt(column.count() - 1)
+                if last is not None and last.spacerItem() is not None:
+                    column.takeAt(column.count() - 1)
+                for widget in moved:
+                    second.removeWidget(widget)
+                    column.addWidget(widget)
+                parent.removeItem(second)
+                second.deleteLater()
 
     def restart_camera(self, cam_num: int):
         """Close and re-open a camera, clearing a latched error - no program restart"""
