@@ -378,8 +378,11 @@ class PyVISA:
         # list all resource addresses
         resource_address_tuple = self._rm.list_resources()
 
-        # open and save the opened ones in a list
+        # open and save the opened ones in a list - with their addresses, since any that
+        # fail to open are skipped and the two lists would otherwise fall out of step
+        # (Oleg, 26.05.25 - the address recorded was then the wrong instrument's)
         inst_list = []
+        opened_addresses = []
         for resource_name in resource_address_tuple:
             with suppress(visa.errors.VisaIOError):
                 # VisaIOError - failed to open instrument, skip
@@ -394,6 +397,7 @@ class PyVISA:
                 )
                 # managed to open instrument, add to list.
                 inst_list.append(inst)
+                opened_addresses.append(resource_name)
 
         # 'model_query' the opened devices, and whoever responds is the one
         for idx, inst in enumerate(inst_list):
@@ -405,7 +409,7 @@ class PyVISA:
                 else:
                     pass
             else:
-                self.address = resource_address_tuple[idx]
+                self.address = opened_addresses[idx]
                 break
 
         # close all saved resources
