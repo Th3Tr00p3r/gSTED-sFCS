@@ -268,16 +268,24 @@ class DonutFieldScanTab(QWidget):
         n_wanted = self._n_frames.value()
         harmonic_sums = {}
         cores = []
-        previous = None
+        # start from the frame count now, so only frames taken AFTER the move are used
+        previous = getattr(camera, "frame_count", None)
         loop = asyncio.get_event_loop()
         deadline = loop.time() + FRAME_TIMEOUT_S
         n_seen = 0
         while n_seen < n_wanted and loop.time() < deadline:
             await asyncio.sleep(0.03)
             frame = getattr(camera, "last_snapshot", None)
-            if frame is None or (previous is not None and np.array_equal(frame, previous)):
-                continue  # no new frame yet
-            previous = np.array(frame, copy=True)
+            count = getattr(camera, "frame_count", None)
+            if count is not None:
+                # the camera counts its frames: a dark, unchanging image is still new
+                if frame is None or count == previous:
+                    continue
+                previous = count
+            else:
+                if frame is None or (previous is not None and np.array_equal(frame, previous)):
+                    continue  # no new frame yet
+                previous = np.array(frame, copy=True)
             n_seen += 1
             try:
                 grey = camera._as_grayscale_array(frame)
