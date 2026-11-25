@@ -271,7 +271,10 @@ def find_dark_core(data: np.ndarray, bg: float = None) -> Dict[str, Any]:
     # the ring (it is the dark outside of a small donut, or a gap in a broken ring)
     edge = search & ~sp.ndimage.binary_erosion(search)
     core_region = None
-    for fraction in (0.5, 0.35, 0.2, 0.65):
+    # thresholds between the floor and the ring, tried in turn: a strongly lopsided ring
+    # (seen in the far field) closes round the core only at a low threshold, since its
+    # dim side is barely above the core; a partly filled core needs a high one
+    for fraction in (0.5, 0.35, 0.2, 0.1, 0.05, 0.65):
         level = floor + fraction * (ring - floor)
         labels, n_labels = sp.ndimage.label(search & (smoothed < level))
         if not n_labels:
