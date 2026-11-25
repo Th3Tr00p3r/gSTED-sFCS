@@ -277,12 +277,44 @@ def find_dark_core(data: np.ndarray, bg: float = None) -> Dict[str, Any]:
         if not n_labels:
             continue
         touching = set(np.unique(labels[edge & (labels > 0)]))
-        enclosed = [k for k in range(1, n_labels + 1) if k not in touching]
+        # a vortex core goes (nearly) all the way down to the darkest level; a patch that
+        # only just dips below 'level' is a dim spot in the light, not the core. (With a
+        # lopsided ring the core's own patch can leak out through the dim side at this
+        # level, leaving such a spot as the only enclosed one - the next level finds the
+        # core closed.)
+        deep_enough = floor + 0.2 * (ring - floor)
+        patch_minima = sp.ndimage.minimum(smoothed, labels, np.arange(1, n_labels + 1))
+        enclosed = [
+            k
+            for k in range(1, n_labels + 1)
+            if k not in touching and patch_minima[k - 1] <= deep_enough
+        ]
         if enclosed:
-            # the darkest enclosed patch, weighted by its size (ignores single dim pixels)
-            index = np.arange(1, n_labels + 1)
-            darkness_sum = sp.ndimage.sum(level - smoothed, labels, index)
-            best = max(enclosed, key=lambda k: darkness_sum[k - 1])
+            # Of several enclosed dark patches, the vortex core is the one with bright
+            # light all the way round it. A gap between the ring and a fainter outer ring
+            # (or a dim sector of a lopsided ring) can be larger and as dark, but it has
+            # bright light on one side only - so the patch is chosen by the contrast
+            # between a band just around it and its inside, not by its size.
+            objects = sp.ndimage.find_objects(labels)
+            band = max(int(beam_radius / 15), 2)
+
+            def surround_contrast(k):
+                rows, cols = objects[k - 1]
+                rows = slice(max(rows.start - 2 * band, 0), rows.stop + 2 * band)
+                cols = slice(max(cols.start - 2 * band, 0), cols.stop + 2 * band)
+                patch = labels[rows, cols] == k
+                around = (
+                    sp.ndimage.binary_dilation(patch, iterations=band)
+                    & ~patch
+                    & search[rows, cols]
+                )
+                if not around.any() or patch.sum() < 4:
+                    return -np.inf
+                local = smoothed[rows, cols]
+                # the dimmest quarter of the band: light must be there on EVERY side
+                return float(np.percentile(local[around], 25) - local[patch].mean())
+
+            best = max(enclosed, key=surround_contrast)
             core_region, core_level = labels == best, level
             break
     if core_region is None:
