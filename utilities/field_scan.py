@@ -5,10 +5,12 @@ The ring around a vortex beam's dark core is described by its azimuthal harmonic
 (fit_tools.ring_balance): the first (one side brighter) and the second (two lobes,
 astigmatism). Measured at a grid of scanner positions, each harmonic is split into
 
-    c_m(z) = constant + b_m * z + c_m * conj(z)
+    c_m(z) = constant + b_m * z + c_m * conj(z) + q_m * z^2
 
 where z = (x + i y) is the spot's position on the camera relative to the grid centre,
-scaled so that |z| = 1 at the grid's farthest point.
+in units of REFERENCE_PX - a fixed distance, so that scans with different grids give
+comparable numbers (the camera's spot moves ~3000 px per volt of scan, so it is about
+0.1 V). All values are quoted at that distance from the field centre.
 
 - The constant part is the same wherever the beam is scanned: the vortex plate's
   centring (first harmonic) and anything in the beam before the scanners, plus a tilt of
@@ -16,6 +18,10 @@ scaled so that |z| = 1 at the grid's farthest point.
 - The part linear in z comes from optics that the scanned beam crosses at a changing
   place or angle - a tilted or decentred scan/tube lens, or the scanners themselves.
   It reaches the sample, and it is what a tube-lens tilt should bring to zero.
+- The z^2 part of the two-fold is the field astigmatism any lens has off axis, even
+  perfectly aligned (it comes from its design); no knob removes it, so it is fitted
+  separately, to keep it out of the number being minimised. (On the 25 Nov scans it
+  was small: 5-8 % against ~37 % for the linear part.)
 
 All harmonics are reported as 2|c| in percent, as in the camera's 'Ring Balance' read-out.
 """
@@ -24,6 +30,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+
+# the field distance (spot displacement on the camera, in px) at which values are quoted
+REFERENCE_PX = 300.0
 
 
 def grid_offsets(half_x: float, half_y: float, n_per_axis: int) -> List[Tuple[float, float]]:
@@ -60,14 +69,16 @@ class FieldPoint:
 
 @dataclass
 class FieldFit:
-    """The split of one harmonic into a constant and a part linear in field position."""
+    """The split of one harmonic: constant, linear and quadratic in field position."""
 
     order: int
     constant: complex
     b: complex  # coefficient of z
     c: complex  # coefficient of conj(z)
+    q: complex  # coefficient of z^2
     residual_rms: float  # of the per-point values about the fit
     n_points: int
+    max_field: float  # the farthest point measured, in units of REFERENCE_PX
 
     @property
     def constant_pct(self) -> float:
@@ -80,8 +91,13 @@ class FieldFit:
 
     @property
     def field_pct(self) -> float:
-        """The field-dependent part at the grid's farthest point, rms over directions."""
+        """The LINEAR (alignment) part at REFERENCE_PX from the centre, rms over directions."""
         return 200 * float(np.hypot(abs(self.b), abs(self.c)))
+
+    @property
+    def quadratic_pct(self) -> float:
+        """The z^2 (lens design) part at REFERENCE_PX from the centre."""
+        return 200 * abs(self.q)
 
     @property
     def field_vector(self) -> np.ndarray:
@@ -90,7 +106,7 @@ class FieldFit:
 
 
 def fit_field_dependence(points: Sequence[FieldPoint], order: int) -> FieldFit:
-    """Fit constant + b z + c conj(z) to one harmonic over the measured grid points."""
+    """Fit constant + b z + c conj(z) (+ q z^2) to one harmonic over the grid points."""
 
     good = [p for p in points if p.ok and order in p.harmonics]
     if len(good) < 3:
@@ -103,13 +119,17 @@ def fit_field_dependence(points: Sequence[FieldPoint], order: int) -> FieldFit:
         if centre_points
         else cores.mean(axis=0)
     )
-    z = (cores[:, 0] - centre[0]) + 1j * (cores[:, 1] - centre[1])
-    scale = np.abs(z).max()
-    if scale <= 0:
+    z = ((cores[:, 0] - centre[0]) + 1j * (cores[:, 1] - centre[1])) / REFERENCE_PX
+    if np.abs(z).max() <= 0:
         raise ValueError("The spot did not move on the camera - are the scanners connected?")
-    z = z / scale
     values = np.array([p.harmonics[order] for p in good], dtype=complex)
-    design = np.column_stack([np.ones_like(z), z, np.conj(z)])
+    columns = [np.ones_like(z), z, np.conj(z)]
+    # the quadratic term needs points away from the axes in both directions
+    distinct = {(round(p.offset_v[0], 6), round(p.offset_v[1], 6)) for p in good}
+    use_quadratic = len(distinct) >= 6
+    if use_quadratic:
+        columns.append(z**2)
+    design = np.column_stack(columns)
     coef, *_ = np.linalg.lstsq(design, values, rcond=None)
     residual = values - design @ coef
     return FieldFit(
@@ -117,8 +137,10 @@ def fit_field_dependence(points: Sequence[FieldPoint], order: int) -> FieldFit:
         constant=complex(coef[0]),
         b=complex(coef[1]),
         c=complex(coef[2]),
+        q=complex(coef[3]) if use_quadratic else 0j,
         residual_rms=float(np.sqrt(np.mean(np.abs(residual) ** 2))),
         n_points=len(good),
+        max_field=float(np.abs(z).max()),
     )
 
 

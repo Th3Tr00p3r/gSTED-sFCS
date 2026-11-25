@@ -6,14 +6,17 @@ Donut field scan
 Steps the scanners over a grid around the current AO position and, at each point,
 measures the donut's ring on one camera (the far-field / BFP camera, normally) over a
 few frames. Then it splits each azimuthal harmonic into a part that is the same at every
-scanner position and a part that grows linearly with the position (utilities.field_scan):
+scanner position, a part that grows linearly with the position and one that grows as its
+square (utilities.field_scan):
 
-  constant one-sided brightening - the vortex plate's centring (or the camera lens's tilt)
-  two-fold growing with position - a tilted/decentred scan or tube lens, or the scanners
+  constant one-sided brightening   - the vortex plate's centring (or the camera lens's tilt)
+  two-fold growing linearly        - a tilted/decentred scan or tube lens, or the scanners
+  two-fold growing as the square   - field astigmatism of the lenses' design (not alignable)
 
-To align the tube lens with its tilt knobs: scan with the knob as found, then a small
-step each way (e.g. -0.25 and +0.25 turns), typing the knob setting before each scan.
-'Best setting' then fits the field-dependent part linearly against the knob and gives the
+To align the tube lens with its tilt knobs: scan with the knob as found, then a step
+each way (e.g. -1 and +1 turns; a quarter turn changed it by only ~1.5 % on 25 Nov),
+typing the knob setting before each scan.
+'Best setting' then fits the linear part of the two-fold against the knob and gives the
 setting where it is smallest. Repeat for the other knob, then re-centre the beam.
 
 The camera's video must be on, and the donut unsaturated. The scanners are returned to
@@ -58,12 +61,15 @@ FRAME_TIMEOUT_S = 10.0
 INTRO = (
     "Measures the donut on a grid of scanner positions around the current AO position and "
     "splits it into what is the same everywhere (one-sided: vortex plate centring or the "
-    "camera lens's tilt) and what grows with scan position (two-fold: tube lens or "
-    "scanners - the number to bring down).\n"
-    "Video on, donut unsaturated. For a knob: scan as found (setting 0), then e.g. -0.25 "
-    "and +0.25 turns, typing the setting before each scan, then 'Best setting for this "
-    "knob'. Each scan is saved as a CSV in <data path>/<date>/Calibrations."
-)  # give up on a grid point if no new frames arrive for this long
+    "camera lens's tilt), what grows in proportion to the scan position (two-fold: a "
+    "tilted or decentred tube lens, or the scanners - the number to bring down) and what "
+    "grows as its square (lens design - no knob removes it). Values are quoted at 300 px "
+    "from the centre on the camera (about 0.1 V of scan), whatever the grid.\n"
+    "Video on, donut unsaturated, rings closed at the grid corners (keep the grid small). "
+    "For a knob: scan as found (setting 0), then at e.g. -1 and +1 turns, typing the "
+    "setting before each scan, then 'Best setting for this knob'. Each scan is saved as "
+    "a CSV in <data path>/<date>/Calibrations."
+)
 
 
 class CalibrationsDialog(QDialog):
@@ -103,7 +109,7 @@ class DonutFieldScanTab(QWidget):
         self._stop_btn.clicked.connect(self._stop)
         best_btn = QPushButton("Best setting for this knob")
         best_btn.setToolTip(
-            "Fit the field-dependent part of the two-fold against the knob setting, over "
+            "Fit the linear (alignment) part of the two-fold against the knob setting, over "
             "all scans made with this knob name, and give the setting where it is smallest"
         )
         best_btn.clicked.connect(self._best_setting)
@@ -131,8 +137,11 @@ class DonutFieldScanTab(QWidget):
         grid.addWidget(QLabel("camera"), 0, 0)
         grid.addWidget(self._camera_box, 0, 1)
 
-        self._half_x = self._spin(0.15, 0.0, 2.0, 3, " V")
-        self._half_y = self._spin(0.10, 0.0, 2.0, 3, " V")
+        # small enough that the rings stay closed at the corners (at +/-0.15, +/-0.10 V
+        # they broke up and the harmonics stopped growing in proportion), about
+        # +/-4.5 x 3 um at the sample - the size of a nucleoid scan
+        self._half_x = self._spin(0.075, 0.0, 2.0, 3, " V")
+        self._half_y = self._spin(0.05, 0.0, 2.0, 3, " V")
         grid.addWidget(QLabel("X half-range"), 0, 2)
         grid.addWidget(self._half_x, 0, 3)
         grid.addWidget(QLabel("Y half-range"), 1, 2)
@@ -161,7 +170,7 @@ class DonutFieldScanTab(QWidget):
         grid = QGridLayout(box)
         self._knob_name = QLineEdit("tube lens knob A")
         self._knob_value = self._spin(0.0, -100.0, 100.0, 3, " turns")
-        self._knob_value.setSingleStep(0.25)
+        self._knob_value.setSingleStep(0.5)
         self._knob_value.setToolTip(
             "The knob's setting relative to where you started (e.g. -0.25, 0, +0.25)"
         )
@@ -339,8 +348,12 @@ class DonutFieldScanTab(QWidget):
         f1, f2 = fits.get(1), fits[2]
         lines = [f"Result [{label}], {len(good)} points:"]
         lines.append(
-            f"  TWO-FOLD GROWING WITH SCAN POSITION: {f2.field_pct:.1f} %  at the grid corner "
-            "(tube lens / scanners - minimise this)"
+            f"  TWO-FOLD GROWING LINEARLY WITH POSITION: {f2.field_pct:.1f} %  "
+            "(tube lens / scanners alignment - minimise this)"
+        )
+        lines.append(
+            f"  two-fold growing as position squared: {f2.quadratic_pct:.1f} %  "
+            "(lens design - no knob removes it)"
         )
         lines.append(
             f"  two-fold, same everywhere: {f2.constant_pct:.1f} %, axis {f2.constant_angle_deg:+.0f} deg"
@@ -350,8 +363,12 @@ class DonutFieldScanTab(QWidget):
                 f"  one-sided, same everywhere: {f1.constant_pct:.1f} %, bright side "
                 f"{f1.constant_angle_deg:+.0f} deg (plate centring / camera-lens tilt)"
             )
-            lines.append(f"  one-sided, growing with position: {f1.field_pct:.1f} %")
+            lines.append(
+                f"  one-sided, growing linearly with position: {f1.field_pct:.1f} % "
+                "(field coma - mostly lens design)"
+            )
         lines.append(
+            f"  (all at 300 px from the centre, ~0.1 V; grid reached {300 * f2.max_field:.0f} px)\n"
             f"  fit residual: {200 * f2.residual_rms:.1f} % (two-fold); centre drift during "
             f"the scan: {drift:.1f} px"
         )
@@ -392,7 +409,7 @@ class DonutFieldScanTab(QWidget):
         if per_unit * (hi - lo) < 2.0:
             self._say(
                 f"'{knob}': measured {measured}\n"
-                f"  -> across the settings scanned this knob changes the field-dependent "
+                f"  -> across the settings scanned this knob changes the linear "
                 f"two-fold by only {per_unit * (hi - lo):.1f} %, within the noise. Either it "
                 "is not what causes it, or larger steps are needed to see the effect."
             )
@@ -404,7 +421,7 @@ class DonutFieldScanTab(QWidget):
         )
         self._say(
             f"'{knob}': measured {measured}\n"
-            f"  -> best setting {k_best:+.3f}, where the field-dependent two-fold should drop "
+            f"  -> best setting {k_best:+.3f}, where the linear two-fold should drop "
             f"to ~{predicted:.1f} %{caution}\n"
             f"  (it changes by {per_unit:.1f} % per unit of this knob; what is left at the best "
             "setting is for the other knob)"
@@ -426,8 +443,9 @@ class DonutFieldScanTab(QWidget):
                     writer.writerow(
                         [
                             f"# harmonic {m}: constant {f.constant_pct:.2f} % at "
-                            f"{f.constant_angle_deg:+.1f} deg, field-dependent "
-                            f"{f.field_pct:.2f} % at the grid corner"
+                            f"{f.constant_angle_deg:+.1f} deg, linear in field "
+                            f"{f.field_pct:.2f} %, quadratic {f.quadratic_pct:.2f} % "
+                            "(at 300 px from the centre)"
                         ]
                     )
                 header = ["ao_dx_V", "ao_dy_V", "core_x_px", "core_y_px", "n_frames"]
