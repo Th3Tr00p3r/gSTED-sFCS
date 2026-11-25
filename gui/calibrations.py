@@ -237,6 +237,13 @@ class DonutFieldScanTab(QWidget):
                 if self._should_stop:
                     self._say("Stopped.")
                     break
+                if getattr(camera, "error_dict", None):
+                    self._say(
+                        f"Camera {cam_num} stopped responding (red LED) - scan aborted. "
+                        "Replug its USB cable, press Restart Camera, and run it again."
+                    )
+                    self._should_stop = True
+                    break
                 impl.move_scanners("XY", (centre[0] + dx, centre[1] + dy, centre[2]))
                 await asyncio.sleep(self._settle.value())
                 # each point starts with a search of the whole frame: the donut has moved
