@@ -23,7 +23,7 @@ from utilities.helper import Gate, Limits, chunks, reverse_dict, timer
 
 # use different paths for different types systems (windows, mac) - check for darwin or win32
 if sys.platform == "darwin":
-    DUMP_ROOT = Path("/Users/ido.michealovich/tmp/")
+    DUMP_ROOT = Path("/Users/oleg/Documents/Experiments/tmp")
 else:  # win32
     DUMP_ROOT = Path("D:/temp_sfcs_data/")
 

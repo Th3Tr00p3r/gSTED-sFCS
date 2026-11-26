@@ -14,6 +14,7 @@ import numpy as np
 import scipy
 import skimage
 
+from data_analysis import image_fcs
 from data_analysis.workers import N_CPU_CORES
 from utilities.display import Plotter
 from utilities.file_utilities import MemMapping, load_object, save_object
@@ -70,9 +71,22 @@ class AngularScanDataMixin:
         samples_per_line,
         n_lines,
         should_fix_shift=True,
+        scan_geometry=None,
+        shift_method="auto",
         **kwargs,
     ):
-        """Converts angular scan pulse_runtime into an image."""
+        """
+        Converts angular scan pulse_runtime into an image.
+
+        The shift between the photon clock and the scan ('should_fix_shift') is found in
+        one of two ways ('shift_method'):
+          "legacy" - the original search for the roll that makes neighbouring rows mirror
+                     each other, after flattening bright pixels. Made for uniform solutions.
+          "sweeps" - image_fcs.estimate_scan_offset(): forward and backward sweeps are
+                     matched using the structure in the data. Needs 'scan_geometry'.
+          "auto"   - "sweeps" when a geometry was supplied and the data can decide
+                     (quality >= 5), otherwise "legacy".
+        """
         # TODO: check out rolling initally made image instead of recursing
 
         # calculate the sample index at each photon arrival, since beginning of file/section
@@ -94,7 +108,18 @@ class AngularScanDataMixin:
             # TODO: (low priority) if there are multiple sections in the raw data, perhpas the pixel shift can be calculated only for the first section and the same shift used for the rest.
             if kwargs.get("is_verbose"):
                 print("Fixing data shift...", end=" ")
-            pix_shift = self._get_data_shift(img, **kwargs)
+            pix_shift = None
+            if scan_geometry is not None and shift_method in {"auto", "sweeps"}:
+                offset, quality = image_fcs.estimate_scan_offset(
+                    np.asarray(pulse_runtime), scan_geometry
+                )
+                if quality >= 5 or shift_method == "sweeps":
+                    # the same shift, counted forwards within one scan period
+                    pix_shift = int(round(offset)) % img.size
+                    if kwargs.get("is_verbose"):
+                        print(f"(from sweeps, quality {quality:.0f})", end=" ")
+            if pix_shift is None:
+                pix_shift = self._get_data_shift(img, **kwargs)
             if kwargs.get("is_verbose"):
                 print(f"shifting {pix_shift} pixels...", end=" ")
             img = np.roll(img, pix_shift)
@@ -1244,7 +1269,12 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 )
             byte_data = byte_data[byte_data_slice]
 
-        section_slices, tot_single_errors = self._find_all_section_edges(byte_data)
+        
+        #temp check whether the new method gives same results
+        section_slices, tot_single_errors = self._find_all_section_edges_2(byte_data)
+        #stop checking
+     #   section_slices, tot_single_errors = self._find_all_section_edges(byte_data)
+        
         section_lengths = [sec_slice.stop - sec_slice.start for sec_slice in section_slices]
 
         photon_idxs_list: List[int] = []
@@ -1279,10 +1309,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         # calculate the global pulse_runtime (the number of laser pulses at each photon arrival since the beginning of the file)
         # each index in pulse_runtime represents a photon arrival into the TDC
         pulse_runtime = (
-            byte_data[photon_idxs + 1] * 256**2
-            + byte_data[photon_idxs + 2] * 256
-            + byte_data[photon_idxs + 3]
-        ).astype(np.int64)
+            byte_data[photon_idxs + 1].astype(np.int64) * 256**2
+            + byte_data[photon_idxs + 2].astype(np.int64) * 256
+            + byte_data[photon_idxs + 3].astype(np.int64)
+        )
 
         time_stamps = np.diff(pulse_runtime)
 
@@ -1431,6 +1461,8 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             new_edge_start += last_edge_stop
             new_edge_stop += last_edge_stop
             section_edges.append(slice(new_edge_start, new_edge_stop))
+            #debug
+            #print("No. section edges: " + str(len(section_edges)))
             last_edge_stop = section_edges[-1].stop
             total_single_errors += n_single_errors
 
@@ -1451,6 +1483,22 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         missed_248_idxs = np.where(data_presumed_248 != 248)[0]
         tot_248s_missed = missed_248_idxs.size
         missed_254_idxs = np.where(data_presumed_254 != 254)[0]
+        
+        #Begin Oleg
+        #there is a rare possibility that a 254 byte that belongs to the global time is counted as 
+        # a bracket 254 byte. A signature of it is missed_248_idxs[0] == missed_254_idxs[0]-1 
+        # making an imperfect test for it by looking for nearby 254 bytes that are in registry
+        if missed_248_idxs.size != 0:
+            if missed_248_idxs[0] == missed_254_idxs[0]-1:
+                doubtful_254_byte_idx = edge_start + missed_254_idxs[0] * self.GROUP_LEN  - 1
+                temp_254_byte_idx = np.where(byte_data[doubtful_254_byte_idx - 6: doubtful_254_byte_idx + 13] == 254)[0]
+                #remove doubtful byte
+                temp_254_byte_idx = np.delete(temp_254_byte_idx, np.where(temp_254_byte_idx == 6)[0])
+                # expect to be 3 254 bytes separated by self.GROUP_LEN
+                if np.logical_and(temp_254_byte_idx.size == 3, all(np.diff(temp_254_byte_idx) == self.GROUP_LEN)):
+                    #insert one more value to missed_254_idxs
+                    missed_254_idxs = np.insert(missed_254_idxs, 0, missed_248_idxs[0])
+        #end Oleg 
         tot_254s_missed = missed_254_idxs.size
 
         data_end = False
@@ -1545,6 +1593,80 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
             except IndexError:
                 break
         return None
+    
+    def _find_all_section_edges_2( #try a new approach at finding sections
+        self,
+        byte_data: np.ndarray,
+    ) -> Tuple[List[slice], int]:
+        """
+        Find all contiguous sections of complete 7-byte chunks in a NumPy byte array.
+        Each chunk starts with 248 and ends with 254.
+        Filters out false positives where consecutive diffs sum to 7 (e.g., 3 and 4).
+        Returns a list of slice objects (section_start, section_stop) for each valid section.
+        """
+        n = len(byte_data)
+        if n < self.GROUP_LEN:
+            return [], 0 
+        # Step 1: Identify potential chunk starts (bytes equal to 248)
+        start_candidates = np.where(byte_data == 248)[0]
+        
+        # Step 2: Filter out candidates where index + 6 is out of bounds
+        valid_mask = start_candidates + self.GROUP_LEN - 1 < n
+        start_candidates = start_candidates[valid_mask]
+        
+        # Step 3: Filter for valid chunks (7th byte from start is 254) 
+        #and the 6th byte should be smaller than 128 (length of the TDC)
+        if len(start_candidates) == 0:
+            return [], 0
+        valid_starts = start_candidates[np.logical_and(byte_data[start_candidates + self.GROUP_LEN - 1] == 254,
+                                                       byte_data[start_candidates + self.GROUP_LEN - 2] < 128)]
+                                                               
+        if len(valid_starts) == 0:
+            return [], 0
+        
+        # Step 4: Compute differences and identify initial breaks
+        diffs = np.diff(valid_starts)
+        breaks = np.where(diffs != self.GROUP_LEN)[0]
+        
+        # Step 5: Filter out breaks where two consecutive diffs sum to 7
+        if len(breaks) > 1:
+            # Check pairs of consecutive breaks
+            invalid_breaks = []
+            for i in range(len(breaks) - 1):
+                # If breaks[i] and breaks[i+1] correspond to diffs that sum to 7
+                if breaks[i + 1] == breaks[i] + 1 and diffs[breaks[i]] + diffs[breaks[i] + 1] == self.GROUP_LEN:
+                    invalid_breaks.extend([breaks[i], breaks[i + 1]])
+            # Remove invalid breaks
+            valid_breaks = np.setdiff1d(breaks, invalid_breaks)
+        else:
+            valid_breaks = breaks
+        
+        # Step 6: Determine start and end indices of contiguous sections
+        group_starts = np.concatenate(([0], valid_breaks + 1))
+        group_ends = np.concatenate((valid_breaks, [len(valid_starts) - 1]))
+        
+        # Step 7: Create slice objects for each valid section
+        sections = []
+        for g_start, g_end in zip(group_starts, group_ends):
+            section_start = valid_starts[g_start]
+            #test section start: sometimes the first 248 bracket comes from one of the bytes
+            #in the global clock. Test the byte right after it: it should be smaller and close 
+            #the same byte after the next 248
+            if byte_data[section_start+1+self.GROUP_LEN] > 0:
+                if not ((byte_data[section_start+1] == byte_data[section_start+1+self.GROUP_LEN])
+                        or (byte_data[section_start+1] == byte_data[section_start+1+self.GROUP_LEN]-1)):
+                    section_start += self.GROUP_LEN
+            else: #byte_data[section_start+1+self.GROUP_LEN] == 0
+                if not ((byte_data[section_start+1] == byte_data[section_start+1+self.GROUP_LEN])
+                        or (byte_data[section_start+1] == 255)):
+                    section_start += self.GROUP_LEN
+                
+            section_stop = valid_starts[g_end] + self.GROUP_LEN - 1
+            sections.append(slice(section_start, section_stop))
+        
+        return sections, 0
+        
+        
 
     def _process_image_scan_plane_data(
         self,
@@ -1615,6 +1737,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         roi_selection="auto",
         should_alleviate_bright_pixels=False,
         agg_ratio=0.001,
+        min_line_fraction=0.3,
         **kwargs,
     ) -> TDCPhotonFileData:
         """
@@ -1639,6 +1762,15 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
         ao_sampling_freq_hz = int(scan_settings["ao_sampling_freq_hz"])
         p.general.samples_per_line = int(scan_settings["samples_per_line"])
         p.general.n_lines = int(scan_settings["n_lines"])
+
+        # Files written since the ImageFCS work carry what is needed to find the scan
+        # shift from the sweeps themselves, which also works on structured images.
+        scan_geometry = None
+        if scan_settings.get("line_repeats") is not None:
+            with suppress(KeyError, TypeError, ValueError):
+                scan_geometry = image_fcs.ScanGeometry.from_scan_settings(
+                    scan_settings, self.laser_freq_hz
+                )
 
         if kwargs.get("is_verbose"):
             print("Converting angular scan to image...", end=" ")
@@ -1679,6 +1811,7 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 ao_sampling_freq_hz,
                 p.general.samples_per_line,
                 p.general.n_lines,
+                scan_geometry=scan_geometry,
                 **kwargs,
             )
             sec_prt_shift = sec_pixel_shift * (self.laser_freq_hz // ao_sampling_freq_hz)
@@ -1694,9 +1827,18 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                     raise RuntimeError("Automatic ROI selection: Thresholding failed")
             elif roi_selection == "all":
                 sec_image_mask = np.full(sec_image.shape, True)
+            elif roi_selection == "bright lines":
+                # whole lines (their linear part), keeping only those that hold at least
+                # 'min_line_fraction' of the photons of the bright ones - for scans over
+                # an object, where the other lines pass beside it
+                row_sums = sec_image[:-1].sum(axis=1)  # the last row is the walk back
+                is_bright = row_sums >= min_line_fraction * np.percentile(row_sums, 95)
+                sec_image_mask = np.full(sec_image.shape, False)
+                sec_image_mask[:-1][is_bright] = True
             else:
                 raise ValueError(
-                    f"roi_selection='{roi_selection}' is not supported. Only 'auto' is, at the moment."
+                    f"roi_selection='{roi_selection}' is not supported. "
+                    "Use 'auto', 'all' or 'bright lines'."
                 )
 
             # cut edges
@@ -2179,7 +2321,10 @@ class TDCPhotonDataProcessor(AngularScanDataMixin, CircularScanDataMixin):
                 for p in data
             ]
             # Use the pool to parallelize the processing of data
-            delay_time_list = pool.map(self.get_delay_time, args_list)
+            #begin Oleg
+            #delay_time_list = pool.map(self.get_delay_time, args_list)
+            delay_time_list = pool.map(get_delay_time, args_list)
+            #end Oleg
 
         if kwargs.get("is_verbose"):
             print("Collecting total pulses... ", end="")
@@ -2394,3 +2539,53 @@ class ImageStackData:
             img -= self.gate_ns.lower
 
         return img
+    
+#begin Oleg:
+# taking get_delay_time function outside TDCPhotonDataProcessor class
+# hoping that standalone function will resolve the error caused by pickle in multiprocessing
+
+def get_delay_time(args):
+    """Doc."""
+
+    (
+        p,
+        coarse_bins,
+        first_coarse_bin,
+        last_coarse_bin,
+        max_j,
+        l_quarter_tdc,
+        r_quarter_tdc,
+        t_calib,
+        fpga_freq_hz,
+        NAN_PLACEBO,
+    ) = args
+
+    _delay_time = np.full(p.raw.coarse.shape, np.nan, dtype=np.float64)
+    crs = np.minimum(p.raw.coarse, last_coarse_bin) - coarse_bins[max_j - 1]
+    crs[crs < 0] += last_coarse_bin - first_coarse_bin + 1
+
+    delta_coarse = p.raw.coarse2 - p.raw.coarse
+    delta_coarse[delta_coarse == -3] = 1  # 2bit limitation
+
+    # in the TDC midrange use "coarse" counter
+    in_mid_tdc = (p.raw.fine >= l_quarter_tdc) & (p.raw.fine <= r_quarter_tdc)
+    delta_coarse[in_mid_tdc] = 0
+
+    # on the right of TDC use "coarse2" counter (no change in delta)
+    # on the left of TDC use "coarse2" counter decremented by 1
+    on_left_tdc = p.raw.fine < l_quarter_tdc
+    delta_coarse[on_left_tdc] -= 1
+
+    photon_idxs = p.raw.fine != NAN_PLACEBO
+    try:
+        _delay_time[photon_idxs] = (
+            t_calib[p.raw.fine[photon_idxs]]
+            + (crs[photon_idxs] + delta_coarse[photon_idxs]) / fpga_freq_hz * 1e9
+        )
+    except IndexError as exc:
+        print(
+            f"\n[WORKER] Error in file {p.file_num}: {exc}. Please remove/fix the file, and re-run the processing."
+        )
+        sys.stdout.flush()
+    p.raw.delay_time = _delay_time
+    return _delay_time[photon_idxs]

@@ -202,20 +202,373 @@ def _fit_and_get_param_dict(
     )
 
 
+def find_dark_core(data: np.ndarray, bg: float = None) -> Dict[str, Any]:
+    """
+    Locate the dark core of a vortex (donut) beam, and the beam's own centroid.
+
+    A phase singularity forces the field to zero on its own axis at every propagation
+    distance, so a camera placed anywhere after the vortex plate shows a dark core whose
+    transverse position IS the singularity's position (1:1, no magnification). The offset
+    between that core and the beam centroid is therefore the plate's decentring.
+
+    Returns a dict with 'core' (x, y), 'centroid' (x, y), 'offset' (dx, dy) in pixels,
+    'offset_px' (its magnitude), 'beam_radius' (px) and 'core_depth' (fraction of peak).
+    Raises FitError if no beam is found.
+    """
+
+    data = np.asarray(data, dtype=float)
+
+    # background: median of a 10% border frame
+    if bg is None:
+        h, w = data.shape
+        k = max(int(0.1 * min(h, w)), 2)
+        bg = float(
+            np.median(
+                np.concatenate(
+                    [
+                        data[:k].ravel(),
+                        data[-k:].ravel(),
+                        data[:, :k].ravel(),
+                        data[:, -k:].ravel(),
+                    ]
+                )
+            )
+        )
+    a = np.clip(data - bg, 0, None)
+    if a.max() <= 0:
+        raise FitError("No beam found in image (all background).")
+
+    # beam centroid - the small dark core barely biases it
+    yy, xx = np.indices(a.shape)
+    # (thresholded on a lightly smoothed copy, so that camera noise over the whole dark
+    # frame does not pass the threshold and inflate the beam radius)
+    a_3 = sp.ndimage.uniform_filter(a, 3)
+    weights = np.where(a_3 > 0.05 * a_3.max(), a, 0.0)
+    total = weights.sum()
+    if total <= 0:
+        raise FitError("No beam found in image.")
+    y_beam = (yy * weights).sum() / total
+    x_beam = (xx * weights).sum() / total
+
+    # beam radius from the second moment (1/e^2 radius for a Gaussian)
+    r_sq = (((yy - y_beam) ** 2 + (xx - x_beam) ** 2) * weights).sum() / total
+    beam_radius = float(np.sqrt(2 * r_sq))
+
+    # dark core. Searched in the image itself, smoothed but NOT background-clipped: when
+    # the beam fills the frame, the 'background' read from the border is beam light, and
+    # clipping at it turns the whole hole into a flat floor of zeros - whose arg-min is
+    # just the first zero pixel, which jumps about by tens of pixels from frame to frame.
+    # Instead the core is the centroid of the darkness over the whole closed dark region
+    # around the minimum: every pixel of the hole contributes, so noise averages out.
+    smoothed = sp.ndimage.uniform_filter(data, max(int(beam_radius / 15), 1))
+    r = np.hypot(yy - y_beam, xx - x_beam)
+    search = r < 0.5 * beam_radius
+    if not search.any():
+        raise FitError("Beam too small to search for a dark core.")
+    floor = float(smoothed[search].min())
+    ring = float(np.percentile(smoothed[search], 99))  # the bright ring around the hole
+    # pixels on the rim of the search disk: a dark patch touching it is not enclosed by
+    # the ring (it is the dark outside of a small donut, or a gap in a broken ring)
+    edge = search & ~sp.ndimage.binary_erosion(search)
+    core_region = None
+    # thresholds between the floor and the ring, tried in turn: a strongly lopsided ring
+    # (seen in the far field) closes round the core only at a low threshold, since its
+    # dim side is barely above the core; a partly filled core needs a high one
+    for fraction in (0.5, 0.35, 0.2, 0.1, 0.05, 0.65):
+        level = floor + fraction * (ring - floor)
+        labels, n_labels = sp.ndimage.label(search & (smoothed < level))
+        if not n_labels:
+            continue
+        touching = set(np.unique(labels[edge & (labels > 0)]))
+        # a vortex core goes (nearly) all the way down to the darkest level; a patch that
+        # only just dips below 'level' is a dim spot in the light, not the core. (With a
+        # lopsided ring the core's own patch can leak out through the dim side at this
+        # level, leaving such a spot as the only enclosed one - the next level finds the
+        # core closed.)
+        deep_enough = floor + 0.2 * (ring - floor)
+        patch_minima = sp.ndimage.minimum(smoothed, labels, np.arange(1, n_labels + 1))
+        enclosed = [
+            k
+            for k in range(1, n_labels + 1)
+            if k not in touching and patch_minima[k - 1] <= deep_enough
+        ]
+        if enclosed:
+            # Of several enclosed dark patches, the vortex core is the one with bright
+            # light all the way round it. A gap between the ring and a fainter outer ring
+            # (or a dim sector of a lopsided ring) can be larger and as dark, but it has
+            # bright light on one side only - so the patch is chosen by the contrast
+            # between a band just around it and its inside, not by its size.
+            objects = sp.ndimage.find_objects(labels)
+            band = max(int(beam_radius / 15), 2)
+
+            def surround_contrast(k):
+                rows, cols = objects[k - 1]
+                rows = slice(max(rows.start - 2 * band, 0), rows.stop + 2 * band)
+                cols = slice(max(cols.start - 2 * band, 0), cols.stop + 2 * band)
+                patch = labels[rows, cols] == k
+                around = (
+                    sp.ndimage.binary_dilation(patch, iterations=band)
+                    & ~patch
+                    & search[rows, cols]
+                )
+                if not around.any() or patch.sum() < 4:
+                    return -np.inf
+                local = smoothed[rows, cols]
+                # the dimmest quarter of the band: light must be there on EVERY side
+                return float(np.percentile(local[around], 25) - local[patch].mean())
+
+            best = max(enclosed, key=surround_contrast)
+            core_region, core_level = labels == best, level
+            break
+    if core_region is None:
+        raise FitError("No closed dark core inside the beam.")
+    darkness = np.where(core_region, core_level - smoothed, 0.0)
+    y_core = float((yy * darkness).sum() / darkness.sum())
+    x_core = float((xx * darkness).sum() / darkness.sum())
+    a_smoothed = sp.ndimage.uniform_filter(a, max(int(beam_radius / 15), 1))
+
+    return dict(
+        core=(x_core, y_core),
+        centroid=(x_beam, y_beam),
+        offset=(x_core - x_beam, y_core - y_beam),
+        offset_px=float(np.hypot(x_core - x_beam, y_core - y_beam)),
+        beam_radius=beam_radius,
+        core_depth=float(a_smoothed[int(round(y_core)), int(round(x_core))] / a.max()),
+    )
+
+
 def fit_2d_gaussian_to_image(data: np.ndarray) -> FitParams:
-    """Doc."""
+    """
+    Fit an elliptical 2D Gaussian to an image.
+
+    The initial guess is taken from the image's own moments rather than from the image
+    size: a guess of sigma = half the image is far from any real beam, and from there the
+    optimizer often walks off to a huge, almost flat Gaussian - which is what makes the
+    fitted centre (and the ellipse drawn from it) jump between frames. Moments cost one
+    pass over the image and land within a few percent of the answer for a beam that is
+    roughly centred, so the fit then only has to polish it.
+    """
 
     height, width = data.shape
-    x1 = np.arange(height)
-    x2 = np.arange(width)
-    x1, x2 = np.meshgrid(x1, x2)
+    # x1 is the COLUMN coordinate and x2 the ROW coordinate (gaussian_2d_fit's x0, y0),
+    # both of them (height, width) arrays so that their C-order ravel lines up with
+    # data.ravel(). Building them from meshgrid(arange(height), arange(width)) instead
+    # only lines up for a square image, which is why the camera frame has to be cropped
+    # to a square before it gets here.
+    x1, x2 = np.meshgrid(np.arange(width), np.arange(height))
     y = data.ravel()
 
-    # estimate initial parameters from data
-    # (amplitude, x0, y0, sigma_x, sigma_y, theta, offset)
-    p0 = (y.max() - y.min(), height / 2, width / 2, height / 2, width / 2, 0, y.min())
+    # --- initial guess from the image moments ---
+    # background: median of a 10% border frame (robust to the beam itself)
+    k = max(int(0.1 * min(height, width)), 2)
+    offset_0 = float(
+        np.median(
+            np.concatenate(
+                [data[:k].ravel(), data[-k:].ravel(), data[:, :k].ravel(), data[:, -k:].ravel()]
+            )
+        )
+    )
+    pos = np.clip(data.astype(float) - offset_0, 0, None)
+    amplitude_0 = float(pos.max())
+    # weight only the bright part, so that camera background does not pull the centroid
+    weights = np.where(pos > 0.5 * amplitude_0, pos, 0.0)
+    if weights.sum() <= 0:  # featureless frame - fall back to the image centre
+        weights = np.ones_like(pos)
+    rows, cols = np.indices(data.shape)
+    total = weights.sum()
+    y0_0 = float((rows * weights).sum() / total)  # row index
+    x0_0 = float((cols * weights).sum() / total)  # column index
+    # NOTE: in this parametrization x0 is the column coordinate and y0 the row coordinate
+    sigma_x_0 = float(np.sqrt(max((((cols - x0_0) ** 2) * weights).sum() / total, 1.0)))
+    sigma_y_0 = float(np.sqrt(max((((rows - y0_0) ** 2) * weights).sum() / total, 1.0)))
 
-    return _fit_and_get_param_dict(gaussian_2d_fit, (x1, x2), y, p0)
+    # (amplitude, x0, y0, sigma_x, sigma_y, phi, offset)
+    p0 = (amplitude_0, x0_0, y0_0, sigma_x_0, sigma_y_0, 0.0, offset_0)
+
+    # keep the optimizer inside the image: a sigma larger than the frame, or a centre
+    # outside it, is never a physical beam - and is exactly what used to be returned
+    lower = (0.0, 0.0, 0.0, 0.5, 0.5, -np.pi, -np.inf)
+    upper = (np.inf, float(width), float(height), float(width), float(height), np.pi, np.inf)
+
+    return _fit_and_get_param_dict(
+        gaussian_2d_fit, (x1, x2), y, p0, curve_fit_kwargs=dict(bounds=(lower, upper))
+    )
+
+
+def locate_beam(frame: np.ndarray, max_samples: int = 100) -> Dict[str, Any]:
+    """
+    Fit a 2D Gaussian to a beam anywhere in a camera frame, at a resolution matched to it.
+
+    A whole frame is too many pixels to fit at video rate, and shrinking it by a fixed
+    factor fails for small beams: a beam 25 px across, sampled every 10 px, is two samples
+    wide, so its fitted centre can only land on a coarse grid and its width means little.
+    Instead the beam is first located roughly (moments of a coarse, block-averaged copy),
+    a window of +/- 4 sigma is cut around it, and that window is block-averaged by just
+    enough to keep it within 'max_samples' per side - so a small beam is fitted at full
+    resolution and a large one keeps several samples per sigma.
+
+    Returns a dict in FULL-FRAME pixel coordinates (column x, row y; pixel centres at
+    integer positions): x0, y0, sigma_x, sigma_y (px), phi (radians), chi_sq_norm, and the
+    'factor' and 'window' (x_start, y_start, width, height) used. Raises FitError.
+    """
+
+    frame = np.asarray(frame, dtype=np.float64)
+    if frame.ndim != 2:
+        raise FitError("locate_beam() needs a 2D (grayscale) frame")
+    height, width = frame.shape
+
+    # --- rough position and size, from a coarse copy
+    coarse_f = max(1, int(min(height, width) // 128))
+    coarse = _block_mean(frame, coarse_f)
+    bg = float(np.median(coarse))
+    pos = np.clip(coarse - bg, 0, None)
+    peak = float(pos.max())
+    if peak <= 0:
+        raise FitError("flat frame - no beam")
+    weights = np.where(pos > 0.2 * peak, pos, 0.0)
+    rows, cols = np.indices(coarse.shape)
+    total = weights.sum()
+    cy = (rows * weights).sum() / total * coarse_f + (coarse_f - 1) / 2
+    cx = (cols * weights).sum() / total * coarse_f + (coarse_f - 1) / 2
+    s_x = np.sqrt((((cols * coarse_f - cx) ** 2) * weights).sum() / total)
+    s_y = np.sqrt((((rows * coarse_f - cy) ** 2) * weights).sum() / total)
+    sigma = max(float(np.hypot(s_x, s_y) / np.sqrt(2)), coarse_f, 2.0)
+
+    # --- window of +/- 4 sigma (at least +/- 15 px), and the sampling for it
+    half = int(np.ceil(max(4 * sigma, 15)))
+    x_start, x_stop = max(int(round(cx)) - half, 0), min(int(round(cx)) + half + 1, width)
+    y_start, y_stop = max(int(round(cy)) - half, 0), min(int(round(cy)) + half + 1, height)
+    factor = max(1, int(np.ceil(max(x_stop - x_start, y_stop - y_start) / max_samples)))
+    window = _block_mean(frame[y_start:y_stop, x_start:x_stop], factor)
+    if min(window.shape) < 5:
+        raise FitError("beam too close to the frame edge to fit")
+
+    fp = fit_2d_gaussian_to_image(window)
+    # a block of 'factor' pixels starting at pixel i*factor has its centre at
+    # i*factor + (factor - 1)/2 in full-frame pixel-centre coordinates
+    return dict(
+        x0=x_start + fp.beta["x0"] * factor + (factor - 1) / 2,
+        y0=y_start + fp.beta["y0"] * factor + (factor - 1) / 2,
+        sigma_x=abs(fp.beta["sigma_x"]) * factor,
+        sigma_y=abs(fp.beta["sigma_y"]) * factor,
+        phi=float(fp.beta["phi"]),
+        chi_sq_norm=fp.chi_sq_norm,
+        factor=factor,
+        window=(x_start, y_start, x_stop - x_start, y_stop - y_start),
+    )
+
+
+def _block_mean(image: np.ndarray, factor: int) -> np.ndarray:
+    """Average non-overlapping factor x factor blocks (the ragged edge is dropped)."""
+
+    if factor <= 1:
+        return np.asarray(image, dtype=np.float64)
+    h, w = (np.array(image.shape) // factor) * factor
+    trimmed = np.asarray(image[:h, :w], dtype=np.float64)
+    return trimmed.reshape(h // factor, factor, w // factor, factor).mean(axis=(1, 3))
+
+
+def ring_balance(
+    data: np.ndarray, near=None, ring_radius=None, max_harmonic: int = 3
+) -> Dict[str, Any]:
+    """
+    How evenly the light is spread around the dark core of a donut beam.
+
+    For centring a vortex plate: a plate off the beam axis leaves the far-field ring
+    brighter on one side (the first azimuthal harmonic), astigmatism splits it into two
+    lobes (the second). Both are measured as azimuthal Fourier coefficients of the light
+    in an annulus about the hole, weighted by intensity - every pixel of the ring
+    contributes, so a single frame already gives a fairly steady number, and the camera
+    averages it further over frames.
+
+        harmonics[m] = sum(I * exp(i m theta)) / sum(I)   over the annulus
+
+    2|harmonics[1]| is the ring's imbalance: (max - min) / (max + min) for a ring whose
+    brightness varies as 1 + a cos(theta - theta0), with the bright side at
+    theta0 = angle(harmonics[1]). Angles are in image coordinates (x right, y DOWN), so
+    a positive angle is clockwise on the screen.
+
+    'near' (x, y) and 'ring_radius' from the previous frame let it look only at a box
+    around the donut (and shrink a big donut), which keeps it fast enough for live video.
+    Raises FitError if no closed dark core is found.
+    """
+
+    data = np.asarray(data, dtype=float)
+    if data.ndim == 3:
+        data = data.mean(axis=2)
+    n_rows, n_cols = data.shape
+
+    # a box around where the donut was, and a sampling coarse enough for a big one
+    x_start = y_start = 0
+    factor = 1
+    if near is not None and ring_radius:
+        half = int(max(8 * ring_radius, 40))
+        x_start = int(max(near[0] - half, 0))
+        y_start = int(max(near[1] - half, 0))
+        data = data[y_start : int(min(near[1] + half, n_rows)), x_start : int(min(near[0] + half, n_cols))]
+        factor = max(int(ring_radius / 25), 1)
+    elif max(n_rows, n_cols) > 400:  # first look at a full frame: find it, then zoom in
+        first = find_dark_core(data)
+        return ring_balance(
+            data,
+            near=first["core"],
+            ring_radius=0.5 * first["beam_radius"],
+            max_harmonic=max_harmonic,
+        )
+    image = _block_mean(data, factor)
+
+    core = find_dark_core(image)
+    if core["core_depth"] > 0.5:  # a dim patch in a beam, not a vortex's dark core
+        raise FitError(f"No dark core (darkest point is {core['core_depth']:.0%} of the peak).")
+    xc, yc = core["core"]
+
+    # background: the dimmest tenth of the box (the box is mostly outside the ring)
+    bg = float(np.percentile(image, 10))
+    light = np.clip(image - bg, 0, None)
+    yy, xx = np.indices(image.shape)
+    r = np.hypot(xx - xc, yy - yc)
+    theta = np.arctan2(yy - yc, xx - xc)
+
+    # the ring: the peak of the azimuthally averaged profile
+    r_max = min(core["beam_radius"] * 1.5, r.max())
+    edges = np.arange(0.0, r_max + 1.0, 1.0)
+    idx = np.digitize(r.ravel(), edges) - 1
+    ok = (idx >= 0) & (idx < len(edges) - 1)
+    sums = np.bincount(idx[ok], light.ravel()[ok], minlength=len(edges) - 1)
+    counts = np.bincount(idx[ok], minlength=len(edges) - 1)
+    profile = sums / np.maximum(counts, 1)
+    k = int(np.argmax(profile[1:])) + 1
+    if 1 <= k < len(profile) - 1:  # parabolic refinement of the peak
+        denom = profile[k - 1] - 2 * profile[k] + profile[k + 1]
+        shift = 0.5 * (profile[k - 1] - profile[k + 1]) / denom if denom < 0 else 0.0
+    else:
+        shift = 0.0
+    radius = (k + 0.5 + float(np.clip(shift, -0.5, 0.5)))
+
+    if ring_radius and not 0.5 < radius * factor / ring_radius < 2.0:
+        # tracking found something of quite another size where the donut was - most likely
+        # a dark patch of background after the donut moved away; look again from scratch
+        raise FitError(
+            f"Ring radius {radius * factor:.1f} px, expected about {ring_radius:.1f} px."
+        )
+    annulus = (r > 0.4 * radius) & (r < 2.0 * radius)
+    weights = np.where(annulus, light, 0.0)
+    total = weights.sum()
+    if total <= 0:
+        raise FitError("No light around the dark core.")
+    harmonics = {
+        m: complex((weights * np.exp(1j * m * theta)).sum() / total)
+        for m in range(1, max_harmonic + 1)
+    }
+
+    return dict(
+        core=(x_start + xc * factor + (factor - 1) / 2, y_start + yc * factor + (factor - 1) / 2),
+        ring_radius=radius * factor,
+        harmonics=harmonics,
+        imbalance=2 * abs(harmonics[1]),
+        bright_angle_deg=float(np.degrees(np.angle(harmonics[1]))),
+        two_fold=2 * abs(harmonics[2]) if max_harmonic >= 2 else None,
+    )
 
 
 def fit_lifetime_histogram(xs, ys, meas_type: str, **kwargs):
@@ -332,3 +685,430 @@ def ratio_of_lifetime_histograms_fit(t, sigma_x, sigma_y, t0):
         return np.sqrt(1 + sigma_x * (t - t0)) * np.sqrt(1 + sigma_y * (t - t0))
     else:
         return 1
+
+
+####################################################
+## Depletion with a GAUSSIAN beam (vortex plate out)
+####################################################
+# The donut case is 'sted_hist_fit' above: near a zero the depletion profile is
+# parabolic, I ~ A r^2, and averaging it over the detection volume gives the algebraic
+# factor 1/(1 + sigma t/tau).
+#
+# With the plate out the depletion maximum sits ON the detection volume, so the profile
+# is Gaussian there, and the average is an incomplete gamma function instead. Writing
+# s = t/tau, xi = I0/I_sat = k_-1 tau I0 and a = (w_dep/w_det)^2:
+#
+#     H(t) = A/tau e^-s Gamma(a) P(a, xi s) / (xi s)^a + bg          [P = gammainc]
+#
+# which tends to a pure exponential as xi -> 0, and to e^-s (xi s)^-a Gamma(a) at long
+# times - the UNDEPLETED lifetime times a power law, because the late photons come from
+# the wings where there is no depletion. Do NOT use an inverted parabola for this: it
+# goes negative beyond w_dep/sqrt(2), which is gain rather than depletion, and the
+# integral diverges.
+
+
+def gaussian_depletion_hist_fit(t, A, tau, xi, bg, a=1.0):
+    """
+    Fluorescence decay under a co-aligned Gaussian depletion beam.
+    'a' = (w_dep/w_det)^2 is a geometry constant, normally fixed, so it comes last.
+    """
+
+    s = np.asarray(t, dtype=float) / tau
+    x = np.atleast_1d(xi * s)
+    shape = np.full(x.shape, 1 / a)  # the xi*s -> 0 limit
+    big = x > 1e-8
+    if big.any():
+        xb = x[big]
+        shape[big] = sp.special.gamma(a) * sp.special.gammainc(a, xb) / xb**a
+    shape = shape.reshape(np.shape(s)) if np.shape(s) else shape[0]
+    return A / tau * np.exp(-s) * shape + bg
+
+
+def depletion_sweep_fit(delta, xi_eff, sigma, delta_0, bg):
+    """
+    The offset sweep: tau0/tau_init - 1 against the relative displacement of the two
+    foci. Exactly a Gaussian (only the n = 1 term of the offset series survives in the
+    initial decay rate), with
+
+        xi_eff = xi a/(a+1)              -> xi = xi_eff (a+1)/a
+        sigma  = sqrt(w_dep^2+w_det^2)/2 -> combined width = 2 sigma
+
+    'delta' and 'delta_0' in the same units (nm); 'bg' catches a constant offset.
+    """
+
+    return (
+        xi_eff * np.exp(-((np.asarray(delta, dtype=float) - delta_0) ** 2) / (2 * sigma**2)) + bg
+    )
+
+
+def fit_gaussian_depletion_hist(xs, ys, a, tau_ns=None, fit_range=None, **kwargs):
+    """
+    Fit a lifetime histogram taken with the Gaussian depletion beam on.
+
+    xs - time (ns), ys - counts, 'a' = (w_dep/w_det)^2.
+    'tau_ns' fixes the unquenched lifetime (measure it first with depletion OFF, e.g.
+    meas.tdc_calib.fit_lifetime_hist().beta["tau"]) - strongly recommended, since tau and
+    xi are correlated. 'fit_range' is an (min, max) tuple in ns, as TDCCalibration's own
+    fit uses (its default there is (3.5, 30)); without it the fit starts at the peak.
+    Pass ys_errors=... and should_weight_fits=True to use error_all_hist_norm.
+    """
+
+    xs, ys = np.asarray(xs, dtype=float), np.asarray(ys, dtype=float)
+    peak_idx = int(np.argmax(ys))
+    if tau_ns is None:
+
+        def gaussian_depletion_hist_free_tau_fit(t, A, tau, xi, bg):
+            return gaussian_depletion_hist_fit(t, A, tau, xi, bg, a)
+
+        fit_func = gaussian_depletion_hist_free_tau_fit
+        p0 = [ys.max(), 3.5, 1.0, max(ys.min(), 1e-9)]
+        bounds = ([0, 0, 0, 0], [np.inf, 20, 1e4, np.inf])
+    else:
+
+        def gaussian_depletion_hist_fixed_tau_fit(t, A, xi, bg):
+            return gaussian_depletion_hist_fit(t, A, tau_ns, xi, bg, a)
+
+        fit_func = gaussian_depletion_hist_fixed_tau_fit
+        p0 = [ys.max(), 1.0, max(ys.min(), 1e-9)]
+        bounds = ([0, 0, 0], [np.inf, 1e4, np.inf])
+
+    # NOTE: 'bounds' must go through 'curve_fit_kwargs' - a bare 'bounds=' argument to
+    # curve_fit_lims() lands in its **kwargs and never reaches scipy's curve_fit
+    return curve_fit_lims(
+        fit_func,
+        p0,
+        xs=xs,
+        ys=ys,
+        curve_fit_kwargs=dict(bounds=bounds),
+        x_limits=Limits(fit_range) if fit_range is not None else Limits(xs[peak_idx], np.inf),
+        plot_kwargs=dict(y_scale="log"),
+        **kwargs,
+    )
+
+
+def fit_depletion_sweep(offsets_nm, rate_ratios, a, **kwargs) -> Dict[str, Any]:
+    """
+    Fit the offset sweep.
+
+    offsets_nm   - relative displacement of the two foci (e.g. camera-2 pixels x 20.6 nm)
+    rate_ratios  - tau0/tau_init - 1 at each offset (NOT the lifetimes themselves)
+    a            - (w_dep/w_det)^2
+
+    Returns the FitParams plus the derived numbers: xi at best overlap, the combined
+    width of the two foci, and the best-overlap offset.
+    """
+
+    offsets_nm = np.asarray(offsets_nm, dtype=float)
+    rate_ratios = np.asarray(rate_ratios, dtype=float)
+    fp = curve_fit_lims(
+        depletion_sweep_fit,
+        [
+            rate_ratios.max(),
+            (offsets_nm.max() - offsets_nm.min()) / 4 or 150.0,
+            float(offsets_nm[np.argmax(rate_ratios)]),
+            0.0,
+        ],
+        xs=offsets_nm,
+        ys=rate_ratios,
+        curve_fit_kwargs=dict(
+            bounds=(
+                [0, 1, offsets_nm.min() - 500, -np.inf],
+                [np.inf, 1e4, offsets_nm.max() + 500, np.inf],
+            )
+        ),
+        **kwargs,
+    )
+    xi_eff, sigma = fp.beta["xi_eff"], fp.beta["sigma"]
+    return dict(
+        fit_params=fp,
+        xi=xi_eff * (a + 1) / a,
+        xi_error=fp.beta_error["xi_eff"] * (a + 1) / a,
+        combined_width_nm=2 * sigma,
+        combined_width_error_nm=2 * fp.beta_error["sigma"],
+        best_offset_nm=fp.beta["delta_0"],
+    )
+
+
+def initial_decay_time(xs, ys, max_t_ns=None, tau0_ns=None, bg=0.0, order=2) -> Dict[str, Any]:
+    """
+    Extract the INITIAL decay time (ns) of a depleted histogram - the observable the
+    offset-sweep law is written in - without the bias a straight-line slope carries.
+
+    The sweep width is power-free only for the rate at t -> 0: there no molecule has been
+    depleted yet, so the rate is linear in the local depletion intensity. A straight line
+    through log(H) over a finite window averages over the (strongly non-exponential) early
+    decay and so underestimates the dip at zero offset more than in the wings, which pulls
+    the fitted sweep width LOW - by ~3% at xi = 2 and ~9% at xi = 15 for a 0.5*tau0 window.
+    A quadratic over the same window and its slope AT the peak removes most of that:
+    164.4 nm truth -> 164.3 (xi = 0.5), 163.7 (xi = 2), 161 (xi = 5), 153 (xi = 15).
+    So run the sweep at a moderate xi (~1-3) and keep the high powers for the power sweep.
+
+    xs - time (ns), ys - counts. The fit starts at the histogram peak and runs for
+    'max_t_ns' (default 0.5*tau0_ns, or 2 ns). 'bg' is subtracted first. 'order' 1 gives
+    the plain log-slope, for comparison.
+    """
+
+    xs, ys = np.asarray(xs, dtype=float), np.asarray(ys, dtype=float)
+    peak_idx = int(np.argmax(ys))
+    if max_t_ns is None:
+        max_t_ns = 0.5 * tau0_ns if tau0_ns else 2.0
+    t0 = xs[peak_idx]
+    in_window = (xs >= t0) & (xs <= t0 + max_t_ns) & (ys > bg)
+    if in_window.sum() < order + 2:
+        raise ValueError(f"only {in_window.sum()} usable channels in the fit window")
+
+    t = xs[in_window] - t0
+    coeffs = np.polyfit(t, np.log(ys[in_window] - bg), order)
+    rate = -coeffs[-2]  # d log(H) / dt at t = 0
+    if rate <= 0:
+        raise ValueError("non-decaying histogram in the fit window")
+
+    out = dict(
+        tau_init_ns=1 / rate,
+        rate_per_ns=rate,
+        n_channels=int(in_window.sum()),
+        window_ns=(float(t0), float(t0 + max_t_ns)),
+        coeffs=coeffs,
+    )
+    if tau0_ns:  # the sweep observable itself
+        out["rate_ratio"] = tau0_ns / out["tau_init_ns"] - 1
+    return out
+
+
+def xi_from_initial_rate(tau0_ns, tau_init_ns, a) -> float:
+    """xi = I0/I_sat from the unquenched and initial (depleted) decay times."""
+
+    return (tau0_ns / tau_init_ns - 1) * (a + 1) / a
+
+
+def saturation_intensity(xi, power_w, w_dep_um) -> float:
+    """
+    I_sat in W/cm^2 from a measured xi, the power at the sample and the depletion focus
+    size (1/e^2 radius). The peak intensity of a Gaussian focus is I0 = 2P/(pi w^2).
+    """
+
+    peak_intensity = 2 * power_w / (np.pi * (w_dep_um * 1e-4) ** 2)
+    return peak_intensity / xi
+
+
+def donut_predictions(i_sat, power_w, w_dep_um, lambda_dep_nm=592, na=1.2) -> Dict[str, Any]:
+    """
+    Carry a Gaussian-beam calibration over to the donut.
+
+    An ideal vortex focus of the same total power and width has its crest at 0.368 of the
+    Gaussian peak (max of u e^-u), and the resolution follows the usual saturation law.
+    'sigma_over_xi_ideal' is the power-free figure of merit: measure sigma with the donut
+    and xi with the Gaussian at the SAME power, and their ratio should equal this.
+    """
+
+    peak_intensity = 2 * power_w / (np.pi * (w_dep_um * 1e-4) ** 2)
+    crest_intensity = np.exp(-1) * peak_intensity  # max of u e^-u, at r = w_dep / sqrt(2)
+    confocal_nm = lambda_dep_nm / (2 * na)
+    saturation_factor = crest_intensity / i_sat
+    return dict(
+        gaussian_peak_w_cm2=peak_intensity,
+        donut_crest_w_cm2=crest_intensity,
+        crest_over_i_sat=saturation_factor,
+        confocal_resolution_nm=confocal_nm,
+        resolution_nm=confocal_nm / np.sqrt(1 + saturation_factor),
+        # power needed (W) for a target resolution, same optics
+        power_for_resolution_w=lambda target_nm: power_w
+        * ((confocal_nm / target_nm) ** 2 - 1)
+        / saturation_factor,
+        # the power-free check: measure sigma (donut) and xi (Gaussian) at the same power
+        sigma_over_xi_ideal=lambda w_det_um: (w_det_um / w_dep_um) ** 2,
+    )
+
+
+## ------------------------------------------------------------------------------------
+## Focal geometry from a scattering (gold) bead
+## ------------------------------------------------------------------------------------
+# A gold bead has no usable fluorescence lifetime, but it does not need one: it scatters
+# in proportion to the local intensity, so a scan of a sub-resolution bead IS an image of
+# that beam's focal intensity in the sample plane. Scanning the same bead with each beam
+# therefore measures, directly and in nanometres:
+#
+#   delta     - the offset between the two foci (the quantity the offset sweep infers)
+#   w_det     - the excitation/detection 1/e^2 radius
+#   w_dep     - the depletion 1/e^2 radius, or the donut's crest radius and core depth
+#   a         - (w_dep/w_det)^2, which the histogram fits otherwise have to assume
+#
+# This matters most for I_sat, which goes as P / w_dep^2: a 10% error in an assumed focus
+# size is a 20% error in I_sat. What the bead CANNOT give is I_sat itself, or any evidence
+# that depletion works at all - those are dye properties. Geometry from the bead,
+# photophysics from the dye.
+
+
+# a solid sphere of diameter d, projected along the optical axis, has <x^2> = (d/2)^2 / 5
+# per transverse axis, i.e. the same second moment as a Gaussian of 1/e^2 radius
+# 2*sqrt(<x^2>) = d/sqrt(5). The measured width is the beam convolved with that, so
+# w_true^2 = w_measured^2 - w_bead^2. It is a small correction: a 100 nm bead broadens a
+# 247 nm radius focus by 1.6%.
+BEAD_WIDTH_FACTOR = 1 / np.sqrt(5)
+
+
+def _gaussian_psf_from_image(image, nm_per_px, bead_diameter_nm=0.0) -> Dict[str, Any]:
+    """Fit one bead scan and return its centre and 1/e^2 radii in nm."""
+
+    fp = fit_2d_gaussian_to_image(np.asarray(image, dtype=float))
+    beta, error = fp.beta, fp.beta_error
+    w_bead = BEAD_WIDTH_FACTOR * bead_diameter_nm
+
+    def deconvolved(sigma_px, sigma_err_px):
+        """sigma (px) -> 1/e^2 radius (nm), with the bead's own size taken out."""
+
+        w_measured = 2 * sigma_px * nm_per_px
+        w_error = 2 * sigma_err_px * nm_per_px
+        if w_bead >= w_measured:
+            raise FitError(
+                f"Fitted width {w_measured:.0f} nm is not larger than the bead itself "
+                f"({w_bead:.0f} nm equivalent) - wrong bead size, or no bead in the scan."
+            )
+        w_true = np.sqrt(w_measured**2 - w_bead**2)
+        # d w_true / d w_measured = w_measured / w_true
+        return w_true, w_error * w_measured / w_true
+
+    w_x, w_x_err = deconvolved(beta["sigma_x"], error["sigma_x"])
+    w_y, w_y_err = deconvolved(beta["sigma_y"], error["sigma_y"])
+    return dict(
+        center_nm=(beta["x0"] * nm_per_px, beta["y0"] * nm_per_px),
+        center_error_nm=(error["x0"] * nm_per_px, error["y0"] * nm_per_px),
+        w_x_nm=w_x,
+        w_y_nm=w_y,
+        w_x_error_nm=w_x_err,
+        w_y_error_nm=w_y_err,
+        w_nm=np.sqrt(w_x * w_y),  # the circularised radius, which is what 'a' wants
+        w_error_nm=0.5 * np.sqrt((w_x_err / w_x) ** 2 + (w_y_err / w_y) ** 2) * np.sqrt(w_x * w_y),
+        ellipticity=max(w_x, w_y) / min(w_x, w_y),
+        phi_rad=beta["phi"],
+        amplitude=beta["amplitude"],
+        fit_params=fp,
+    )
+
+
+# an ideal charge-1 vortex focus of the same power and width as the Gaussian has
+# I = I_0 u e^(-u) with u = 2 r^2 / w^2, so its crest sits at u = 1, i.e. at
+# r = w / sqrt(2). (The crest INTENSITY is I_0/e - that is where the 0.368 comes from.)
+VORTEX_CREST_OVER_W = 1 / np.sqrt(2)
+
+
+def _radial_profile(image, center_px, n_bins=None):
+    """Azimuthal average about a centre. Returns (radius_px, mean_intensity)."""
+
+    image = np.asarray(image, dtype=float)
+    yy, xx = np.indices(image.shape)
+    r = np.hypot(xx - center_px[0], yy - center_px[1])
+    if n_bins is None:
+        n_bins = int(min(image.shape) // 2)
+    edges = np.linspace(0, r.max(), n_bins + 1)
+    idx = np.clip(np.digitize(r.ravel(), edges) - 1, 0, n_bins - 1)
+    total = np.bincount(idx, weights=image.ravel(), minlength=n_bins)
+    count = np.bincount(idx, minlength=n_bins)
+    ok = count > 0
+    centers = 0.5 * (edges[:-1] + edges[1:])
+    return centers[ok], total[ok] / count[ok]
+
+
+def _donut_psf_from_image(image, nm_per_px) -> Dict[str, Any]:
+    """Same, for a vortex beam: the dark core is the centre, not the centroid."""
+
+    image = np.asarray(image, dtype=float)
+    core = find_dark_core(image)
+    # the crest radius is the peak of the azimuthal average about the core - NOT the
+    # second moment that find_dark_core reports as 'beam_radius', which for a donut is
+    # roughly twice as large
+    radii_px, profile = _radial_profile(image, core["core"])
+    if profile.size < 3:
+        raise FitError("Image too small to measure a crest radius.")
+    bg = float(np.median(profile[-max(len(profile) // 5, 1) :]))
+    peak_idx = int(np.argmax(profile))
+    if peak_idx in (0, profile.size - 1):
+        raise FitError("No crest found around the dark core - is this really a donut?")
+    # parabolic interpolation on the three points about the maximum, for sub-bin accuracy
+    y_m, y_0, y_p = profile[peak_idx - 1 : peak_idx + 2] - bg
+    denominator = y_m - 2 * y_0 + y_p
+    shift = 0.5 * (y_m - y_p) / denominator if denominator != 0 else 0.0
+    bin_px = float(radii_px[1] - radii_px[0])
+    crest_radius_nm = (float(radii_px[peak_idx]) + shift * bin_px) * nm_per_px
+
+    return dict(
+        center_nm=(core["core"][0] * nm_per_px, core["core"][1] * nm_per_px),
+        center_error_nm=(nm_per_px, nm_per_px),  # one pixel; the core fit has no covariance
+        centroid_nm=(core["centroid"][0] * nm_per_px, core["centroid"][1] * nm_per_px),
+        crest_radius_nm=crest_radius_nm,
+        # the Gaussian-equivalent radius the saturation formulae are written in
+        w_nm=crest_radius_nm / VORTEX_CREST_OVER_W,
+        w_error_nm=bin_px * nm_per_px / VORTEX_CREST_OVER_W,
+        core_depth=core["core_depth"],
+        decentring_nm=core["offset_px"] * nm_per_px,
+        radial_profile=(radii_px * nm_per_px, profile),
+        core=core,
+    )
+
+
+def compare_beam_psfs(
+    exc_image,
+    dep_image,
+    nm_per_px,
+    bead_diameter_nm=0.0,
+    dep_is_donut=False,
+) -> Dict[str, Any]:
+    """
+    Measure the focal geometry from two scans of the SAME scattering bead.
+
+    'exc_image' and 'dep_image' are scans of one bead taken with the excitation and the
+    depletion beam. 'nm_per_px' is the scan's own pixel size - the image display already
+    computes it as scan_settings["dim1_um"] * 1e3 / image.shape[1]. 'bead_diameter_nm' is
+    deconvolved out of the widths (see BEAD_WIDTH_FACTOR); pass 0 to skip it.
+    'dep_is_donut' switches the depletion fit from a Gaussian to a dark-core fit, in which
+    case the core position - not the centroid - is the centre that 'delta' is measured to.
+
+    Returns 'delta_nm' (dx, dy) and its magnitude, 'w_det_nm', 'w_dep_nm', 'a', each with
+    an error, plus the two underlying fits. For the donut it also returns the crest radius,
+    the core depth and the plate decentring.
+
+    The two scans must be taken WITHOUT moving the stage between them, and at a power low
+    enough not to reshape the bead - re-scan the first beam at the end to confirm it.
+    """
+
+    exc = _gaussian_psf_from_image(exc_image, nm_per_px, bead_diameter_nm)
+    dep = (
+        _donut_psf_from_image(dep_image, nm_per_px)
+        if dep_is_donut
+        else _gaussian_psf_from_image(dep_image, nm_per_px, bead_diameter_nm)
+    )
+
+    delta = tuple(d - e for d, e in zip(dep["center_nm"], exc["center_nm"]))
+    delta_error = tuple(
+        np.hypot(d, e) for d, e in zip(dep["center_error_nm"], exc["center_error_nm"])
+    )
+    delta_norm = float(np.hypot(*delta))
+
+    w_det, w_dep = exc["w_nm"], dep["w_nm"]
+    a = (w_dep / w_det) ** 2
+    a_error = 2 * a * np.hypot(dep["w_error_nm"] / w_dep, exc["w_error_nm"] / w_det)
+
+    out = dict(
+        delta_nm=delta,
+        delta_error_nm=delta_error,
+        delta_norm_nm=delta_norm,
+        # the sweep's own abscissa, for a point measured this way
+        w_det_nm=w_det,
+        w_det_error_nm=exc["w_error_nm"],
+        w_dep_nm=w_dep,
+        w_dep_error_nm=dep["w_error_nm"],
+        a=a,
+        a_error=a_error,
+        # what the solution sweep would see, if you want to cross-check it
+        combined_width_nm=float(np.hypot(w_dep, w_det)),
+        excitation=exc,
+        depletion=dep,
+        is_donut=dep_is_donut,
+    )
+    if dep_is_donut:
+        out.update(
+            crest_radius_nm=dep["crest_radius_nm"],
+            core_depth=dep["core_depth"],
+            plate_decentring_nm=dep["decentring_nm"],
+        )
+    return out

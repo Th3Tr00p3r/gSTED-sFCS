@@ -17,6 +17,22 @@ import utilities.helper as helper
 plt.rcParams.update({"figure.max_open_warning": 300})
 default_colors = tuple(plt.rcParams["axes.prop_cycle"].by_key()["color"])
 
+# Crosshair appearance - visible from across the room (the screen is metres from the
+# mirrors the experimenter is turning). Tweak here if the colours clash with a sample.
+# Crosshair appearance - deliberately thick, so that the lines are readable on a screen
+# a couple of metres from the alignment mirrors. Change the four values below to taste.
+LIVE_CROSSHAIR_COLOR = "white"  # the beam currently on the camera
+LIVE_CROSSHAIR_LW = 2.5
+LIVE_CROSSHAIR_LS = (0, (8, 5))  # long dashes, to tell it apart from the solid reference
+REF_CROSSHAIR_COLOR = "red"  # the remembered (reference) beam, e.g. the excitation
+REF_CROSSHAIR_LW = 3.5
+REF_CROSSHAIR_LS = "-"
+OFFSET_READOUT_COLOR = "yellow"  # live distance from the remembered centre
+OFFSET_READOUT_FONTSIZE = 15
+WAYPOINT_CROSSHAIR_COLOR = "yellow"  # where to steer the first mirror to (beam walk)
+WAYPOINT_CROSSHAIR_LW = 3.0
+WAYPOINT_CROSSHAIR_LS = (0, (2, 3))
+
 
 class GuiDisplay:
     """Doc."""
@@ -29,6 +45,12 @@ class GuiDisplay:
 
     def __init__(self, layout, gui_parent=None):
         self.plotter = None
+        self.ref_pos = None  # remembered crosshair position (reference beam)
+        self.waypoint_pos = None  # beam walk waypoint for the first mirror
+        self.zoom_half_width = None  # None: whole image; otherwise a box of +/- this many px
+        self.user_view_limits = None  # a zoom/pan the user made with the toolbar or wheel
+        self.nm_per_px = None  # sample-plane scale, for the live offset read-out
+        self.show_crosshairs = True  # the live (white) crosshair and the offset read-out
         self.figure = plt.figure(constrained_layout=True)
         self.canvas = FigureCanvasQTAgg(self.figure)
         if gui_parent is not None:
@@ -93,8 +115,56 @@ class GuiDisplay:
         if not reuse_plotter or self.plotter is None:
             self.plotter = Plotter(gui_display=self, gui_options=options)
 
+        # what the axes were showing before this frame - the figure is cleared and
+        # rebuilt every frame, so without this a zoom (toolbar or scroll wheel) would
+        # last only until the next frame arrived, which is why zooming "did nothing"
+        previous_limits = None
+        with suppress(AttributeError, IndexError):
+            previous_limits = (self.axes[0].get_xlim(), self.axes[0].get_ylim())
+
         with self.plotter as ax:
             ax.imshow(image, interpolation="none", **imshow_kwargs)
+            # the view is set explicitly, so that nothing drawn on top of the image (a
+            # wild fit ellipse, an annotation, a crosshair) can rescale or shift it
+            height, width = image.shape[:2]
+            x_lims, y_lims = self._view_limits(width, height, previous_limits)
+            ax.set_xlim(*x_lims)
+            ax.set_ylim(*y_lims)
+            ax.set_autoscale_on(False)
+            self._applied_limits = (tuple(x_lims), tuple(y_lims))
+
+    def _view_limits(self, width, height, previous_limits):
+        """
+        Decide what the axes should show: a zoom box about the crosshair if one was
+        asked for, otherwise whatever the user had zoomed to, otherwise the whole image.
+        """
+
+        full = ((-0.5, width - 0.5), (height - 0.5, -0.5))
+
+        # a zoom the USER made is one where the axes no longer show what we last set.
+        # Comparing against our own last setting (rather than against the full frame)
+        # is what distinguishes "they scrolled" from "we put it there last frame", and
+        # it is remembered until they zoom back out or pick a zoom level here.
+        applied = getattr(self, "_applied_limits", None)
+        if (
+            previous_limits is not None
+            and applied is not None
+            and not np.allclose(np.ravel(previous_limits), np.ravel(applied), atol=1.0)
+        ):
+            self.user_view_limits = previous_limits
+
+        if self.zoom_half_width:
+            self.user_view_limits = None
+            # zoom about the remembered centre if there is one, else the live crosshair
+            centre = self.ref_pos or getattr(self, "last_pos", None) or (width / 2, height / 2)
+            x, y = centre
+            half = self.zoom_half_width
+            return ((x - half, x + half), (y + half, y - half))
+
+        if self.user_view_limits is not None:
+            return self.user_view_limits
+
+        return full
 
     def plot_acfs(self, *args, **kwargs):
         """Doc."""
@@ -115,20 +185,27 @@ class GuiDisplay:
                 artist.remove()
 
         with suppress(AttributeError):
+            ax = self.axes[0]
             patch.set_label("expandable")
-            # plot patch
-            self.axes[0].add_artist(patch)
-            # annotate
+            # plot patch (clipped, so an oversized patch cannot affect the view)
+            patch.set_clip_on(True)
+            ax.add_artist(patch)
+            # annotate - keep the text inside the axes, whatever the patch centre is
             if annotation:
-                self.axes[0].annotate(
+                x_lims, y_lims = sorted(ax.get_xlim()), sorted(ax.get_ylim())
+                x_text = min(max(patch._center[0], x_lims[0]), x_lims[1])
+                y_text = min(max(patch._center[1], y_lims[0]), y_lims[1])
+                text = ax.annotate(
                     annotation,
-                    patch._center,
+                    (x_text, y_text),
                     color="w",
                     weight="bold",
                     fontsize=11,
                     ha="center",
                     va="center",
+                    clip_on=True,
                 )
+                text.set_label("expandable")
             self.canvas.draw_idle()
 
 
@@ -171,6 +248,9 @@ class Plotter:
         if self.gui_display is not None:
             try:
                 self.gui_display.last_pos = self.gui_display.axes[0].cursor.pos
+                # the reference crosshair persists across frames as well
+                self.gui_display.ref_pos = self.gui_display.axes[0].cursor.ref_pos
+                self.gui_display.waypoint_pos = self.gui_display.axes[0].cursor.waypoint_pos
             except AttributeError:
                 self.gui_display.last_pos = (0, 0)
             except IndexError:
@@ -239,7 +319,14 @@ class Plotter:
                     ax.org_dims = tuple(lim.interval() for lim in ax.org_lims)
                     ax.zoom_func = zoom_factory(ax)
                 if self.gui_options.cursor:
-                    ax.cursor = cursor_factory(ax, self.gui_display.last_pos)
+                    ax.cursor = cursor_factory(
+                        ax,
+                        self.gui_display.last_pos,
+                        getattr(self.gui_display, "ref_pos", None),
+                        getattr(self.gui_display, "waypoint_pos", None),
+                        getattr(self.gui_display, "nm_per_px", None),
+                        getattr(self.gui_display, "show_crosshairs", True),
+                    )
                 with suppress(TypeError):  # TODO: test this (is type error correct?)
                     ax.axis(self.gui_options.show_axis)
 
@@ -333,7 +420,9 @@ class NavigationToolbar(NavigationToolbar2QT):
     ]
 
 
-def cursor_factory(ax, init_cursor_pos):
+def cursor_factory(
+    ax, init_cursor_pos, ref_pos=None, waypoint_pos=None, nm_per_px=None, show_live=True
+):
     """Doc."""
 
     class Cursor:
@@ -346,17 +435,159 @@ def cursor_factory(ax, init_cursor_pos):
             self.ax = ax
             self.pos = init_cursor_pos
             x, y = init_cursor_pos
-            self.horizontal_line = ax.axhline(y=y, color="y", lw=1, ls="--")
-            self.vertical_line = ax.axvline(x=x, color="y", lw=1, ls="--")
+            # 'show_live' is False when the user has unticked 'Crosshairs' - the lines
+            # are still there (so the fitted position is still readable by the beam walk)
+            # but nothing is painted on the image
+            self.show_live = show_live
+            self.horizontal_line = ax.axhline(
+                y=y,
+                color=LIVE_CROSSHAIR_COLOR,
+                lw=LIVE_CROSSHAIR_LW,
+                ls=LIVE_CROSSHAIR_LS,
+                visible=show_live,
+            )
+            self.vertical_line = ax.axvline(
+                x=x,
+                color=LIVE_CROSSHAIR_COLOR,
+                lw=LIVE_CROSSHAIR_LW,
+                ls=LIVE_CROSSHAIR_LS,
+                visible=show_live,
+            )
+            # the remembered reference crosshair (drawn solid and in another colour)
+            # these must exist before any crosshair is drawn - drawing refreshes the
+            # read-out
+            self.nm_per_px = nm_per_px
+            self.offset_text = None
+            self.ref_pos = ref_pos
+            self.ref_horizontal_line = None
+            self.ref_vertical_line = None
+            if ref_pos is not None:
+                self.draw_reference(ref_pos)
+            # the beam walk waypoint: where this beam should be after the first mirror
+            self.waypoint_pos = waypoint_pos
+            self.waypoint_horizontal_line = None
+            self.waypoint_vertical_line = None
+            if waypoint_pos is not None:
+                self.draw_waypoint(waypoint_pos)
             # text location in axes coordinates
-            self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes)
+            self.text = ax.text(0.72, 0.9, "", transform=ax.transAxes, visible=show_live)
+            # live distance from the remembered centre, large enough to read from the
+            # alignment mirrors
+            self._update_offset_readout()
+
+        def draw_reference(self, pos: Tuple[float, float]):
+            """Draw (or move) the remembered reference crosshair."""
+
+            x, y = pos
+            self.ref_pos = pos
+            if self.ref_horizontal_line is None:
+                self.ref_horizontal_line = self.ax.axhline(
+                    y=y, color=REF_CROSSHAIR_COLOR, lw=REF_CROSSHAIR_LW, ls=REF_CROSSHAIR_LS
+                )
+                self.ref_vertical_line = self.ax.axvline(
+                    x=x, color=REF_CROSSHAIR_COLOR, lw=REF_CROSSHAIR_LW, ls=REF_CROSSHAIR_LS
+                )
+            else:
+                self.ref_horizontal_line.set_ydata([y, y])
+                self.ref_vertical_line.set_xdata([x, x])
+            self._update_offset_readout()
+            self.ax.figure.canvas.draw_idle()
+
+        def clear_reference(self):
+            """Remove the remembered reference crosshair."""
+
+            for line in (self.ref_horizontal_line, self.ref_vertical_line):
+                with suppress(AttributeError, ValueError):
+                    line.remove()
+            self.ref_horizontal_line = self.ref_vertical_line = self.ref_pos = None
+            self._update_offset_readout()
+            self.ax.figure.canvas.draw_idle()
+
+        def draw_waypoint(self, pos: Tuple[float, float]):
+            """Draw (or move) the beam walk waypoint crosshair."""
+
+            x, y = pos
+            self.waypoint_pos = pos
+            if self.waypoint_horizontal_line is None:
+                self.waypoint_horizontal_line = self.ax.axhline(
+                    y=y,
+                    color=WAYPOINT_CROSSHAIR_COLOR,
+                    lw=WAYPOINT_CROSSHAIR_LW,
+                    ls=WAYPOINT_CROSSHAIR_LS,
+                )
+                self.waypoint_vertical_line = self.ax.axvline(
+                    x=x,
+                    color=WAYPOINT_CROSSHAIR_COLOR,
+                    lw=WAYPOINT_CROSSHAIR_LW,
+                    ls=WAYPOINT_CROSSHAIR_LS,
+                )
+            else:
+                self.waypoint_horizontal_line.set_ydata([y, y])
+                self.waypoint_vertical_line.set_xdata([x, x])
+            self.ax.figure.canvas.draw_idle()
+
+        def _update_offset_readout(self):
+            """Show how far the live crosshair is from the remembered one."""
+
+            if self.ref_pos is None or self.pos is None:
+                if self.offset_text is not None:
+                    self.offset_text.set_text("")
+                return
+
+            dx, dy = self.pos[0] - self.ref_pos[0], self.pos[1] - self.ref_pos[1]
+            label = f"\u0394 {dx:+.1f}, {dy:+.1f} px   ({np.hypot(dx, dy):.1f} px)"
+            if self.nm_per_px:
+                label += (
+                    f"\n   {dx * self.nm_per_px:+.0f}, {dy * self.nm_per_px:+.0f} nm"
+                    f"   ({np.hypot(dx, dy) * self.nm_per_px:.0f} nm)"
+                )
+            if not getattr(self, "show_live", True):
+                if self.offset_text is not None:
+                    self.offset_text.set_text("")
+                return
+
+            if self.offset_text is None:
+                self.offset_text = self.ax.text(
+                    0.02,
+                    0.98,
+                    label,
+                    transform=self.ax.transAxes,
+                    color=OFFSET_READOUT_COLOR,
+                    fontsize=OFFSET_READOUT_FONTSIZE,
+                    weight="bold",
+                    va="top",
+                    ha="left",
+                )
+            else:
+                self.offset_text.set_text(label)
+
+        def clear_waypoint(self):
+            """Remove the beam walk waypoint crosshair."""
+
+            for line in (self.waypoint_horizontal_line, self.waypoint_vertical_line):
+                with suppress(AttributeError, ValueError):
+                    line.remove()
+            self.waypoint_horizontal_line = self.waypoint_vertical_line = None
+            self.waypoint_pos = None
+            self.ax.figure.canvas.draw_idle()
 
         def _set_crosshair_visible(self, visible):
+            visible = visible and self.show_live
             need_redraw = self.horizontal_line.get_visible() != visible
             self.horizontal_line.set_visible(visible)
             self.vertical_line.set_visible(visible)
             self.text.set_visible(visible)
             return need_redraw
+
+        def set_live_visible(self, visible: bool):
+            """Show/hide the live crosshair and its offset read-out."""
+
+            self.show_live = visible
+            self.horizontal_line.set_visible(visible)
+            self.vertical_line.set_visible(visible)
+            self.text.set_visible(visible)
+            self._update_offset_readout()
+            self.ax.figure.canvas.draw_idle()
 
         def _on_mouse_press(self, event):
             if not event.inaxes:
@@ -371,10 +602,11 @@ def cursor_factory(ax, init_cursor_pos):
             """Doc."""
 
             x, y = pos
-            self.horizontal_line.set_ydata(y)
-            self.vertical_line.set_xdata(x)
-            self.ax.figure.canvas.draw_idle()
+            self.horizontal_line.set_ydata([y, y])
+            self.vertical_line.set_xdata([x, x])
             self.pos = pos
+            self._update_offset_readout()
+            self.ax.figure.canvas.draw_idle()
 
     cursor = Cursor(ax)
     ax.figure.canvas.mpl_connect("button_press_event", cursor._on_mouse_press)

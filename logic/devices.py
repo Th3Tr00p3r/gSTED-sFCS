@@ -1,6 +1,7 @@
 """Devices Module."""
 
 import asyncio
+import inspect
 import logging
 import sys
 import time
@@ -13,7 +14,6 @@ from typing import Callable, List, Tuple, Union, cast
 
 import nidaqmx.constants as ni_consts
 import numpy as np
-import PIL
 from matplotlib.patches import Ellipse
 from nidaqmx.errors import DaqError
 
@@ -24,7 +24,8 @@ from logic.timeout import TIMEOUT_INTERVAL
 from utilities.dialog import ErrorDialog
 from utilities.errors import DeviceCheckerMetaClass, DeviceError, IOError, err_hndlr
 from utilities.file_utilities import load_object, save_object
-from utilities.fit_tools import FitError, fit_2d_gaussian_to_image, linear_fit
+from utilities import fit_tools
+from utilities.fit_tools import FitError, find_dark_core, linear_fit, ring_balance
 from utilities.helper import (
     Gate,
     Limits,
@@ -449,11 +450,18 @@ class PicoSecondDelayer(BaseDevice, Ftd2xx, metaclass=DeviceCheckerMetaClass):
             lower_gate_ns = self.eff_delay_ns - self.sync_delay_ns
             self.set_delay_wdgt.set(lower_gate_ns)
 
-    def close(self):
-        """Doc."""
+    async def close(self):
+        """
+        Both 'toggle' and 'mpd_command' are coroutines - they must be awaited, or the
+        delayer output is never switched off and the device is left out of echo mode
+        (and Python warns that the coroutine was never awaited).
+        """
 
-        self.toggle(False)
-        self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
+        await self.toggle(False)
+        try:
+            await self.mpd_command(("EM1", Limits(0, 1)))  # return to echo mode (for MPD software)
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         self.close_instrument()
 
     async def set_lower_gate(self, lower_gate_ns=None):
@@ -1560,12 +1568,36 @@ class BaseCamera:
 
     DEFAULT_PARAM_DICT: dict
 
+    # a dark core deeper than this (as a fraction of the peak) is accepted as a real hole;
+    # a Gaussian beam with no vortex plate in it gives ~0.5-1.0 and is rejected
+    MAX_HOLE_DEPTH = 0.5
+
+    # 'Ring Balance': the azimuthal harmonics are averaged over about this many frames
+    # (an exponential running average), so the read-out is steady but still follows a
+    # turn of the plate's micrometer within a second or so at ~15 frames/s
+    RING_AVERAGE_FRAMES = 8
+    # the outline drawn around the donut exaggerates the ring's unevenness this many
+    # times, so that a few percent is visible
+    RING_OUTLINE_GAIN = 3.0
+
+    # How many nanometres in the SAMPLE one camera pixel corresponds to, for the live
+    # offset read-out. Only meaningful for a camera that reports beam ANGLE, i.e. one
+    # sitting at the focal plane of a lens in the collimated beam: there a tilt theta
+    # gives f_lens*theta at the camera and f_obj*theta at the sample, so
+    #     nm per px = pixel size * f_obj / f_lens
+    # e.g. 3.6 um * (180/63 mm) / 500 mm = 20.6 nm. Leave None to report pixels only.
+    SAMPLE_NM_PER_PX = None
+
     def __init__(self, *args):
         # TODO: Get these from the widgets during initialization!
         self.is_in_video_mode = False
         self.is_in_grayscale_mode = True
         self.is_in_transposed_mode = False
         self.should_get_diameter = False
+        self.should_find_hole = False
+        self.should_balance_ring = False
+        self._ring = None  # running state of 'Ring Balance'
+        self.is_fetching_frame = False  # guards against piling up frame requests
         self.is_auto_exposure_on = False
         self.last_snapshot = np.zeros((100, 100))
 
@@ -1587,6 +1619,25 @@ class BaseCamera:
         self.close_instrument()
 
     async def get_image(self, should_display=True) -> None:
+        """
+        Fetch one frame and (optionally) display it.
+
+        The timeout loop asks for a frame every GUI_UPDATE_INTERVAL, which is shorter
+        than a frame takes at a long exposure - and fetching plus converting, fitting and
+        redrawing a frame is not cheap. Without this guard the requests pile up as tasks
+        that all run in the same event loop, the loop saturates, and the whole GUI stops
+        responding. So a request made while one is still in flight is simply dropped.
+        """
+
+        if self.is_fetching_frame:
+            return
+        self.is_fetching_frame = True
+        try:
+            await self._get_image(should_display)
+        finally:
+            self.is_fetching_frame = False
+
+    async def _get_image(self, should_display=True) -> None:
         """Doc."""
 
         try:
@@ -1594,6 +1645,8 @@ class BaseCamera:
                 img = await self.get_latest_frame()  # fast (~0.3 ms)
             else:
                 img = self.capture_image()  # slow (~70 ms)
+                if inspect.isawaitable(img):  # the uc480 one runs on the camera's worker
+                    img = await img
         except IOError as exc:
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
@@ -1611,13 +1664,84 @@ class BaseCamera:
             img_arr = img
 
             if self.is_in_grayscale_mode:
-                img_arr = np.asarray(PIL.Image.fromarray(img_arr, mode="RGB").convert("L"))
+                # grey = the brightest colour channel of each pixel, not the usual
+                # 0.30 R + 0.59 G + 0.11 B: with that mix a beam that clips one channel
+                # (the 485 nm excitation fills blue, the 592 nm depletion red) still
+                # shows well below 255 - a saturated blue pixel came out as ~40 - and the
+                # fits saw the beam diluted. With the brightest channel, 255 on the
+                # display means saturated, and each beam is fitted on its own channel.
+                img_arr = self._as_grayscale_array(img_arr).astype(np.uint8)
 
             # display in GUI
+            self.display.obj.nm_per_px = self.SAMPLE_NM_PER_PX
             self.display.obj.display_image(img_arr, cursor=True)
+            self._show_brightest_pixel(img)
 
             if self.should_get_diameter:
                 self.get_and_display_beam_width(img_arr)
+
+            if self.should_find_hole:
+                self.find_and_display_hole_center(img_arr)
+
+            if self.should_balance_ring:
+                self.measure_and_display_ring_balance(img_arr)
+
+    def _show_brightest_pixel(self, img) -> None:
+        """
+        Write the frame's brightest pixel value in a corner of the display, and paint
+        saturated pixels red. The display stretches every frame to its own range, so a
+        saturated beam looks no different from a dim one - and a saturated ring flattens
+        the hole and ring measurements. Uses the raw frame (all colour channels).
+        """
+
+        try:
+            ax = self.display.obj.axes[0]
+        except (AttributeError, IndexError):
+            return
+        arr = np.asarray(img)
+        full_scale = np.iinfo(arr.dtype).max if np.issubdtype(arr.dtype, np.integer) else None
+        peak = arr.max()
+        # a colour frame can saturate in one channel only (the 592 nm depletion fills the
+        # red one) while its grey level - what is displayed and fitted - stays well below
+        # full scale, so each channel is reported
+        if arr.ndim == 3 and arr.shape[2] == 3:
+            peak_text = "R {} G {} B {}".format(*(int(v) for v in arr.reshape(-1, 3).max(axis=0)))
+        else:
+            peak_text = f"{peak}"
+        saturated = (arr >= full_scale) if full_scale is not None else None
+        if saturated is not None and saturated.ndim == 3:
+            saturated = saturated.any(axis=2)
+        n_saturated = int(saturated.sum()) if saturated is not None else 0
+
+        if n_saturated:
+            # red over the saturated pixels, drawn only over their bounding box
+            rows, cols = np.nonzero(saturated)
+            r0, r1, c0, c1 = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
+            overlay = np.zeros((r1 - r0, c1 - c0, 4))
+            overlay[saturated[r0:r1, c0:c1]] = (1.0, 0.0, 0.0, 0.9)
+            ax.imshow(
+                overlay,
+                extent=(c0 - 0.5, c1 - 0.5, r1 - 0.5, r0 - 0.5),
+                interpolation="none",
+                zorder=3,
+            )
+            label = f"SATURATED: {n_saturated} px  (max {peak_text})"
+            color = "red"
+        else:
+            label = f"max {peak_text}" + (f"  (of {full_scale})" if full_scale is not None else "")
+            color = "yellow" if full_scale is not None and peak > 0.9 * full_scale else "white"
+        ax.text(
+            0.98,
+            0.02,
+            label,
+            transform=ax.transAxes,
+            color=color,
+            fontsize=11,
+            weight="bold",
+            va="bottom",
+            ha="right",
+            bbox=dict(facecolor="black", alpha=0.5, edgecolor="none", pad=2),
+        )
 
     def toggle_video(self, should_turn_on: bool, keep_off=False, **kwargs) -> bool:
         """Doc."""
@@ -1643,97 +1767,331 @@ class BaseCamera:
         for name, value in param_dict.items():
             self.set_parameter(name, value)
 
-    def get_and_display_beam_width(self, img_arr):
-        """Doc."""
+    def restart(self) -> bool:
+        """
+        Close and re-open the camera without restarting the program.
 
-        # properly convert to grayscale
-        if not self.is_in_grayscale_mode:
-            gs_img = PIL.Image.fromarray(img_arr, mode="RGB").convert("L")
-        else:
-            gs_img = PIL.Image.fromarray(img_arr)
+        This also clears a latched device error. Once err_hndlr() has recorded one, the
+        LED turns red and the video switch is disabled and nothing clears them, so a
+        camera that has recovered by itself still cannot be switched back on - which is
+        why a frozen camera has meant quitting the program. Replugging the USB cable on
+        its own does not help either, because the old handle is still held here; press
+        this afterwards (or instead).
+        """
 
-        # cropping to square - assuming beam is centered, takes the same amount from both sides of the longer dimension
-        width, height = gs_img.size
-        crop_delta_x = abs(width - height) / 2 if width > height else 0
-        crop_delta_y = abs(width - height) / 2 if width < height else 0
-        crop_dims = (crop_delta_x, crop_delta_y, width - crop_delta_x, height - crop_delta_y)
-        cropped_gs_img = gs_img.crop(crop_dims)
+        logging.info(f"Restarting {self.log_ref} ...")
 
-        # resizing
-        RESCALE_FACTOR = 10
-        resized_cropped_gs_img = cropped_gs_img.resize(
-            (
-                round(min(width, height) / RESCALE_FACTOR),
-                round(min(width, height) / RESCALE_FACTOR),
-            ),
-            resample=PIL.Image.NEAREST,
+        # stop the frame loop before touching the handle
+        was_in_video_mode = self.is_in_video_mode
+        self.is_in_video_mode = False
+        self.is_fetching_frame = False
+        self.is_waiting_for_frame = False
+        with suppress(Exception):
+            self.toggle_video_mode(False)
+        with suppress(Exception):
+            # the handle is usually already dead by this point - that is the normal case
+            self.close_instrument()
+
+        # a fresh driver worker: if a call got stuck in the old one, it is abandoned there
+        # (closing the old handle would only get stuck as well)
+        if hasattr(self, "reset_camera_worker"):
+            self.reset_camera_worker()
+
+        # release the latch, so the device is allowed to work again
+        self.error_dict = None
+        with suppress(AttributeError):
+            self.error_display.set("")
+
+        try:
+            self.open_instrument()
+        except Exception as exc:
+            err_hndlr(
+                IOError(f"{self.log_ref} did not come back [{exc}]"),
+                sys._getframe(),
+                locals(),
+                dvc=self,
+            )
+            return False
+
+        with suppress(Exception):
+            self.update_parameter_ranges()
+            self.set_parameters()
+        self.enable_switch()
+        self.change_icons("off")
+        logging.info(
+            f"{self.log_ref} restarted."
+            + (" Video was on - switch it back on." if was_in_video_mode else "")
+        )
+        return True
+
+    def _as_grayscale_array(self, img_arr) -> np.ndarray:
+        """
+        Return the frame as a 2D float array, whatever the camera mode: for a colour
+        frame, the brightest channel of each pixel (see _display_img for why).
+        """
+
+        arr = np.asarray(img_arr)
+        if arr.ndim == 3:
+            arr = arr[..., :3].max(axis=2)
+        return arr.astype(float)
+
+    def find_and_display_hole_center(self, img_arr):
+        """
+        Locate the dark core (hole) of a vortex/depletion beam and put the live
+        crosshair on it. Unlike the Gaussian fit this works for a donut, where the
+        centre of the beam is its darkest point rather than its brightest.
+        """
+
+        try:
+            res = find_dark_core(self._as_grayscale_array(img_arr))
+        except FitError as exc:
+            logging.debug(f"{self.log_ref}: Dark core not found! [{exc}]")
+            return
+
+        if res["core_depth"] > self.MAX_HOLE_DEPTH:
+            logging.debug(
+                f"{self.log_ref}: no clear dark core "
+                f"(darkest point is {100 * res['core_depth']:.0f} % of the peak) - "
+                "is the vortex plate in the beam, and is the image unsaturated?"
+            )
+            return
+
+        x_core, y_core = res["core"]
+        logging.debug(
+            f"{self.log_ref}: dark core at ({x_core:.1f}, {y_core:.1f}) px, "
+            f"{res['offset_px']:.1f} px from the beam centroid "
+            f"({100 * res['offset_px'] / max(res['beam_radius'], 1e-9):.1f} % of the beam radius), "
+            f"core depth {100 * res['core_depth']:.1f} % of peak"
         )
 
-        # converting back to Numpy array
-        resized_cropped_gs_img_arr = np.asarray(resized_cropped_gs_img)
+        cursor = self.display.obj.axes[0].cursor
+        cursor.move_to_pos((x_core, y_core))
 
-        # fitting
+        # if a reference crosshair is remembered, report the residual misalignment
+        if getattr(cursor, "ref_pos", None) is not None:
+            x_ref, y_ref = cursor.ref_pos
+            logging.debug(
+                f"{self.log_ref}: dark core is "
+                f"({x_core - x_ref:+.1f}, {y_core - y_ref:+.1f}) px from the remembered centre"
+            )
+
+    def set_waypoint(self, pos) -> None:
+        """
+        Show (or, with pos=None, remove) the beam walk waypoint crosshair - the point
+        this beam should be steered to with the first mirror.
+        """
+
         try:
-            fp = fit_2d_gaussian_to_image(resized_cropped_gs_img_arr)
+            cursor = self.display.obj.axes[0].cursor
+        except (AttributeError, IndexError):
+            logging.debug(f"{self.log_ref}: no image displayed yet - cannot show a waypoint")
+            return
+
+        if pos is None:
+            cursor.clear_waypoint()
+            self.display.obj.waypoint_pos = None
+            logging.debug(f"{self.log_ref}: waypoint cleared")
+        else:
+            cursor.draw_waypoint((float(pos[0]), float(pos[1])))
+            self.display.obj.waypoint_pos = cursor.waypoint_pos
+            logging.debug(f"{self.log_ref}: waypoint at ({pos[0]:.1f}, {pos[1]:.1f}) px")
+
+    def mark_reference(self, should_mark: bool) -> None:
+        """
+        Remember (or forget) the crosshair's current position as the reference beam -
+        normally the excitation beam's centre. It is drawn in a second colour and stays
+        put while the other beam's live crosshair is moved onto it.
+        """
+
+        try:
+            cursor = self.display.obj.axes[0].cursor
+        except (AttributeError, IndexError):
+            logging.debug(f"{self.log_ref}: no image displayed yet - nothing to remember")
+            return
+
+        if should_mark:
+            cursor.draw_reference(cursor.pos)
+            self.display.obj.ref_pos = cursor.pos
+            logging.debug(
+                f"{self.log_ref}: reference centre remembered at "
+                f"({cursor.pos[0]:.1f}, {cursor.pos[1]:.1f}) px"
+            )
+        else:
+            cursor.clear_reference()
+            self.display.obj.ref_pos = None
+            logging.debug(f"{self.log_ref}: reference centre cleared")
+
+    def reset_ring_balance(self) -> None:
+        """Forget the running average and the best value (on switching 'Ring Balance' on)."""
+
+        self._ring = None
+
+    def measure_and_display_ring_balance(self, img_arr) -> None:
+        """
+        Show how evenly the light is spread around the donut's dark core - for centring
+        the vortex plate on the beam by making the far-field ring uniform.
+
+        Draws, around the donut, its brightness against angle as an outline (exaggerated
+        RING_OUTLINE_GAIN times; a dashed circle marks a perfectly even ring) and writes
+        the imbalance - the first azimuthal harmonic, i.e. one side brighter than the
+        other, which is what a decentred plate does - and the two-fold part (two lobes,
+        i.e. astigmatism, which the plate cannot fix). Both are running averages over
+        ~RING_AVERAGE_FRAMES frames, and the best imbalance since switching on is kept,
+        so the micrometer can be turned through the minimum and brought back to it.
+        """
+
+        state = self._ring
+        try:
+            if state is None:
+                res = ring_balance(self._as_grayscale_array(img_arr))
+            else:
+                res = ring_balance(
+                    self._as_grayscale_array(img_arr),
+                    near=state["core"],
+                    ring_radius=state["ring_radius"],
+                )
+        except FitError as exc:
+            logging.debug(f"{self.log_ref}: ring balance - no donut found [{exc}]")
+            self._ring = None  # look over the whole frame next time
+            return
+
+        alpha = 1.0 / max(self.RING_AVERAGE_FRAMES, 1)
+        harmonics = res["harmonics"]
+        moved = state is not None and np.hypot(
+            res["core"][0] - state["core"][0], res["core"][1] - state["core"][1]
+        ) > max(res["ring_radius"], 3.0)
+        if state is None or moved:  # (re)start the average - the beam jumped
+            state = dict(
+                harmonics=dict(harmonics),
+                best=None if state is None else state["best"],
+                n_frames=0,
+            )
+        else:
+            for m, c in harmonics.items():
+                state["harmonics"][m] += alpha * (c - state["harmonics"][m])
+        state["core"] = res["core"]
+        state["ring_radius"] = res["ring_radius"]
+        state["n_frames"] += 1
+        avg = state["harmonics"]
+        imbalance = 2 * abs(avg[1])
+        bright_deg = float(np.degrees(np.angle(avg[1])))
+        two_fold = 2 * abs(avg[2])
+        # the best value counts only once the average has settled
+        if state["n_frames"] >= self.RING_AVERAGE_FRAMES and (
+            state["best"] is None or imbalance < state["best"]
+        ):
+            state["best"] = imbalance
+        self._ring = state
+
+        try:
+            ax = self.display.obj.axes[0]
+        except (AttributeError, IndexError):
+            return
+        x0, y0 = res["core"]
+        radius = 2.0 * res["ring_radius"]  # drawn outside the ring, so it hides nothing
+        theta = np.linspace(-np.pi, np.pi, 181)
+        # brightness against angle, from the averaged harmonics (normalised to 1 on average)
+        relative = 1 + 2 * sum((c * np.exp(-1j * m * theta)).real for m, c in avg.items())
+        outline = radius * (1 + self.RING_OUTLINE_GAIN * (relative - 1))
+        ax.plot(
+            x0 + radius * np.cos(theta), y0 + radius * np.sin(theta),
+            color="cyan", lw=1.0, ls="--", clip_on=True,
+        )
+        ax.plot(
+            x0 + outline * np.cos(theta), y0 + outline * np.sin(theta),
+            color="cyan", lw=2.0, clip_on=True,
+        )
+        # an arrow pointing at the bright side, as long as the imbalance (x gain)
+        tip = radius * self.RING_OUTLINE_GAIN * imbalance
+        ax.annotate(
+            "",
+            xy=(x0 + tip * np.cos(np.radians(bright_deg)), y0 + tip * np.sin(np.radians(bright_deg))),
+            xytext=(x0, y0),
+            arrowprops=dict(arrowstyle="->", color="cyan", lw=2),
+            annotation_clip=True,
+        )
+        best = state["best"]
+        settling = "" if state["n_frames"] >= self.RING_AVERAGE_FRAMES else "  (averaging...)"
+        ax.text(
+            0.02,
+            0.02,
+            f"ring imbalance {100 * imbalance:.1f} %"
+            + (f"   best {100 * best:.1f} %" if best is not None else "")
+            + f"{settling}\nbright side at {bright_deg:+.0f}\u00b0 (0\u00b0 = right, +90\u00b0 = down)"
+            + f"\ntwo-fold (astigmatism) {100 * two_fold:.1f} %",
+            transform=ax.transAxes,
+            color="cyan",
+            fontsize=11,
+            weight="bold",
+            va="bottom",
+            ha="left",
+        )
+        self.display.obj.canvas.draw_idle()
+
+    def get_and_display_beam_width(self, img_arr):
+        """
+        Fit a 2D Gaussian to the beam and draw its 1/e^2 ellipse; the crosshair follows it.
+
+        The fit is done by fit_tools.locate_beam(), at a resolution matched to the beam.
+        (It used to be done on the whole frame shrunk 10x by nearest-neighbour sampling:
+        a beam ~25 px across - as on the far-field camera - was then only two samples
+        wide, and the centre came out shifted by about 5 px up and to the left, because
+        the shrinking samples the middle of each 10 px block while the result was mapped
+        back as if it sampled its corner.)
+        """
+
+        gs_img_arr = self._as_grayscale_array(img_arr)
+        try:
+            beam = fit_tools.locate_beam(gs_img_arr)
         except FitError as exc:
             logging.debug(f"{self.log_ref}: Gaussian fit failed! [{exc}]")
             return
-        x0, y0, sigma_x, sigma_y, phi = (
-            fp.beta["x0"],
-            fp.beta["y0"],
-            fp.beta["sigma_x"],
-            fp.beta["sigma_y"],
-            fp.beta["phi"],
-        )
+        x0, y0 = beam["x0"], beam["y0"]
+        sigma_x, sigma_y, phi = beam["sigma_x"], beam["sigma_y"], beam["phi"]
 
-        max_sigma_y, max_sigma_x = resized_cropped_gs_img_arr.shape
+        # reject an implausible fit instead of drawing it: a centre outside the frame or a
+        # width comparable to the frame itself means the optimizer ran away, and drawing
+        # that makes the ellipse (and the crosshair) jump about between frames
+        n_rows, n_cols = gs_img_arr.shape
         if (
-            x0 < 0
-            or y0 < 0
-            or abs(1 - sigma_x / sigma_y) > 2
-            or sigma_x > max_sigma_x
-            or sigma_y > max_sigma_y
+            not (0 <= x0 <= n_cols)
+            or not (0 <= y0 <= n_rows)
+            or max(sigma_x, sigma_y) > 3 * min(sigma_x, sigma_y)
+            or sigma_x > n_cols / 3
+            or sigma_y > n_rows / 3
         ):
-            #            print(
-            #                f"{self.log_ref}: Gaussian fit is irrational! Center on CCD and avoid saturation.\n({fp.beta})"
-            #            )
+            logging.debug(
+                f"{self.log_ref}: Gaussian fit is irrational - not displayed "
+                f"(x0={x0:.1f}, y0={y0:.1f}, sigma_x={sigma_x:.1f}, sigma_y={sigma_y:.1f}, "
+                f"frame={n_cols}x{n_rows}). Centre the beam on the CCD and avoid saturation."
+            )
             return
 
-        # calculating the FWHM
-        FWHM_FACTOR = 2 * np.sqrt(2 * np.log(2))  # 1/e^2 width is FWHM * 1.699
-        one_over_e2_factor = 1.699 * FWHM_FACTOR
-        diameter_mm = (
-            np.mean([sigma_x, sigma_y])
-            * one_over_e2_factor
-            * self.PIXEL_SIZE_UM
-            * 1e-3
-            * RESCALE_FACTOR
-        )
-        diameter_mm_err = (
-            np.std([sigma_x, sigma_y])
-            * one_over_e2_factor
-            * self.PIXEL_SIZE_UM
-            * 1e-3
-            * RESCALE_FACTOR
-        )
+        # 1/e^2 diameter = 4 sigma
+        px_mm = self.PIXEL_SIZE_UM * 1e-3
+        diameter_mm = 2 * (sigma_x + sigma_y) * px_mm
+        diameter_mm_err = 2 * abs(sigma_x - sigma_y) * px_mm
 
         logging.debug(
-            f"{self.log_ref}: 1/e^2 width determined to be {diameter_mm:.2f} +/- {diameter_mm_err:.2f} mm"
+            f"{self.log_ref}: 1/e^2 width determined to be {diameter_mm:.3f} +/- "
+            f"{diameter_mm_err:.3f} mm (fitted at {beam['factor']} px per sample)"
         )
 
-        # plotting the FWHM on top of the image
+        # plotting the 1/e^2 ellipse on top of the image. Ellipse wants degrees, and the
+        # fit's phi turns the other way (checked: with -phi the drawn ellipse runs along
+        # the 1/e^2 contour; with +phi a tilted beam got a mirrored ellipse)
         ellipse = Ellipse(
-            xy=(x0 * RESCALE_FACTOR + crop_delta_x, y0 * RESCALE_FACTOR + crop_delta_y),
-            width=sigma_y * one_over_e2_factor * RESCALE_FACTOR,
-            height=sigma_x * one_over_e2_factor * RESCALE_FACTOR,
-            angle=phi,
+            xy=(x0, y0),
+            width=4 * sigma_x,
+            height=4 * sigma_y,
+            angle=-np.degrees(phi),
         )
         ellipse.set_facecolor((0, 0, 0, 0))
         ellipse.set_edgecolor("red")
 
         self.display.obj.add_patch(
             ellipse,
-            annotation=f"$1/e^2$: {diameter_mm:.2f}$\\pm${diameter_mm_err:.2f} mm\n$\\chi^2$={fp.chi_sq_norm:.2f}",
+            annotation=f"$1/e^2$: {diameter_mm:.3f}$\\pm${diameter_mm_err:.3f} mm\n$\\chi^2$={beam['chi_sq_norm']:.2f}",
         )
 
         # move crosshair to ellipse center (for beam co-alignment) - TESTESTEST
@@ -1796,6 +2154,12 @@ class Camera1(ThorlabsCamera):
 
 class Camera2(ThorlabsCamera):
     """Doc."""
+
+    # camera 2 sits after the beam expander; with a 500 mm lens in front of it and the
+    # camera at that lens's focal plane, its spot position reports beam angle, so one
+    # pixel is 3.6 um * (180/63 mm) / 500 mm = 20.6 nm in the sample. Set to None if the
+    # lens is not in place, in which case only pixels are reported.
+    SAMPLE_NM_PER_PX = 20.6
 
     attrs = DeviceAttrs(
         log_ref="Camera 2",

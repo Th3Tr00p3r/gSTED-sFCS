@@ -1,7 +1,13 @@
 """Drivers Module."""
 
 import asyncio
+import logging
 import sys
+import time
+import queue
+import threading
+from concurrent.futures import Future
+from concurrent.futures import TimeoutError as FutureTimeoutError
 import warnings
 from contextlib import suppress
 from types import SimpleNamespace
@@ -372,8 +378,11 @@ class PyVISA:
         # list all resource addresses
         resource_address_tuple = self._rm.list_resources()
 
-        # open and save the opened ones in a list
+        # open and save the opened ones in a list - with their addresses, since any that
+        # fail to open are skipped and the two lists would otherwise fall out of step
+        # (Oleg, 26.05.25 - the address recorded was then the wrong instrument's)
         inst_list = []
+        opened_addresses = []
         for resource_name in resource_address_tuple:
             with suppress(visa.errors.VisaIOError):
                 # VisaIOError - failed to open instrument, skip
@@ -388,6 +397,7 @@ class PyVISA:
                 )
                 # managed to open instrument, add to list.
                 inst_list.append(inst)
+                opened_addresses.append(resource_name)
 
         # 'model_query' the opened devices, and whoever responds is the one
         for idx, inst in enumerate(inst_list):
@@ -399,7 +409,7 @@ class PyVISA:
                 else:
                     pass
             else:
-                self.address = resource_address_tuple[idx]
+                self.address = opened_addresses[idx]
                 break
 
         # close all saved resources
@@ -487,8 +497,69 @@ class Spinnaker:
     ...
 
 
+CAMERA_CALL_TIMEOUT_S = 5.0  # a camera call that takes longer than this is taken as hung
+CAMERA_OPEN_TIMEOUT_S = 20.0
+CAMERA_GRAB_TIMEOUT_S = 15.0  # a single (non-video) frame, at up to ~1 s exposure
+FRAME_WAIT_MS = 500  # how long one request waits for a new video frame (in the worker)
+CAMERA_STALL_S = 5.0  # video on but no new frame for this long: restart the live video
+
+
+class _CameraWorker:
+    """
+    One daemon thread that runs submitted calls one at a time. A daemon, unlike the
+    threads of concurrent.futures' ThreadPoolExecutor, because a call stuck in the driver
+    must not stop the program from quitting (the executor's threads are joined at exit).
+    """
+
+    def __init__(self):
+        self._queue = queue.Queue()
+        self._thread = threading.Thread(target=self._run, name="uc480 camera", daemon=True)
+        self._thread.start()
+
+    def _run(self):
+        while True:
+            item = self._queue.get()
+            if item is None:
+                return
+            future, fn, args, kwargs = item
+            if not future.set_running_or_notify_cancel():
+                continue
+            try:
+                future.set_result(fn(*args, **kwargs))
+            except BaseException as exc:
+                future.set_exception(exc)
+
+    def submit(self, fn, *args, **kwargs) -> Future:
+        future = Future()
+        self._queue.put((future, fn, args, kwargs))
+        return future
+
+    def shutdown(self):
+        """Stop after the current call (if it ever returns); queued calls are dropped."""
+
+        while True:
+            try:
+                item = self._queue.get_nowait()
+            except queue.Empty:
+                break
+            if item is not None:
+                item[0].cancel()
+        self._queue.put(None)
+
+
 class UC480:
-    """Doc."""
+    """
+    Thorlabs/IDS uc480 camera, via instrumental-lib.
+
+    Every call into the camera driver runs on a worker thread of this camera's own, one
+    call at a time, with a time limit. They used to run on the GUI thread, so a driver
+    call that never returned (which happens with these cameras, typically right after a
+    button press) froze the whole program, and 'Restart Camera' could not even run.
+    Now such a call is abandoned after CAMERA_CALL_TIMEOUT_S, the camera is reported as
+    not responding (and which call it was stuck in), and the GUI carries on; 'Restart
+    Camera' then starts a fresh worker. Running the calls one at a time also stops a
+    parameter change from landing in the middle of a frame read.
+    """
 
     log_ref: str  # NOTE: these are for mypy to be silent. what's needed here is an ABC.
     last_snapshot: np.ndarray
@@ -496,7 +567,14 @@ class UC480:
     def __init__(self):
 
         self._inst = None
-        self.is_waiting_for_frame = False
+        self.is_waiting_for_frame = False  # kept for the timeout loop; frames wait in the worker
+        self.frame_count = 0  # new frames delivered since the program started
+        self.last_frame_time = None  # time.monotonic() of the last new frame
+        self._hung_call = None  # the call the worker is stuck in, if any
+        self._worker_generation = 0
+        self._worker = _CameraWorker()
+        self._last_video_restart = 0.0
+        self._is_stall_reported = False
 
         if not list_instruments(module="cameras"):
             exc = IOError("No UC480 cameras detected.")
@@ -504,85 +582,215 @@ class UC480:
 
         super().__init__()
 
+    # ------------------------------------------------------------------ worker
+
+    def _not_responding_error(self) -> IOError:
+        return IOError(
+            f"{self.log_ref} is not responding (driver stuck in '{self._hung_call}'). "
+            "Replug its USB cable, then press Restart Camera."
+        )
+
+    def _mark_hung(self, what: str, timeout: float) -> IOError:
+        self._hung_call = what
+        logging.error(
+            f"{self.log_ref}: driver call '{what}' did not return within {timeout:g} s - "
+            "camera marked as not responding"
+        )
+        return self._not_responding_error()
+
+    def _call(self, what: str, fn, *args, timeout=CAMERA_CALL_TIMEOUT_S, **kwargs):
+        """Run a driver call on the camera's worker and wait for it, at most 'timeout' s."""
+
+        if self._hung_call is not None:
+            raise self._not_responding_error()
+        future = self._worker.submit(fn, *args, **kwargs)
+        try:
+            return future.result(timeout=timeout)
+        except FutureTimeoutError:
+            raise self._mark_hung(what, timeout)
+
+    async def _acall(self, what: str, fn, *args, timeout=CAMERA_CALL_TIMEOUT_S, **kwargs):
+        """The same, awaited - the GUI keeps running while the camera works."""
+
+        if self._hung_call is not None:
+            raise self._not_responding_error()
+        generation = self._worker_generation
+        future = self._worker.submit(fn, *args, **kwargs)
+        try:
+            result = await asyncio.wait_for(asyncio.wrap_future(future), timeout)
+        except asyncio.TimeoutError:
+            if generation != self._worker_generation:
+                raise _StaleCall()
+            raise self._mark_hung(what, timeout)
+        except Exception:
+            if generation != self._worker_generation:
+                raise _StaleCall()
+            raise
+        if generation != self._worker_generation:
+            raise _StaleCall()  # the camera was restarted meanwhile - result belongs to the old one
+        return result
+
+    def reset_camera_worker(self) -> None:
+        """
+        Abandon the worker thread (if a call is stuck in it, it stays stuck there, but
+        no longer blocks anything) and the old driver handle, and start a fresh worker.
+        """
+
+        if self._hung_call is not None:
+            logging.warning(
+                f"{self.log_ref}: abandoning the call stuck in '{self._hung_call}' and its "
+                "driver handle"
+            )
+            self._inst = None  # closing it would only get stuck too
+        self._worker.shutdown()
+        self._worker = _CameraWorker()
+        self._worker_generation += 1
+        self._hung_call = None
+        self._is_stall_reported = False
+
+    # ------------------------------------------------------------------ driver calls
+
     def open_instrument(self):
         """Doc."""
 
+        def _open():
+            return uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
+
         try:
-            self._inst = uc480.UC480_Camera(serial=self.serial.encode(), reopen_policy="new")
-            print(f"(UC480 SN: {self._inst._paramset['serial'].decode('utf-8')}) connection opened")
+            self._inst = self._call("open", _open, timeout=CAMERA_OPEN_TIMEOUT_S)
+        except IOError:
+            raise
         except Exception as exc:
             # general 'Exception' is unavoidable due to bad exception handeling in instrumental-lib...
             raise IOError(f"{self.log_ref} disconnected - {exc}")
+        print(f"(UC480 SN: {self._inst._paramset['serial'].decode('utf-8')}) connection opened")
 
     def close_instrument(self):
         """Doc."""
 
         if self._inst is not None:
-            self._inst.close()
+            inst, self._inst = self._inst, None
+            self._call("close", inst.close)
+
+    def _start_live_video(self):
+        inst = self._inst
+        if self.is_auto_exposure_on:
+            inst.start_live_video()
+            inst.set_auto_exposure(True)
+        else:
+            inst.start_live_video(exposure_time=inst._get_exposure())
 
     def toggle_video_mode(self, should_turn_on: bool) -> None:
         """Doc."""
 
         try:
             if should_turn_on:
-                if self.is_auto_exposure_on:
-                    self._inst.start_live_video()
-                    self._inst.set_auto_exposure(True)
-                else:
-                    self._inst.start_live_video(exposure_time=self._inst._get_exposure())
+                self._call("start live video", self._start_live_video)
+                self.last_frame_time = time.monotonic()
+                self._is_stall_reported = False
             else:
-                self._inst.stop_live_video()
+                self._call("stop live video", self._inst.stop_live_video)
         except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
         else:
             self.is_in_video_mode = should_turn_on
 
-    def capture_image(self) -> np.ndarray:
+    async def capture_image(self) -> np.ndarray:
         """Doc."""
 
+        def _grab():
+            inst = self._inst
+            image = inst.grab_image(copy=False, exposure_time=inst._get_exposure())
+            return np.flipud(np.array(image, copy=True))
+
         try:
-            upside_down_image = self._inst.grab_image(
-                copy=False, exposure_time=self._inst._get_exposure()
-            )
+            return await self._acall("grab image", _grab, timeout=CAMERA_GRAB_TIMEOUT_S)
+        except _StaleCall:
+            return self.last_snapshot
         except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
         except TimeoutError:
             raise IOError(f"{self.log_ref} timed out.")
-        else:
-            return np.flipud(upside_down_image)
+
+    def _fetch_new_frame(self):
+        """In the worker: wait for a new video frame, and return a copy of it (or None)."""
+
+        inst = self._inst
+        if not inst.wait_for_frame(f"{FRAME_WAIT_MS}ms"):
+            return None
+        # a copy: the driver writes the next frame into the same memory
+        return np.flipud(np.array(inst.latest_frame(copy=False), copy=True))
 
     async def get_latest_frame(self) -> np.ndarray:
-        """Doc."""
+        """The newest video frame, or the last one if no new frame came in time."""
 
         try:
-            for _ in range(5):
-                if not self._inst.wait_for_frame("5ms"):
-                    # frame not ready
-                    self.is_waiting_for_frame = True
-                    await asyncio.sleep(0.1)  # TODO: define value somewhere
-                else:
-                    # frame ready
-                    self.is_waiting_for_frame = False
-                    break
-            if not self.is_waiting_for_frame:
-                return np.flipud(self._inst.latest_frame(copy=False))
-            else:  # timeout (loop finished)
-                self.is_waiting_for_frame = False
-                return self.last_snapshot
+            frame = await self._acall("wait for frame", self._fetch_new_frame)
+        except _StaleCall:
+            return self.last_snapshot
         except uc480.UC480Error:
             raise IOError(f"{self.log_ref} disconnected after initialization.")
+
+        now = time.monotonic()
+        if frame is not None:
+            self.frame_count += 1
+            self.last_frame_time = now
+            if self._is_stall_reported:
+                logging.info(f"{self.log_ref}: frames are coming in again")
+            self._is_stall_reported = False
+            return frame
+
+        # no new frame: if that has gone on for a while, restart the live video once in a
+        # while (the driver call itself returned, so the camera is alive - just not sending)
+        if self.last_frame_time is not None and now - self.last_frame_time > CAMERA_STALL_S:
+            if not self._is_stall_reported:
+                logging.warning(
+                    f"{self.log_ref}: no new frame for {now - self.last_frame_time:.0f} s "
+                    f"({self.frame_count} frames so far) - restarting its live video"
+                )
+                self._is_stall_reported = True
+            if now - self._last_video_restart > 2 * CAMERA_STALL_S:
+                self._last_video_restart = now
+                await self._restart_live_video()
+        return self.last_snapshot
+
+    async def _restart_live_video(self) -> None:
+        def _restart():
+            with suppress(uc480.UC480Error):
+                self._inst.stop_live_video()
+            self._start_live_video()
+
+        try:
+            await self._acall("restart live video", _restart)
+        except _StaleCall:
+            pass
+        except Exception as exc:
+            logging.warning(f"{self.log_ref}: could not restart the live video [{exc}]")
+        else:
+            self.last_frame_time = time.monotonic()
 
     def update_parameter_ranges(self):
         """Doc."""
 
-        with suppress(AttributeError):  # camera no connected
-            *self.pixel_clock_range, _ = tuple(
-                self._inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_GET_RANGE)
+        if self._inst is None:  # camera not connected
+            return
+
+        def _read():
+            inst = self._inst
+            return (
+                tuple(inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_GET_RANGE)),
+                (1, inst.pixelclock._magnitude / 1.6),
+                tuple(inst._dev.Exposure(uc480.lib.IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE)),
             )
-            self.framerate_range = (1, self._inst.pixelclock._magnitude / 1.6)
-            *self.exposure_range, _ = tuple(
-                self._inst._dev.Exposure(uc480.lib.IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE)
-            )
+
+        try:
+            pixel_clock, framerate, exposure = self._call("read parameter ranges", _read)
+        except (AttributeError, IOError, uc480.UC480Error) as exc:
+            logging.debug(f"{self.log_ref}: parameter ranges not read [{exc}]")
+            return
+        *self.pixel_clock_range, _ = pixel_clock
+        self.framerate_range = framerate
+        *self.exposure_range, _ = exposure
 
     def set_parameter(self, name, value) -> None:
         """Doc."""
@@ -592,26 +800,39 @@ class UC480:
 
         valid_value = Limits(getattr(self, f"{name}_range")).clamp(value)
 
-        try:
+        def _set():
+            inst = self._inst
             if name == "pixel_clock":
-                self._inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_SET, int(valid_value))
-                self.update_parameter_ranges()
+                inst._dev.PixelClock(uc480.lib.PIXELCLOCK_CMD_SET, int(valid_value))
             elif name == "framerate":
-                self._inst._dev.SetFrameRate(valid_value)
-                self.update_parameter_ranges()
+                inst._dev.SetFrameRate(valid_value)
             elif name == "exposure":
-                self._inst._set_exposure(f"{valid_value}ms")
+                inst._set_exposure(f"{valid_value}ms")
+
+        try:
+            self._call(f"set {name}", _set)
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         except uc480.UC480Error:
             exc = IOError(f"{self.log_ref} was not properly closed.\nRestart to fix.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
+        else:
+            if name in ("pixel_clock", "framerate"):
+                self.update_parameter_ranges()
 
     def set_auto_exposure(self, should_turn_on: bool) -> None:
         """Doc."""
 
         try:
-            self._inst.set_auto_exposure(should_turn_on)
+            self._call("set auto exposure", self._inst.set_auto_exposure, should_turn_on)
+        except IOError as exc:
+            err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         except uc480.UC480Error:
             exc = IOError(f"{self.log_ref} was not properly closed.\nRestart to fix.")
             err_hndlr(exc, sys._getframe(), locals(), dvc=self)
         else:
             self.is_auto_exposure_on = should_turn_on
+
+
+class _StaleCall(Exception):
+    """A camera call that finished after the camera was restarted - its result is ignored."""

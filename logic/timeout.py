@@ -167,10 +167,18 @@ class Timeout:
 
             #            else:
             # DeviceError - camera error
-            video_cams = [cam for cam in self.main_gui.impl.cameras if cam.is_in_video_mode]
+            # a camera with a latched error (red LED) is not asked for frames again until
+            # it is restarted - asking a dead camera made the same error ~4 times a second
+            video_cams = [
+                cam
+                for cam in self.main_gui.impl.cameras
+                if cam.is_in_video_mode and not getattr(cam, "error_dict", None)
+            ]
             for video_cam in video_cams:
                 with suppress(DeviceError):
-                    if not video_cam.is_waiting_for_frame:
+                    if not (video_cam.is_waiting_for_frame or video_cam.is_fetching_frame):
+                        # 'is_fetching_frame': a request is still running - queueing
+                        # another one here is what used to freeze the GUI
                         self._app.loop.create_task(video_cam.get_image())
 
             # photon_counter count rate

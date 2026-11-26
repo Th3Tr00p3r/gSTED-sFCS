@@ -1509,6 +1509,26 @@ to Scan</string>
                         </widget>
                        </item>
                        <item>
+                        <widget class="QPushButton" name="beadPositionButton">
+                         <property name="toolTip">
+                          <string>Move the bead at the crosshair to the centre of the scan, or to a chosen point, with the stepper stage</string>
+                         </property>
+                         <property name="text">
+                          <string>Move Bead...</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QCheckBox" name="markImgRef">
+                         <property name="toolTip">
+                          <string>Remember the crosshair on this scan image as the reference, so the next scan shows its offset from it (in pixels and nm)</string>
+                         </property>
+                         <property name="text">
+                          <string>Remember Center</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
                         <widget class="QComboBox" name="imgShowMethod">
                          <property name="font">
                           <font>
@@ -12154,7 +12174,7 @@ New Origin</string>
                      </sizepolicy>
                     </property>
                     <property name="readOnly">
-                     <bool>true</bool>
+                     <bool>false</bool>
                     </property>
                     <property name="buttonSymbols">
                      <enum>QAbstractSpinBox::NoButtons</enum>
@@ -12162,7 +12182,16 @@ New Origin</string>
                     <property name="maximum">
                      <double>9999.000000000000000</double>
                     </property>
-                   </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                   </item>
                  </layout>
                 </item>
@@ -12229,7 +12258,7 @@ New Origin</string>
                      </sizepolicy>
                     </property>
                     <property name="readOnly">
-                     <bool>true</bool>
+                     <bool>false</bool>
                     </property>
                     <property name="buttonSymbols">
                      <enum>QAbstractSpinBox::NoButtons</enum>
@@ -12237,7 +12266,16 @@ New Origin</string>
                     <property name="maximum">
                      <double>9999.000000000000000</double>
                     </property>
-                   </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                   </item>
                  </layout>
                 </item>
@@ -12312,7 +12350,7 @@ New Origin</string>
                        </sizepolicy>
                       </property>
                       <property name="readOnly">
-                       <bool>true</bool>
+                       <bool>false</bool>
                       </property>
                       <property name="buttonSymbols">
                        <enum>QAbstractSpinBox::NoButtons</enum>
@@ -12320,7 +12358,16 @@ New Origin</string>
                       <property name="maximum">
                        <double>9999.000000000000000</double>
                       </property>
-                     </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                     </item>
                     <item>
                      <widget class="QCheckBox" name="autoExp1">
@@ -12360,6 +12407,96 @@ Mode</string>
                   <property name="text">
                    <string>Gaussian
 Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="showCrosshairs1">
+                  <property name="toolTip">
+                   <string>Paint the live (white) crosshair and the offset read-out on the image. Untick to see the bare beam - the fitted position is still tracked.</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                  <property name="text">
+                   <string>Cross
+hairs</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="findBeamHole1">
+                  <property name="toolTip">
+                   <string>Find the dark core (hole) of a donut/vortex beam and put the live crosshair on it</string>
+                  </property>
+                  <property name="text">
+                   <string>Hole
+Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="ringBalance1">
+                  <property name="toolTip">
+                   <string>Measure how evenly the light is spread around the donut's hole (averaged over frames) - for centring the vortex plate: turn its micrometers to bring the imbalance down</string>
+                  </property>
+                  <property name="text">
+                   <string>Ring
+Balance</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="camZoom1">
+                  <property name="toolTip">
+                   <string>Zoom the display to a box about the crosshair. The crosshair lines keep their width, so the image grows around them.</string>
+                  </property>
+                  <item>
+                   <property name="text">
+                    <string>Full</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>200 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>100 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>50 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>25 px</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="restartCam1">
+                  <property name="toolTip">
+                   <string>Close and re-open this camera without restarting the program (also clears a latched camera error, which is what keeps the video switch disabled)</string>
+                  </property>
+                  <property name="text">
+                   <string>Restart
+Camera</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="markBeamRef1">
+                  <property name="toolTip">
+                   <string>Remember the current crosshair position as the reference (e.g. the excitation beam); it stays on screen in red while the other beam is aligned onto it</string>
+                  </property>
+                  <property name="text">
+                   <string>Remember
+Center</string>
                   </property>
                  </widget>
                 </item>
@@ -12904,7 +13041,7 @@ Fit</string>
                      </sizepolicy>
                     </property>
                     <property name="readOnly">
-                     <bool>true</bool>
+                     <bool>false</bool>
                     </property>
                     <property name="buttonSymbols">
                      <enum>QAbstractSpinBox::NoButtons</enum>
@@ -12912,7 +13049,16 @@ Fit</string>
                     <property name="maximum">
                      <double>9999.000000000000000</double>
                     </property>
-                   </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                   </item>
                  </layout>
                 </item>
@@ -12979,7 +13125,7 @@ Fit</string>
                      </sizepolicy>
                     </property>
                     <property name="readOnly">
-                     <bool>true</bool>
+                     <bool>false</bool>
                     </property>
                     <property name="buttonSymbols">
                      <enum>QAbstractSpinBox::NoButtons</enum>
@@ -12987,7 +13133,16 @@ Fit</string>
                     <property name="maximum">
                      <double>9999.000000000000000</double>
                     </property>
-                   </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                   </item>
                  </layout>
                 </item>
@@ -13062,7 +13217,7 @@ Fit</string>
                        </sizepolicy>
                       </property>
                       <property name="readOnly">
-                       <bool>true</bool>
+                       <bool>false</bool>
                       </property>
                       <property name="buttonSymbols">
                        <enum>QAbstractSpinBox::NoButtons</enum>
@@ -13070,7 +13225,16 @@ Fit</string>
                       <property name="maximum">
                        <double>9999.000000000000000</double>
                       </property>
-                     </widget>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="keyboardTracking">
+                      <bool>false</bool>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type a value and press Enter to send it to the camera; it is clamped to the range the camera reports (shown in the log). The shortest exposure depends on the pixel clock and frame rate - raise the pixel clock first if you need a shorter one.</string>
+                     </property>
+                    </widget>
                     </item>
                     <item>
                      <widget class="QCheckBox" name="autoExp2">
@@ -13109,6 +13273,129 @@ Fit</string>
                   <property name="text">
                    <string>Gaussian
 Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="showCrosshairs2">
+                  <property name="toolTip">
+                   <string>Paint the live (white) crosshair and the offset read-out on the image. Untick to see the bare beam - the fitted position is still tracked.</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                  <property name="text">
+                   <string>Cross
+hairs</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="findBeamHole2">
+                  <property name="toolTip">
+                   <string>Find the dark core (hole) of a donut/vortex beam and put the live crosshair on it</string>
+                  </property>
+                  <property name="text">
+                   <string>Hole
+Fit</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="ringBalance2">
+                  <property name="toolTip">
+                   <string>Measure how evenly the light is spread around the donut's hole (averaged over frames) - for centring the vortex plate: turn its micrometers to bring the imbalance down</string>
+                  </property>
+                  <property name="text">
+                   <string>Ring
+Balance</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="camZoom2">
+                  <property name="toolTip">
+                   <string>Zoom the display to a box about the crosshair. The crosshair lines keep their width, so the image grows around them.</string>
+                  </property>
+                  <item>
+                   <property name="text">
+                    <string>Full</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>200 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>100 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>50 px</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>25 px</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="restartCam2">
+                  <property name="toolTip">
+                   <string>Close and re-open this camera without restarting the program (also clears a latched camera error, which is what keeps the video switch disabled)</string>
+                  </property>
+                  <property name="text">
+                   <string>Restart
+Camera</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="markBeamRef2">
+                  <property name="toolTip">
+                   <string>Remember the current crosshair position as the reference (e.g. the excitation beam); it stays on screen in red while the other beam is aligned onto it</string>
+                  </property>
+                  <property name="text">
+                   <string>Remember
+Center</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="enlargeCamsButton">
+                  <property name="toolTip">
+                   <string>Float the camera panel, place the two displays side by side and make it fill the screen - press again to put it back</string>
+                  </property>
+                  <property name="text">
+                   <string>Enlarge
+Displays</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="beamWalkButton">
+                  <property name="toolTip">
+                   <string>Beam walk assistant: measure how each mirror moves the spot on both cameras, then compute the knob turns that put this beam on the remembered centres</string>
+                  </property>
+                  <property name="text">
+                   <string>Beam
+Walk...</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="calibrationsButton">
+                  <property name="toolTip">
+                   <string>Occasional alignment tools: the donut field scan (how the donut changes with scanner position - for aligning the tube lens)</string>
+                  </property>
+                  <property name="text">
+                   <string>Calibra-
+tions...</string>
                   </property>
                  </widget>
                 </item>

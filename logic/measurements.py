@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import nidaqmx.constants as ni_consts
 import numpy as np
 
+from data_analysis import image_fcs
 from data_analysis.correlation_function import SolutionSFCSMeasurement
 from logic.scan_patterns import ScanPatternAO, vector_snake_pattern
 from utilities import errors, file_utilities, fit_tools, helper
@@ -182,6 +183,27 @@ class MeasurementProcedure:
             self.delayer_dvc.settings if self.delayer_dvc.is_on else None
         )
 
+        # Where the scanners and the stage were, for every measurement type. In a static
+        # measurement the position IS the measurement, and nothing about it used to reach
+        # the file: 'scan_settings' below, which carries 'initial_ao' and the AI
+        # read-back, is only written for scanning measurements.
+        # These stay OUT of 'scan_settings' on purpose - the analysis treats the mere
+        # presence of that key as "this was a scan" and then demands 'speed_um_s'.
+        full_data["initial_stage_pos_steps"] = self.initial_stage_pos_steps
+        full_data["scanners_ao_int_v"] = tuple(self.scan_params.get("initial_ao") or ())
+        with suppress(Exception):
+            # the position the scanners actually report, in um from the origin, read at
+            # the end of the measurement (the AO above was recorded when it was queued)
+            full_data["scanners_pos_um"] = tuple(self.scanners_dvc.origin_disp_um)
+        with suppress(Exception):
+            ai = np.array(self.scanners_dvc.ai_buffer, dtype=np.float32)
+            if ai.size:
+                # mean and spread of the analogue read-back: (ai_x, ai_y, ai_z,
+                # ao_int_x, ao_int_y, ao_int_z) in volts - the spread shows whether the
+                # scanners actually held still
+                full_data["scanners_ai_mean_v"] = tuple(np.mean(ai, axis=0).tolist())
+                full_data["scanners_ai_std_v"] = tuple(np.std(ai, axis=0).tolist())
+
         if self.scanning:
             full_data["pix_clk_freq_mhz"] = self.pxl_clk_dvc.freq_MHz
             full_data["scan_settings"] = dict(
@@ -208,7 +230,15 @@ class MeasurementProcedure:
                     line_freq_hz=self.scan_params["line_freq_hz"],
                     samples_per_line=self.scan_params["samples_per_line"],
                     ppl=self.scan_params["ppl"],
-                    n_lines=self.scan_params["n_lines"],
+                    # 'n_lines' is the number of sweeps in a frame, which is what the
+                    # analysis means by it (one image row per sweep). It differs from the
+                    # number of distinct lines only when lines are repeated.
+                    n_lines=self.scan_params.get("n_passes", self.scan_params["n_lines"]),
+                    n_passes=self.scan_params.get("n_passes", self.scan_params["n_lines"]),
+                    n_unique_lines=self.scan_params["n_lines"],
+                    line_repeats=self.scan_params.get("line_repeats", 1),
+                    slow_axis=self.scan_params.get("slow_axis", "xy"),
+                    origin_ao_v=self.scan_params.get("origin_ao_v"),
                     linear_len_um=self.scan_params["linear_len_um"],
                     max_line_length_um=self.scan_params["max_line_len_um"],
                     line_shift_um=self.scan_params["line_shift_um"],
@@ -613,13 +643,24 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.should_fit_acf = kwargs.get("should_fit")
         self.processing_options = kwargs.get("processing_options")
 
+        self.scanning = not (self.scan_params["pattern"] == "static")
+
         if self.scan_params.get("floating_z_amplitude_um", 0) != 0:
             self.scan_params["plane_orientation"] = "XYZ"
         else:
             self.scan_params["plane_orientation"] = "XY"
 
         # stage pattern
-        if self.scan_params.get("stage_pattern") == "Snake":
+        if self.scan_params.get("stage_pattern") == "Snake" and not self.scanning:
+            # a snake needs the scanned area to tile the sample with, and a static
+            # measurement has none - this used to raise KeyError('max_line_len_um')
+            # before the measurement was ever queued
+            logging.warning(
+                "A 'Snake' stage pattern needs a scan pattern - ignoring it for this "
+                "static measurement. Move the stage by hand between measurements instead."
+            )
+            self.stage_pattern = None
+        elif self.scan_params.get("stage_pattern") == "Snake":
             enc_dims = helper.get_encompassing_rectangle_dims(
                 (self.scan_params["max_line_len_um"], self.scan_params["scan_width_um"]),
                 self.scan_params["angle_deg"],
@@ -636,7 +677,6 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
 
         self.duration_multiplier = self.dur_mul_dict[self.duration_units]
         self.duration_s = self.duration * self.duration_multiplier
-        self.scanning = not (self.scan_params["pattern"] == "static")
 
     def build_filename(self, file_no: int) -> str:
         """Doc."""
@@ -678,10 +718,17 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 int((self.pxl_clk_dvc.freq_MHz * 1e6) / self.scan_params["ao_sampling_freq_hz"]) - 2
             )
         # create ao_buffer
+        # The pattern is centred on where the scanners are now - unless a new centre was
+        # asked for while measuring (ImageFCS 'Centre scan on cursor'). The centre is kept,
+        # so that a point in the scan can be converted back to AO voltages.
+        origin_ao_v = tuple(
+            getattr(self, "origin_override_ao_v", None) or self.scanners_dvc.ao_int
+        )
+        self.scan_params["origin_ao_v"] = origin_ao_v
         self.ao_buffer, self.scan_params = ScanPatternAO(
             self.scan_params["pattern"],
             self.scanners_dvc.um_v_ratio,
-            self.scanners_dvc.ao_int,
+            origin_ao_v,
             self.scan_params,
         ).calculate_pattern()
         self.n_ao_samps = self.ao_buffer.shape[1]
@@ -819,6 +866,14 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
         self.set_current_and_end_times()
         file_num = 1
         logging.info(f"Running {self.type} measurement")
+        if not self.scanning:
+            # a static measurement is defined by where it was taken - put it in the log
+            with suppress(Exception):
+                x_um, y_um, z_um = self.scanners_dvc.origin_disp_um
+                logging.info(
+                    f"Static measurement at (x, y, z) = "
+                    f"({x_um:.2f}, {y_um:.2f}, {z_um:.2f}) um from the scanners' origin"
+                )
 
         try:
             while self.is_running and self.time_passed_s < self.duration_s:
@@ -908,6 +963,81 @@ class SolutionMeasurementProcedure(MeasurementProcedure):
                 # if not saving a file, keep the last measurement in memory
                 self._app.last_meas_data = self._prep_meas_dict()
             await self.stop()
+
+
+class ImageFCSMeasurementProcedure(SolutionMeasurementProcedure):
+    """
+    Image scanning done with the scanning-FCS routines.
+
+    This IS an angular solution measurement - same pattern generator, same hardware
+    sequence, same raw files (saved with the solution data, so the sFCS analysis reads
+    them). What differs is the scan parameters, which come from the ImageFCS tab (lines
+    tens of nanometres apart, optionally swept several times each), and what is shown
+    after each file: the image rebuilt from the photon time-stamps instead of an ACF.
+    'repeat' is the tab's live mode - scan, show, scan again, save nothing.
+    """
+
+    def __init__(self, app, scan_params, **kwargs):
+        super().__init__(app=app, scan_params=scan_params, **kwargs)
+        self.image_fcs_tab = kwargs["image_fcs_tab"]
+        self.origin_override_ao_v = None
+        if str(self.scan_params.get("slow_axis", "xy")).lower() == "z":
+            # an X-Z section: the pattern drives the piezo too
+            self.scan_params["plane_orientation"] = "XYZ"
+
+    async def run(self, should_save=True):
+        """Doc."""
+
+        self.image_fcs_tab.measurement_started(live=self.repeat)
+        await super().run(should_save)
+
+    async def stop(self):
+        """Doc."""
+
+        await super().stop()
+        self.image_fcs_tab.measurement_stopped()
+
+    def disp_ACF(self):
+        """Called after each file: show its image, then move the scan if asked to."""
+
+        tab = self.image_fcs_tab
+        try:
+            image = image_fcs.scan_image_from_bytes(
+                np.array(self.data_dvc.data, dtype=np.uint8),
+                self.scan_params,
+                self.tdc_dvc.laser_freq_mhz * 1e6,
+                **tab.image_options(),
+            )
+            tab.show_image(image, self.scan_params["origin_ao_v"], self.scanners_dvc.um_v_ratio)
+        except Exception as exc:
+            errors.err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
+
+        if (target_xy_v := tab.take_pending_origin()) is not None:
+            self.recentre(target_xy_v)
+
+    def recentre(self, target_xy_v) -> None:
+        """
+        Rebuild the pattern around a new centre. Called between files, when the AO task is
+        idle; the next file starts with the new buffer.
+        """
+
+        # z is given only when the image was an X-Z section
+        z_v = self.scan_params["origin_ao_v"][2]
+        if len(target_xy_v) > 2 and target_xy_v[2] is not None:
+            z_v = target_xy_v[2]
+            with suppress(Exception):
+                self._app.gui.main.zAOV.setValue(z_v)
+        self.origin_override_ao_v = (target_xy_v[0], target_xy_v[1], z_v)
+        # when the measurement ends the scanners should rest on the new centre, not go
+        # back to where they were before it started
+        self.scan_params["initial_ao"] = self.origin_override_ao_v
+        with suppress(Exception):
+            self._app.gui.main.xAOV.setValue(target_xy_v[0])
+            self._app.gui.main.yAOV.setValue(target_xy_v[1])
+        self.setup_scan()
+        logging.info(
+            f"ImageFCS: scan centre moved to ({target_xy_v[0]:.4f}, {target_xy_v[1]:.4f}) V"
+        )
 
 
 class MeasurementError(Exception):

@@ -413,6 +413,26 @@ class MainWin:
             self._gui.main.measQueue.setCurrentItem(new_item)
             logging.info(f"{meas_type} measurement added to FIFO queue.")
 
+        elif meas_type == "SFCSImageFCS":
+            # image scanning with the scanning-FCS routines: the scan comes from the
+            # ImageFCS tab, everything else is a solution measurement
+            tab = self.main_gui.imgFcsTab
+            scan_params = tab.scan_params()
+            scan_params["floating_z_amplitude_um"] = 0
+            scan_params["stage_pattern"] = "None"
+            scan_params["stage_dwelltime_s"] = None
+            sol_kwargs = wdgts.SOL_MEAS_COLL.gui_to_dict(self._app.gui)
+            sol_kwargs.update(tab.measurement_kwargs(live=kwargs.get("live", False)))
+            self._app.meas_queue.append(
+                meas.ImageFCSMeasurementProcedure(
+                    app=self._app,
+                    scan_params=scan_params,
+                    laser_mode=laser_mode.lower(),
+                    processing_options={},
+                    **sol_kwargs,
+                )
+            )
+
         elif meas_type == "SFCSImage":
             # get parameters from GUI
             kwargs = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)
@@ -783,6 +803,14 @@ class MainWin:
             )
             self._app.curr_img_idx = img_idx
             self._app.curr_img = image
+            with suppress(Exception):
+                # the scan knows its own pixel size, so the offset read-out is in nm
+                scan_settings = self._app.last_image_scans[img_idx]["full_data"][
+                    "scan_settings"
+                ]
+                img_meas_wdgts["image_wdgt"].obj.nm_per_px = (
+                    scan_settings["dim1_um"] * 1e3 / image.shape[1]
+                )
             img_meas_wdgts["image_wdgt"].obj.display_image(
                 image, cursor=True, imshow_kwargs=dict(cmap="bone")
             )
@@ -926,11 +954,19 @@ class MainWin:
 
         with suppress(AttributeError):
             # AttributeError - camera not properly initialized
+            reported = {}
             for name in ("pixel_clock", "framerate", "exposure"):
-                range = tuple(
-                    int(limit * slider_const) for limit in getattr(camera, f"{name}_range")
-                )
+                reported[name] = tuple(getattr(camera, f"{name}_range"))
+                range = tuple(int(limit * slider_const) for limit in reported[name])
                 getattr(self.main_gui, f"{name}{cam_num}").setRange(*range)
+            # the camera's own limits, so they can be seen before typing into the boxes
+            # (exposure is in MILLISECONDS, and its minimum falls as the pixel clock rises)
+            logging.debug(
+                f"Camera {cam_num} ranges: "
+                f"pixel clock {reported['pixel_clock'][0]:.0f}-{reported['pixel_clock'][1]:.0f} MHz, "
+                f"framerate {reported['framerate'][0]:.2f}-{reported['framerate'][1]:.2f} Hz, "
+                f"exposure {reported['exposure'][0]:.3f}-{reported['exposure'][1]:.3f} ms"
+            )
 
     def set_parameter(self, cam_num: int, param_name: str, value) -> None:
         """Doc."""
@@ -945,12 +981,24 @@ class MainWin:
 
         getattr(self.main_gui, f"{param_name}_val{cam_num}").setValue(value)
 
-        camera = self.cameras[cam_num - 1]
-        with suppress(DeviceError):
-            # DeviceError - camera not properly initialized
-            camera.set_parameters({param_name: value})
-            getattr(self.main_gui, f"autoExp{cam_num}").setChecked(False)
-        self.update_slider_range(cam_num)
+        # A dragged slider fires this for every step it passes. Each used to go straight
+        # to the camera driver, a burst of calls while frames were being read - so only
+        # the value where the slider comes to rest (0.2 s without movement) is sent.
+        timers = self.__dict__.setdefault("_camera_param_timers", {})
+        key = (cam_num, param_name)
+        if (pending := timers.pop(key, None)) is not None:
+            pending.cancel()
+
+        def apply():
+            timers.pop(key, None)
+            camera = self.cameras[cam_num - 1]
+            with suppress(DeviceError):
+                # DeviceError - camera not properly initialized
+                camera.set_parameters({param_name: value})
+                getattr(self.main_gui, f"autoExp{cam_num}").setChecked(False)
+            self.update_slider_range(cam_num)
+
+        timers[key] = self._app.loop.call_later(0.2, apply)
 
     def take_and_show_image(self, cam_num: int):
         """Doc."""
@@ -1000,21 +1048,139 @@ class MainWin:
         camera = self.cameras[cam_num - 1]
         camera.is_in_grayscale_mode = is_checked
 
+    CAMERA_IMAGE_FILTERS = {
+        "PNG image, raw camera pixels (*.png)": ".png",
+        "NumPy array, raw camera pixels (*.npy)": ".npy",
+        "Compressed pickle, as before (*.pkl)": ".pkl",
+    }
+
+    def camera_images_folder(self) -> Path:
+        """
+        Today's folder for camera images: '<data path>/<DD_MM_YYYY>/Camera Images', next to
+        the day's measurements (same date format). Created if it does not exist yet.
+        """
+
+        folder = (
+            Path(self._gui.settings.dataPath.text())
+            / dt.now().strftime("%d_%m_%Y")
+            / "Camera Images"
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
+
     def save_last_image(self, cam_num: int):
-        """Doc."""
+        """
+        Save the last camera frame - the camera's own pixels, not a picture of the display -
+        with a file dialog.
+
+        The dialog opens in the folder used last today, or else in today's 'Camera
+        Images' folder (created if needed), and suggests the name used last for this camera,
+        so that a series only needs its last part edited (the dialog asks before
+        overwriting). A small text file with the same name and '.txt' records the camera
+        settings at the time: exposure, pixel clock, frame rate and the crosshairs.
+        """
 
         camera = self.cameras[cam_num - 1]
+        frame = getattr(camera, "last_snapshot", None)
+        if frame is None or not np.size(frame):
+            logging.info(f"Camera {cam_num}: no frame to save yet")
+            return
+        # copy NOW: the camera driver hands out its live buffer, and the next frame would
+        # overwrite it while the dialog is open
+        frame = np.array(frame, copy=True)
+        settings = self._camera_settings_text(cam_num, camera, frame)
 
-        file_path = Path(self._gui.settings.camDataPath.text()) / Path(
-            f"cam{cam_num}_" + dt.now().strftime("%d%m%y_%H%M%S") + ".pkl"
+        today = dt.now().strftime("%d_%m_%Y")
+        last_day, last_folder = getattr(self, "_camera_save_folder", (None, None))
+        if last_day == today and last_folder is not None and Path(last_folder).is_dir():
+            folder = Path(last_folder)
+        else:
+            try:
+                folder = self.camera_images_folder()
+            except OSError as exc:
+                logging.warning(f"Cannot create today's camera image folder [{exc}]")
+                folder = Path.home()
+        names = getattr(self, "_camera_save_names", {})
+        name = names.get(cam_num) or f"cam{cam_num}_{dt.now().strftime('%H%M%S')}"
+        filters = list(self.CAMERA_IMAGE_FILTERS)
+        chosen_filter = getattr(self, "_camera_save_filter", filters[0])
+
+        path_str, chosen_filter = QFileDialog.getSaveFileName(
+            self.main_gui,
+            f"Save camera {cam_num} image",
+            str(folder / name),
+            ";;".join(filters),
+            chosen_filter,
         )
-        with suppress(AttributeError):
+        if not path_str:
+            return  # cancelled
+        file_path = Path(path_str)
+        suffix = self.CAMERA_IMAGE_FILTERS.get(chosen_filter, ".png")
+        if file_path.suffix.lower() not in {".png", ".npy", ".pkl"}:
+            file_path = file_path.with_name(file_path.name + suffix)
+
+        try:
+            self._write_camera_frame(file_path, frame, settings, cam_num)
+            file_path.with_suffix(".txt").write_text(settings)
+        except Exception as exc:
+            err_hndlr(exc, sys._getframe(), locals(), lvl="warning")
+            return
+
+        self._camera_save_folder = (today, file_path.parent)
+        self._camera_save_names = {**names, cam_num: file_path.stem}
+        self._camera_save_filter = chosen_filter
+        logging.info(f"Camera {cam_num} image saved: {file_path}")
+
+    @staticmethod
+    def _write_camera_frame(file_path: Path, frame: np.ndarray, settings: str, cam_num: int):
+        """Write the frame in the format given by the file's suffix."""
+
+        suffix = file_path.suffix.lower()
+        if suffix == ".npy":
+            np.save(file_path, frame, allow_pickle=False)
+        elif suffix == ".pkl":
             file_utilities.save_object(
-                camera.last_snapshot,
-                file_path,
-                compression_method="gzip",
-                obj_name=f"cam{cam_num}_image",
+                frame, file_path, compression_method="gzip", obj_name=f"cam{cam_num}_image"
             )
+        else:  # PNG, lossless, with the settings in its text chunk as well
+            from PIL import Image
+            from PIL.PngImagePlugin import PngInfo
+
+            image_arr = frame
+            if image_arr.dtype != np.uint8 and image_arr.ndim == 2:
+                image_arr = image_arr.astype(np.uint16)
+            elif image_arr.dtype != np.uint8:
+                image_arr = np.clip(image_arr, 0, 255).astype(np.uint8)
+            info = PngInfo()
+            info.add_text("camera settings", settings)
+            Image.fromarray(image_arr).save(file_path, pnginfo=info)
+
+    def _camera_settings_text(self, cam_num: int, camera, frame: np.ndarray) -> str:
+        """The camera's settings and crosshairs, as 'name: value' lines."""
+
+        lines = [
+            f"camera: {cam_num} ({getattr(camera, 'log_ref', '')})",
+            f"saved: {dt.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"frame shape: {tuple(frame.shape)}, dtype {frame.dtype}",
+            f"pixel size um: {getattr(camera, 'PIXEL_SIZE_UM', '?')}",
+        ]
+        for param, unit in (("exposure", "ms"), ("pixel_clock", "MHz"), ("framerate", "Hz")):
+            with suppress(AttributeError):
+                value = getattr(self.main_gui, f"{param}_val{cam_num}").value()
+                lines.append(f"{param} {unit}: {value:g}")
+        with suppress(AttributeError):
+            auto_exposure = getattr(self.main_gui, f"autoExp{cam_num}").isChecked()
+            lines.append(f"auto exposure: {auto_exposure}")
+        lines.append(f"transposed: {getattr(camera, 'is_in_transposed_mode', '?')}")
+        with suppress(AttributeError, IndexError, TypeError):
+            cursor = camera.display.obj.axes[0].cursor
+            lines.append(f"crosshair (x, y) px: ({cursor.pos[0]:.1f}, {cursor.pos[1]:.1f})")
+            if cursor.ref_pos is not None:
+                lines.append(
+                    f"reference crosshair (x, y) px: "
+                    f"({cursor.ref_pos[0]:.1f}, {cursor.ref_pos[1]:.1f})"
+                )
+        return "\n".join(lines) + "\n"
 
     def get_gaussian_diameter(self, cam_num: int, is_checked: bool):
         """Returns the Gaussian FWHM diameter (mm) of a beam image"""
@@ -1022,6 +1188,424 @@ class MainWin:
         if self.cameras:
             camera = self.cameras[cam_num - 1]
             camera.should_get_diameter = is_checked
+
+    def find_beam_hole(self, cam_num: int, is_checked: bool):
+        """Continuously locate the dark core (hole) of a donut/vortex beam"""
+
+        if self.cameras:
+            camera = self.cameras[cam_num - 1]
+            camera.should_find_hole = is_checked
+
+    def balance_ring(self, cam_num: int, is_checked: bool):
+        """
+        Continuously measure how evenly the light is spread around a donut's dark core
+        (for centring the vortex plate), averaged over frames, and draw it on the display.
+        """
+
+        if self.cameras:
+            camera = self.cameras[cam_num - 1]
+            camera.reset_ring_balance()
+            camera.should_balance_ring = is_checked
+
+    def toggle_crosshairs(self, cam_num: int, is_checked: bool):
+        """
+        Show/hide the live (white) crosshair and the offset read-out on a camera display.
+        The crosshair position is still tracked while hidden, so the beam walk and the
+        'remember centre' reference keep working - only the painting is switched off.
+        """
+
+        if not self.cameras:
+            return
+        camera = self.cameras[cam_num - 1]
+        camera.display.obj.show_crosshairs = is_checked
+        # take effect now rather than on the next frame (the camera may be switched off)
+        try:
+            camera.display.obj.axes[0].cursor.set_live_visible(is_checked)
+        except (AttributeError, IndexError):
+            pass
+
+    def mark_beam_reference(self, cam_num: int, is_checked: bool):
+        """Remember the current crosshair position as the reference beam centre"""
+
+        if self.cameras:
+            camera = self.cameras[cam_num - 1]
+            camera.mark_reference(is_checked)
+
+    def read_beam_positions(self, use_reference: bool = False):
+        """
+        Return (cam1_x, cam1_y, cam2_x, cam2_y) in pixels, taken from the crosshairs of
+        the two camera displays - the live ones (the latest Gaussian or hole fit), or the
+        remembered reference ones. Used by the beam walk assistant.
+        """
+
+        cameras = self.cameras or (self._app.devices.camera_1, self._app.devices.camera_2)
+        positions = []
+        for cam_num, camera in enumerate(cameras[:2], start=1):
+            try:
+                cursor = camera.display.obj.axes[0].cursor
+            except (AttributeError, IndexError):
+                raise RuntimeError(f"camera {cam_num} has no image displayed yet")
+            pos = cursor.ref_pos if use_reference else cursor.pos
+            if pos is None:
+                raise RuntimeError(
+                    f"camera {cam_num} has no "
+                    f"{'remembered centre' if use_reference else 'fitted centre'} yet"
+                )
+            positions += [float(pos[0]), float(pos[1])]
+        return positions
+
+    def set_parameter_from_box(self, cam_num: int, param_name: str) -> None:
+        """
+        Apply a camera parameter typed into its spin box.
+
+        The boxes used to be read-only, so the only way in was the slider, whose range is
+        the camera's reported range rounded to 1/100 of a unit. Typing goes straight to
+        the camera, clamped to what it reports, and says so when it had to clamp - the
+        shortest exposure depends on the pixel clock and the frame rate, so raising the
+        pixel clock is what buys a shorter exposure.
+        """
+
+        if not self.cameras:
+            return
+
+        slider_const = 100
+        camera = self.cameras[cam_num - 1]
+        box = getattr(self.main_gui, f"{param_name}_val{cam_num}")
+        requested = box.value()
+
+        try:
+            limits = helper.Limits(getattr(camera, f"{param_name}_range"))
+        except AttributeError:
+            logging.debug(f"Camera {cam_num}: no {param_name} range known - not applied")
+            return
+
+        value = limits.clamp(requested)
+        if value != requested:
+            logging.info(
+                f"Camera {cam_num}: {param_name} {requested:.3f} is outside the camera's "
+                f"range ({limits.lower:.3f} - {limits.upper:.3f}) - using {value:.3f}. "
+                + (
+                    "A shorter exposure needs a higher pixel clock or a lower frame rate."
+                    if param_name == "exposure" and requested < limits.lower
+                    else ""
+                )
+            )
+
+        with suppress(DeviceError):
+            camera.set_parameters({param_name: value})
+            getattr(self.main_gui, f"autoExp{cam_num}").setChecked(False)
+
+        # keep the box and the slider showing what the camera actually took
+        box.setValue(value)
+        with suppress(AttributeError, TypeError):
+            getattr(self.main_gui, f"{param_name}{cam_num}").setValue(int(value * slider_const))
+        self.update_slider_range(cam_num)
+        logging.debug(f"Camera {cam_num}: {param_name} set to {value:.3f}")
+
+    def set_camera_zoom(self, cam_num: int, choice: str) -> None:
+        """
+        Zoom a camera display to a box about the crosshair. The crosshair lines keep
+        their width (they are drawn in points, not pixels), so zooming in makes the
+        image bigger around them without making the lines any thicker - which is the
+        point when judging a small offset from across the room.
+        """
+
+        cameras = self.cameras or (self._app.devices.camera_1, self._app.devices.camera_2)
+        display = cameras[cam_num - 1].display.obj
+        digits = "".join(character for character in choice if character.isdigit())
+        display.zoom_half_width = int(digits) if digits else None
+        display.user_view_limits = None  # picking a level overrides a hand-made zoom
+        logging.debug(
+            f"Camera {cam_num} display zoom: "
+            + (f"+/-{display.zoom_half_width} px about the crosshair" if digits else "full frame")
+        )
+
+    def mark_image_reference(self, is_checked: bool) -> None:
+        """
+        Remember the crosshair on the SCAN image display, the same way the cameras do:
+        fit the centre of a bead scan taken with the excitation beam, remember it, then
+        scan the same bead with the depletion beam and read the offset off the display.
+        """
+
+        display = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)["image_wdgt"].obj
+        try:
+            cursor = display.axes[0].cursor
+        except (AttributeError, IndexError):
+            logging.debug("No scan image displayed yet - nothing to remember")
+            return
+
+        if is_checked:
+            cursor.draw_reference(cursor.pos)
+            display.ref_pos = cursor.pos
+            logging.info(
+                f"Scan image reference centre remembered at "
+                f"({cursor.pos[0]:.1f}, {cursor.pos[1]:.1f}) px"
+            )
+        else:
+            cursor.clear_reference()
+            display.ref_pos = None
+            logging.debug("Scan image reference centre cleared")
+
+    def _scan_image_display(self):
+        """The scan image display, or a RuntimeError saying why there isn't one."""
+
+        display = wdgts.IMG_MEAS_COLL.gui_to_dict(self._gui)["image_wdgt"].obj
+        if not getattr(display, "nm_per_px", None):
+            raise RuntimeError(
+                "the scan image has no pixel size yet - preview a scan first "
+                "(the size comes from the scan's own settings)"
+            )
+        return display
+
+    def _image_fcs_tab_if_shown(self):
+        """The ImageFCS tab if it is the tab on screen, else None (the image tab is meant)."""
+
+        tab = getattr(self.main_gui, "imgFcsTab", None)
+        with suppress(AttributeError):
+            if tab is not None and self.main_gui.tabWidget.currentWidget() is tab:
+                return tab
+        return None
+
+    def read_scan_image_position_um(self, use_reference: bool = False):
+        """
+        Where the crosshair sits on the scan image, in microns of sample.
+
+        With 'use_reference', the remembered (red) crosshair instead of the live one.
+        Used by the bead positioning dialog, and by anything else that needs a position
+        in the sample rather than in pixels.
+        """
+
+        # With the ImageFCS tab on screen its image is the one meant. Positions there are
+        # in um along the scanners' X and Y from the scan centre - the same directions as
+        # the columns and rows of an XY image-tab scan, whatever the ImageFCS scan angle.
+        if (tab := self._image_fcs_tab_if_shown()) is not None:
+            if use_reference:
+                raise RuntimeError(
+                    "there is no remembered centre in the ImageFCS tab - use the scan "
+                    "centre as the target"
+                )
+            return tab.cursor_xy_um()
+
+        display = self._scan_image_display()
+        try:
+            cursor = display.axes[0].cursor
+        except (AttributeError, IndexError):
+            raise RuntimeError("no scan image displayed yet")
+        pos = cursor.ref_pos if use_reference else cursor.pos
+        if pos is None:
+            raise RuntimeError(
+                "no remembered centre on the scan image yet"
+                if use_reference
+                else "no crosshair on the scan image yet"
+            )
+        return (pos[0] * display.nm_per_px / 1e3, pos[1] * display.nm_per_px / 1e3)
+
+    def scan_image_centre_um(self):
+        """The centre of the scan image, in the same microns."""
+
+        if self._image_fcs_tab_if_shown() is not None:
+            return (0.0, 0.0)  # ImageFCS positions are measured from the scan centre
+
+        display = self._scan_image_display()
+        image = getattr(self._app, "curr_img", None)
+        if image is None:
+            raise RuntimeError("no scan image loaded yet")
+        height, width = image.shape[:2]
+        return (
+            (width - 1) / 2 * display.nm_per_px / 1e3,
+            (height - 1) / 2 * display.nm_per_px / 1e3,
+        )
+
+    def stage_steps_per_um(self) -> float:
+        """The scalar from the stage settings, for the rough calibration shortcut."""
+
+        steps_per_um = self._app.devices.stage.steps_per_um
+        if not steps_per_um:
+            raise RuntimeError("'steps per um' is not set in the stage settings")
+        return float(steps_per_um)
+
+    def move_stage_steps(self, moves) -> None:
+        """
+        Make a sequence of relative stage moves, in steps, one after the other.
+
+        The sequence matters: the bead positioning plan overshoots the target and then
+        comes back along a fixed approach vector, so that backlash enters every
+        positioning the same way instead of randomly. Running the moves concurrently
+        would defeat that, hence the single task that awaits each in turn.
+        """
+
+        async def run_moves():
+            for dx, dy in moves:
+                if dx or dy:
+                    await self._app.devices.stage.move(
+                        helper.Vector(int(dx), int(dy), "steps")
+                    )
+
+        self._app.loop.create_task(run_moves())
+
+    def open_bead_positioning_dialog(self):
+        """Open the bead positioning dialog (one instance, so a calibration survives)"""
+
+        from gui.stage_mapping import BeadPositioningDialog
+
+        if getattr(self, "_bead_positioning_dialog", None) is None:
+            self._bead_positioning_dialog = BeadPositioningDialog(self, parent=self.main_gui)
+        self._bead_positioning_dialog.show()
+        self._bead_positioning_dialog.raise_()
+
+    def toggle_camera_enlarged(self) -> None:
+        """
+        Float the camera panel, lay the two displays side by side and fill the screen -
+        and put everything back when pressed again. The panel is a QDockWidget, so this
+        only has to float it, flip the direction of the box layout holding the two camera
+        groups, and lift the maximum sizes that keep it compact while docked.
+        """
+
+        from PyQt5.QtWidgets import QApplication, QBoxLayout
+
+        gui = self.main_gui
+        dock, layout = gui.cameraDock, gui.verticalLayout_101
+        button = gui.enlargeCamsButton
+        boxes = [
+            layout.itemAt(idx).widget()
+            for idx in range(layout.count())
+            if layout.itemAt(idx).widget() is not None
+        ]
+
+        if not getattr(self, "_cameras_enlarged", False):
+            self._camera_restore = dict(
+                was_floating=dock.isFloating(),
+                geometry=dock.geometry(),
+                direction=layout.direction(),
+                max_sizes=[(w, w.maximumSize()) for w in boxes],
+                dock_max=dock.maximumSize(),
+                dock_min=dock.minimumSize(),
+            )
+            dock.setVisible(True)
+            dock.setFloating(True)
+            dock.setMinimumSize(0, 0)
+            dock.setMaximumSize(int(1e5), int(1e5))
+            for widget in boxes:
+                widget.setMaximumSize(int(1e5), int(1e5))
+            layout.setDirection(QBoxLayout.LeftToRight)
+            self._split_camera_controls(True)
+            screen = QApplication.primaryScreen().availableGeometry()
+            dock.setGeometry(
+                screen.x() + int(0.02 * screen.width()),
+                screen.y() + int(0.04 * screen.height()),
+                int(0.96 * screen.width()),
+                int(0.88 * screen.height()),
+            )
+            button.setText("Restore\nLayout")
+            self._cameras_enlarged = True
+            logging.debug("Camera displays enlarged")
+        else:
+            saved = getattr(self, "_camera_restore", {})
+            layout.setDirection(saved.get("direction", QBoxLayout.TopToBottom))
+            self._split_camera_controls(False)
+            for widget, max_size in saved.get("max_sizes", []):
+                widget.setMaximumSize(max_size)
+            dock.setMinimumSize(saved.get("dock_min", dock.minimumSize()))
+            dock.setMaximumSize(saved.get("dock_max", dock.maximumSize()))
+            dock.setFloating(saved.get("was_floating", False))
+            if saved.get("was_floating") and saved.get("geometry") is not None:
+                dock.setGeometry(saved["geometry"])
+            button.setText("Enlarge\nDisplays")
+            self._cameras_enlarged = False
+            logging.debug("Camera displays restored")
+
+    # the column of checkboxes and buttons beside each camera display, and the layout that
+    # holds it (both from mainwindow.ui)
+    CAMERA_CONTROL_COLUMNS = (
+        ("verticalLayout_93", "horizontalLayout_10"),
+        ("verticalLayout_100", "horizontalLayout_11"),
+    )
+
+    def _split_camera_controls(self, should_split: bool) -> None:
+        """
+        With the displays side by side, the controls under each one are a single tall
+        column, which pushes the display up and leaves the space beside it empty. So while
+        enlarged, the second half of each column goes into a second column next to it, and
+        back again on 'Restore Layout'.
+        """
+
+        from PyQt5.QtWidgets import QVBoxLayout
+
+        gui = self.main_gui
+        split = self.__dict__.setdefault("_camera_control_split", {})
+        for column_name, parent_name in self.CAMERA_CONTROL_COLUMNS:
+            column = getattr(gui, column_name, None)
+            parent = getattr(gui, parent_name, None)
+            if column is None or parent is None:
+                continue
+            if should_split and column_name not in split:
+                widgets = [
+                    column.itemAt(idx).widget()
+                    for idx in range(column.count())
+                    if column.itemAt(idx).widget() is not None
+                ]
+                moved = widgets[(len(widgets) + 1) // 2 :]
+                second = QVBoxLayout()
+                second.setSpacing(column.spacing())
+                for widget in moved:
+                    column.removeWidget(widget)
+                    second.addWidget(widget)
+                second.addStretch()
+                column.addStretch()
+                position = next(
+                    idx for idx in range(parent.count()) if parent.itemAt(idx).layout() is column
+                )
+                parent.insertLayout(position + 1, second)
+                split[column_name] = (second, moved)
+            elif not should_split and column_name in split:
+                second, moved = split.pop(column_name)
+                # drop the stretch added at the end of the first column
+                last = column.itemAt(column.count() - 1)
+                if last is not None and last.spacerItem() is not None:
+                    column.takeAt(column.count() - 1)
+                for widget in moved:
+                    second.removeWidget(widget)
+                    column.addWidget(widget)
+                parent.removeItem(second)
+                second.deleteLater()
+
+    def restart_camera(self, cam_num: int):
+        """Close and re-open a camera, clearing a latched error - no program restart"""
+
+        cameras = self.cameras or (self._app.devices.camera_1, self._app.devices.camera_2)
+        camera = cameras[cam_num - 1]
+        if camera.restart():
+            logging.info(f"Camera {cam_num} is back. Switch video on again if you need it.")
+        else:
+            logging.warning(
+                f"Camera {cam_num} did not come back - replug its USB cable and try again."
+            )
+
+    def show_beam_waypoint(self, cam_num: int, pos=None):
+        """Show or clear the beam walk waypoint crosshair on one camera display"""
+
+        cameras = self.cameras or (self._app.devices.camera_1, self._app.devices.camera_2)
+        cameras[cam_num - 1].set_waypoint(pos)
+
+    def open_calibrations_dialog(self):
+        """Open the Calibrations window (one instance, so its results survive closing it)"""
+
+        from gui.calibrations import CalibrationsDialog
+
+        if getattr(self, "_calibrations_dialog", None) is None:
+            self._calibrations_dialog = CalibrationsDialog(self, parent=self.main_gui)
+        self._calibrations_dialog.show()
+        self._calibrations_dialog.raise_()
+
+    def open_beam_walk_dialog(self):
+        """Open the beam walk assistant (keeps one instance, so a calibration survives)"""
+
+        from gui.beam_walk import BeamWalkDialog
+
+        if getattr(self, "_beam_walk_dialog", None) is None:
+            self._beam_walk_dialog = BeamWalkDialog(self, parent=self.main_gui)
+        self._beam_walk_dialog.show()
+        self._beam_walk_dialog.raise_()
 
     ####################
     ## Analysis Tab - Raw Data
